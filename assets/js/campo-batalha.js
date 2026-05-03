@@ -679,17 +679,18 @@
     }
 
     async function onFichaPicked(fichaListItem) {
-        // Buscar ficha completa para obter a imagem
+        // Buscar ficha completa para obter a imagem (vem em data.ficha)
         try {
             const resp = await fetch('buscar-ficha.php?id=' + encodeURIComponent(fichaListItem.id), {
                 credentials: 'same-origin'
             });
             const data = await resp.json();
-            if (data && data.success !== false) {
+            const ficha = (data && data.success !== false) ? (data.ficha || data) : null;
+            if (ficha) {
                 addTokenFromFicha({
-                    id: data.id || fichaListItem.id,
-                    personagem: data.personagem || fichaListItem.personagem,
-                    personagem_imagem: data.personagem_imagem || null
+                    id: ficha.id || fichaListItem.id,
+                    personagem: ficha.personagem || fichaListItem.personagem,
+                    personagem_imagem: ficha.personagem_imagem || null
                 });
             } else {
                 addTokenFromFicha(fichaListItem);
