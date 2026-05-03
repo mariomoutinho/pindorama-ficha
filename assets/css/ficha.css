@@ -1572,6 +1572,93 @@ textarea {
     border-style: solid;
 }
 
+/* ---------- Tooltip de hover em perícias ---------- */
+
+.pericia-tooltip {
+    position: absolute;
+    z-index: 10000;
+    width: min(320px, 92vw);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 240, 255, 0.98));
+    color: var(--purple-dark);
+    border: 1px solid rgba(118, 84, 124, 0.35);
+    border-radius: 10px;
+    padding: 10px 12px;
+    box-shadow: 0 8px 24px rgba(43, 18, 50, 0.22);
+    font-size: 0.86rem;
+    line-height: 1.45;
+    pointer-events: none;
+    animation: periciaTooltipIn 140ms ease-out both;
+}
+
+@keyframes periciaTooltipIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.pericia-tooltip-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid rgba(118, 84, 124, 0.18);
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+}
+
+.pericia-tooltip-nome {
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: var(--purple-dark);
+}
+
+.pericia-tooltip-attr {
+    font-weight: 800;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--purple);
+    color: #fff;
+}
+
+.pericia-tooltip-attr[data-attr="For"] { background: #b03b3b; }
+.pericia-tooltip-attr[data-attr="Des"] { background: #2f8a4d; }
+.pericia-tooltip-attr[data-attr="Con"] { background: #c8862a; }
+.pericia-tooltip-attr[data-attr="Int"] { background: #355cde; }
+.pericia-tooltip-attr[data-attr="Sab"] { background: #6a3c8a; }
+.pericia-tooltip-attr[data-attr="Car"] { background: #c4408a; }
+
+.pericia-tooltip-chip {
+    display: inline-block;
+    margin-bottom: 6px;
+    padding: 2px 10px;
+    background: rgba(105, 67, 111, 0.12);
+    color: var(--purple-dark);
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.pericia-tooltip-badge {
+    display: inline-block;
+    margin-bottom: 6px;
+    padding: 2px 8px;
+    background: rgba(155, 37, 77, 0.12);
+    color: var(--danger);
+    border: 1px solid rgba(155, 37, 77, 0.45);
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.pericia-tooltip-desc {
+    margin: 0;
+    color: var(--purple-dark);
+}
+
 /* Badge da sigla do atributo-chave da perícia (Acrobacia · Des etc.) */
 .skill-attr-badge {
     display: inline-flex;

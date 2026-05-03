@@ -40,6 +40,38 @@ const OFICIOS_TIPOS = [
     { nome: 'Alfaiate',   descricao: 'Permite fabricar Vestuário.' },
 ];
 
+/* Descrição curta de cada perícia, usada nos tooltips de hover. */
+const PERICIAS_DESC = {
+    'Acrobacia':     'Equilibrar-se, mover-se em terreno difícil, saltar com graça e amortecer quedas.',
+    'Adestramento':  'Treinar e ensinar comandos a animais; lidar com criaturas selvagens.',
+    'Atletismo':     'Correr, escalar, nadar, saltar — qualquer feito de força corporal.',
+    'Atuação':       'Música, teatro, dança, oratória — qualquer arte de palco.',
+    'Cavalgar':      'Conduzir cavalos, mulas, javalis e outras montarias em ritmo, terreno e combate.',
+    'Conhecimento':  'Lembrar de fatos, civilizações, geografia, história e ciências em geral.',
+    'Cura':          'Tratar feridas e doenças sem usar magia; estabilizar moribundos.',
+    'Diplomacia':    'Negociar, persuadir e mudar atitudes alheias com argumentação razoável.',
+    'Enganação':     'Mentir, blefar, disfarçar a verdade e enrolar com convicção.',
+    'Fortitude':     'Resistência física a venenos, doenças, fadiga e efeitos corporais.',
+    'Furtividade':   'Esconder-se, mover-se sem ser ouvido, evitar olhos curiosos.',
+    'Guerra':        'Estratégia militar, formações, manobras e leitura tática do campo.',
+    'Iniciativa':    'Reagir rápido no início do combate; agir antes dos outros.',
+    'Intimidação':   'Forçar obediência ou render adversários com presença ameaçadora.',
+    'Intuição':      'Pressentir mentiras, motivações ocultas e sentimentos disfarçados.',
+    'Investigação':  'Buscar pistas, decifrar evidências e juntar fragmentos lógicos.',
+    'Jogatina':      'Jogos de azar, apostas, cartas e dados — com sorte ou trapaça.',
+    'Ladinagem':     'Abrir fechaduras, desarmar armadilhas, batidas de carteira.',
+    'Luta':          'Combate corpo-a-corpo com armas, escudo ou desarmado.',
+    'Misticismo':    'Reconhecer magias, criaturas mágicas, escolas e itens encantados.',
+    'Nobreza':       'Genealogia, etiqueta, política e protocolo entre os poderosos.',
+    'Percepção':     'Notar detalhes, ouvir sons, encontrar coisas escondidas.',
+    'Pilotagem':     'Conduzir veículos — carroças, embarcações, máquinas de Cearina.',
+    'Pontaria':      'Combate à distância — arcos, bestas, armas de fogo e arremesso.',
+    'Reflexos':      'Esquivar de armadilhas, magias de área e perigos súbitos.',
+    'Religião':      'Conhecimento sobre divindades, rituais, símbolos e mortos-vivos.',
+    'Sobrevivência': 'Caça, rastreio, navegação selvagem, montar acampamento.',
+    'Vontade':       'Resistir a magias mentais, medo e tentação.',
+};
+
 function nomeOficio(especNome) {
     return `Ofício (${especNome})`;
 }
@@ -616,6 +648,7 @@ function adicionarOficio(especNomeForcado = null) {
 
     atualizarPericiasPorAtributos();
     atualizarBotoesPericia();
+    configurarTooltipsPericias();
     return novaLinha;
 }
 
@@ -720,6 +753,137 @@ function montarPericias(periciasSalvas = null) {
 
     atualizarPericiasPorAtributos();
     atualizarBotoesPericia();
+    configurarTooltipsPericias();
+}
+
+/* ============================================================
+ * Tooltip de hover em perícias — abre janelinha com nome,
+ * atributo-chave, marcador "só treinada" e descrição.
+ * ============================================================ */
+
+let _periciaTooltipAtual = null;
+let _periciaTooltipTimer = null;
+
+function fecharTooltipPericia() {
+    clearTimeout(_periciaTooltipTimer);
+    _periciaTooltipTimer = null;
+    if (_periciaTooltipAtual) {
+        _periciaTooltipAtual.remove();
+        _periciaTooltipAtual = null;
+    }
+}
+
+function abrirTooltipPericia(skillName, atributoSigla, ancora) {
+    fecharTooltipPericia();
+
+    let nome = skillName;
+    let descricao = PERICIAS_DESC[skillName] || "";
+    let especialidade = "";
+
+    // Ofício (Especialidade) → resolve descrição da especialização
+    if (typeof ehNomeOficio === "function" && ehNomeOficio(skillName)) {
+        const m = skillName.match(/^Ofício \((.+)\)$/);
+        const espec = m ? m[1] : "";
+        const tipo = OFICIOS_TIPOS.find(t => t.nome === espec);
+        descricao = tipo
+            ? tipo.descricao
+            : "Permite fabricar itens conforme a especialização escolhida.";
+        especialidade = espec;
+    }
+
+    const ehOficio = typeof ehNomeOficio === "function" && ehNomeOficio(skillName);
+    const apenasTreinada = ehOficio || PERICIAS_APENAS_TREINADAS.has(skillName);
+
+    const tt = document.createElement("div");
+    tt.className = "pericia-tooltip";
+    tt.innerHTML = `
+        <div class="pericia-tooltip-header">
+            <span class="pericia-tooltip-nome"></span>
+            <span class="pericia-tooltip-attr" data-attr="${atributoSigla}"></span>
+        </div>
+        ${especialidade ? `<div class="pericia-tooltip-chip"></div>` : ""}
+        ${apenasTreinada ? `<div class="pericia-tooltip-badge">Só treinada</div>` : ""}
+        ${descricao ? `<p class="pericia-tooltip-desc"></p>` : ""}
+    `;
+    tt.querySelector(".pericia-tooltip-nome").textContent = nome;
+    tt.querySelector(".pericia-tooltip-attr").textContent = atributoSigla;
+    if (especialidade) tt.querySelector(".pericia-tooltip-chip").textContent = "Especialidade: " + especialidade;
+    if (descricao) tt.querySelector(".pericia-tooltip-desc").textContent = descricao;
+
+    document.body.appendChild(tt);
+    _periciaTooltipAtual = tt;
+
+    const rect = ancora.getBoundingClientRect();
+    const ttRect = tt.getBoundingClientRect();
+    const margem = 10;
+
+    // Tenta posicionar à direita; se não couber, à esquerda; senão, abaixo
+    let left = rect.right + margem + window.scrollX;
+    let top  = rect.top + window.scrollY;
+    const limiteDireita = window.scrollX + document.documentElement.clientWidth - margem;
+    const limiteFundo   = window.scrollY + document.documentElement.clientHeight - margem;
+
+    if (left + ttRect.width > limiteDireita) {
+        left = rect.left - ttRect.width - margem + window.scrollX;
+        if (left < window.scrollX + margem) {
+            left = Math.max(window.scrollX + margem, rect.left + window.scrollX);
+            top  = rect.bottom + margem + window.scrollY;
+        }
+    }
+    if (top + ttRect.height > limiteFundo) {
+        top = Math.max(window.scrollY + margem, rect.top - ttRect.height - margem + window.scrollY);
+    }
+
+    tt.style.left = left + "px";
+    tt.style.top  = top + "px";
+}
+
+function bindTooltipPericiaEm(elem, getInfoFn) {
+    if (!elem || elem.dataset.periciaTtBound === "1") return;
+    elem.dataset.periciaTtBound = "1";
+
+    elem.addEventListener("mouseenter", () => {
+        clearTimeout(_periciaTooltipTimer);
+        _periciaTooltipTimer = setTimeout(() => {
+            const info = getInfoFn();
+            if (info && info.skillName) {
+                abrirTooltipPericia(info.skillName, info.atributo, info.ancora);
+            }
+        }, 300);
+    });
+    elem.addEventListener("mouseleave", fecharTooltipPericia);
+    elem.addEventListener("click",      fecharTooltipPericia);  // some ao rolar a perícia
+}
+
+function configurarTooltipsPericias() {
+    const container = document.getElementById("periciasContainer");
+    if (!container) return;
+
+    // Perícias normais — gatilho é o botão de rolagem
+    container.querySelectorAll(".skill-row:not(.is-oficio) .skill-roll-button").forEach(btn => {
+        bindTooltipPericiaEm(btn, () => {
+            const row = btn.closest(".skill-row");
+            const badge = row?.querySelector(".skill-attr-badge");
+            return {
+                skillName: btn.dataset.rollSkill,
+                atributo:  badge?.dataset.attr || badge?.textContent || "Int",
+                ancora:    btn,
+            };
+        });
+    });
+
+    // Ofícios — gatilho é a célula do nome (label + select)
+    container.querySelectorAll(".skill-row.is-oficio .oficio-cell").forEach(cell => {
+        bindTooltipPericiaEm(cell, () => {
+            const row = cell.closest(".skill-row");
+            const cb  = row?.querySelector('[data-field="treinada"]');
+            return {
+                skillName: cb?.dataset.skill,
+                atributo:  "Int",
+                ancora:    cell,
+            };
+        });
+    });
 }
 
 function listarPericiasParaAtualizacao() {
