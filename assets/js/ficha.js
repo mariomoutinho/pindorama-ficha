@@ -734,26 +734,38 @@ function montarPericias(periciasSalvas = null) {
         `;
 
         container.appendChild(row);
+
+        // Após "Nobreza", insere a seção de Ofícios + botão "+ Adicionar Ofício"
+        // (Ofício é uma perícia múltipla — fica em ordem alfabética, antes de "Percepção")
+        if (nome === "Nobreza") {
+            inserirSecaoOficios(container, periciasSalvas);
+        }
     });
 
-    // Renderiza ofícios salvos (se houver)
+    atualizarPericiasPorAtributos();
+    atualizarBotoesPericia();
+    configurarTooltipsPericias();
+}
+
+/* Renderiza os Ofícios (mantém posição alfabética entre Nobreza e Percepção)
+   + botão "+ Adicionar Ofício" abaixo. Se não há nenhum Ofício salvo, cria
+   um padrão com a primeira especialização (Armeiro) — o usuário pode trocar
+   no select ou remover com o botão ×. */
+function inserirSecaoOficios(container, periciasSalvas) {
     const oficiosSalvos = extrairOficiosSalvos(periciasSalvas);
-    oficiosSalvos.forEach(especNome => {
+    const lista = oficiosSalvos.length ? oficiosSalvos : [OFICIOS_TIPOS[0].nome];
+
+    lista.forEach(especNome => {
         const skillName = nomeOficio(especNome);
-        const salva = periciasSalvas?.[skillName] || {};
+        const salva = (periciasSalvas && periciasSalvas[skillName]) || {};
         container.appendChild(montarLinhaOficio(especNome, salva));
     });
 
-    // Botão "Adicionar Ofício"
     const adderRow = document.createElement("div");
     adderRow.className = "adicionar-oficio-row";
     adderRow.innerHTML = `<button type="button" class="adicionar-oficio-btn">+ Adicionar Ofício</button>`;
     adderRow.querySelector("button").addEventListener("click", () => adicionarOficio());
     container.appendChild(adderRow);
-
-    atualizarPericiasPorAtributos();
-    atualizarBotoesPericia();
-    configurarTooltipsPericias();
 }
 
 /* ============================================================
