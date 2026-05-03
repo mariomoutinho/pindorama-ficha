@@ -11,15 +11,16 @@ $introducaoPoderes = $dadosPoderes['introducao'] ?? [];
     <title>Poderes Gerais - Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260430" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260503h" />
     <link rel="stylesheet" href="assets/css/poderes.css?v=20260430b" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
 </head>
 <body>
     <script src="assets/js/transitions.js?v=20260503d"></script>
 
-    <main class="page-wrapper">
+    <main class="page-wrapper classes-page">
 
-        <header class="top-actions">
+        <header class="top-actions classes-topbar">
             <div>
                 <h1>Poderes Gerais</h1>
                 <p>Consulta de poderes universais por categoria</p>
@@ -31,49 +32,78 @@ $introducaoPoderes = $dadosPoderes['introducao'] ?? [];
             </div>
         </header>
 
-        <section class="sheet poderes-page">
-            <section class="panel">
-                <div class="panel-title">Regras de uso</div>
+        <section class="classes-layout">
 
-                <div class="poderes-page-intro">
-                    <?php foreach ($introducaoPoderes as $paragrafo): ?>
-                        <p><?= htmlspecialchars($paragrafo) ?></p>
-                    <?php endforeach; ?>
+            <aside class="classes-sidebar panel" id="classesSidebar">
+                <div class="sidebar-mobile-head"><div class="panel-title">Navegação</div></div>
+
+                <div class="sidebar-content" id="mobileSidebarContent">
+                    <input type="search" id="classesSearch" placeholder="Buscar nesta página..." class="classes-search" />
+                    <nav class="classes-toc" id="classesToc">
+                        <a class="toc-link toc-level-2" href="#regras-uso">Regras de Uso</a>
+                        <?php foreach ($categoriasPoderes as $categoria): ?>
+                            <a class="toc-link toc-level-2" href="#cat-<?= htmlspecialchars($categoria['id'] ?? '') ?>">
+                                <?= htmlspecialchars($categoria['nome'] ?? '') ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </nav>
                 </div>
-            </section>
+            </aside>
 
-            <?php foreach ($categoriasPoderes as $indice => $categoria): ?>
-                <section class="panel poderes-page-categoria">
-                    <details <?= $indice === 0 ? 'open' : '' ?>>
-                        <summary class="poderes-page-summary">
-                            <span>
-                                <strong><?= htmlspecialchars($categoria['nome'] ?? '') ?></strong>
-                                <small><?= htmlspecialchars($categoria['descricao'] ?? '') ?></small>
-                            </span>
-                            <em><?= count($categoria['poderes'] ?? []) ?> poderes</em>
-                        </summary>
+            <article class="sheet classes-content poderes-page" id="classesContent">
 
-                        <div class="poderes-page-lista">
-                            <?php foreach (($categoria['poderes'] ?? []) as $poder): ?>
-                                <article class="poderes-page-card">
-                                    <h3><?= htmlspecialchars($poder['nome'] ?? '') ?></h3>
-                                    <p><?= htmlspecialchars($poder['descricao'] ?? '') ?></p>
-
-                                    <?php if (!empty($poder['prerequisito_texto'])): ?>
-                                        <div class="poderes-page-prereq">
-                                            <strong>Pré-requisitos:</strong>
-                                            <span><?= htmlspecialchars($poder['prerequisito_texto']) ?></span>
-                                        </div>
-                                    <?php endif; ?>
-                                </article>
-                            <?php endforeach; ?>
-                        </div>
-                    </details>
+                <section class="panel content-section" id="regras-uso">
+                    <div class="panel-title">Regras de uso</div>
+                    <div class="poderes-page-intro">
+                        <?php foreach ($introducaoPoderes as $paragrafo): ?>
+                            <p><?= htmlspecialchars($paragrafo) ?></p>
+                        <?php endforeach; ?>
+                    </div>
                 </section>
-            <?php endforeach; ?>
+
+                <?php foreach ($categoriasPoderes as $indice => $categoria): ?>
+                    <section class="panel poderes-page-categoria content-section" id="cat-<?= htmlspecialchars($categoria['id'] ?? '') ?>">
+                        <details <?= $indice === 0 ? 'open' : '' ?>>
+                            <summary class="poderes-page-summary">
+                                <span>
+                                    <strong><?= htmlspecialchars($categoria['nome'] ?? '') ?></strong>
+                                    <small><?= htmlspecialchars($categoria['descricao'] ?? '') ?></small>
+                                </span>
+                                <em><?= count($categoria['poderes'] ?? []) ?> poderes</em>
+                            </summary>
+
+                            <div class="poderes-page-lista">
+                                <?php foreach (($categoria['poderes'] ?? []) as $poder): ?>
+                                    <article class="poderes-page-card">
+                                        <h3><?= htmlspecialchars($poder['nome'] ?? '') ?></h3>
+                                        <p><?= htmlspecialchars($poder['descricao'] ?? '') ?></p>
+
+                                        <?php if (!empty($poder['prerequisito_texto'])): ?>
+                                            <div class="poderes-page-prereq">
+                                                <strong>Pré-requisitos:</strong>
+                                                <span><?= htmlspecialchars($poder['prerequisito_texto']) ?></span>
+                                            </div>
+                                        <?php endif; ?>
+                                    </article>
+                                <?php endforeach; ?>
+                            </div>
+                        </details>
+                    </section>
+                <?php endforeach; ?>
+
+            </article>
+
         </section>
 
     </main>
 
+    <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle"
+            aria-expanded="false" aria-controls="mobileSidebarContent" aria-label="Abrir menu de navegação">
+        <span></span><span></span><span></span>
+    </button>
+
+    <button type="button" class="back-to-top-btn" id="backToTopBtn" aria-label="Voltar ao topo" title="Voltar ao topo">↑</button>
+
+    <script src="assets/js/classes.js?v=20260503h"></script>
 </body>
 </html>

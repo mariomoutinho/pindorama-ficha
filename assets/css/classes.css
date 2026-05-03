@@ -121,6 +121,35 @@
     display: none;
 }
 
+/* ================================================================
+   FIX DO MENU MOBILE — quando aberto, neutraliza filter/transform
+   herdados de transitions.css/animações globais que faziam o
+   conteúdo da sidebar ficar borrado/embaçado e disparavam o bug
+   de "tela trava". Mesma técnica usada em pericias.css.
+   ================================================================ */
+
+body.mobile-menu-open {
+    overflow: hidden;
+}
+
+body.mobile-menu-open,
+body.mobile-menu-open * {
+    filter: none !important;
+    -webkit-filter: none !important;
+}
+
+body.mobile-menu-open .page-wrapper,
+body.mobile-menu-open main {
+    opacity: 1 !important;
+    transform: none !important;
+}
+
+body.mobile-menu-open .classes-sidebar {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+}
+
 /* Backdrop real (criado por classes.js quando o menu mobile abre).
    Funciona melhor que body::before porque é um elemento de verdade
    com seu próprio listener de clique — confiável em qualquer toque. */

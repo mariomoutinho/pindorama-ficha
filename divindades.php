@@ -16,7 +16,7 @@ $idx = indexarPoderesGerais();
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Divindades — Pindorama RPG</title>
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260430" />
-    <link rel="stylesheet" href="assets/css/classes.css?v=20260503g" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260503h" />
     <link rel="stylesheet" href="assets/css/divindades.css?v=20260430" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
 </head>
@@ -37,7 +37,7 @@ $idx = indexarPoderesGerais();
         </header>
 
         <section class="classes-layout">
-            <aside class="classes-sidebar panel">
+            <aside class="classes-sidebar panel" id="classesSidebar">
                 <div class="sidebar-mobile-head"><div class="panel-title">Navegação</div></div>
                 <div class="sidebar-content" id="mobileSidebarContent">
                     <input type="search" id="classesSearch" placeholder="Buscar..." class="classes-search" />
@@ -156,7 +156,12 @@ $idx = indexarPoderesGerais();
         </section>
     </main>
 
-    <button type="button" class="back-to-top-btn" aria-label="Voltar ao topo" title="Voltar ao topo">↑</button>
-    <script src="assets/js/classes.js?v=20260503g"></script>
+    <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle"
+            aria-expanded="false" aria-controls="mobileSidebarContent" aria-label="Abrir menu de navegação">
+        <span></span><span></span><span></span>
+    </button>
+
+    <button type="button" class="back-to-top-btn" id="backToTopBtn" aria-label="Voltar ao topo" title="Voltar ao topo">↑</button>
+    <script src="assets/js/classes.js?v=20260503h"></script>
 </body>
 </html>

@@ -6,13 +6,11 @@
     <title>Perícias - Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/classes.css?v=20260503g" />
-    <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
+    <link rel="stylesheet" href="assets/css/pericias.css?v=20260503-sem-blur" />
 </head>
 
 <body>
-    <script src="assets/js/transitions.js?v=20260503d"></script>
-    <main class="page-wrapper classes-page">
+    <main class="page-wrapper classes-page pericias-page">
 
         <header class="top-actions classes-topbar">
             <div>
@@ -32,6 +30,15 @@
             <aside class="classes-sidebar panel" id="classesSidebar">
                 <div class="sidebar-mobile-head">
                     <div class="panel-title">Navegação</div>
+
+                    <button
+                        type="button"
+                        class="sidebar-close-btn"
+                        id="sidebarCloseBtn"
+                        aria-label="Fechar menu de navegação"
+                    >
+                        ×
+                    </button>
                 </div>
 
                 <div class="sidebar-content" id="mobileSidebarContent">
@@ -686,7 +693,7 @@
         class="mobile-menu-toggle"
         id="mobileMenuToggle"
         aria-expanded="false"
-        aria-controls="mobileSidebarContent"
+        aria-controls="classesSidebar"
         aria-label="Abrir menu de navegação"
     >
         <span></span>
@@ -704,6 +711,113 @@
         ↑
     </button>
 
-    <script src="assets/js/classes.js?v=20260503g"></script>
+    <script>
+        (function () {
+            const body = document.body;
+            const sidebar = document.getElementById("classesSidebar");
+            const menuButton = document.getElementById("mobileMenuToggle");
+            const closeButton = document.getElementById("sidebarCloseBtn");
+            const backdrop = document.getElementById("periciasSidebarBackdrop");
+            const searchInput = document.getElementById("classesSearch");
+            const toc = document.getElementById("classesToc");
+            const links = Array.from(document.querySelectorAll("#classesToc .toc-link"));
+            const sections = Array.from(document.querySelectorAll(".classes-content .content-section"));
+            const backToTop = document.getElementById("backToTopBtn");
+
+            if (!sidebar || !menuButton) return;
+
+            function openSidebar() {
+                sidebar.classList.add("is-open");
+                if (backdrop) {
+                    backdrop.hidden = false;
+                    requestAnimationFrame(() => backdrop.classList.add("is-visible"));
+                }
+                menuButton.classList.add("is-open");
+                menuButton.setAttribute("aria-expanded", "true");
+                body.classList.add("pericias-menu-open");
+            }
+
+            function closeSidebar() {
+                sidebar.classList.remove("is-open");
+                if (backdrop) backdrop.classList.remove("is-visible");
+                menuButton.classList.remove("is-open");
+                menuButton.setAttribute("aria-expanded", "false");
+                body.classList.remove("pericias-menu-open");
+
+                window.setTimeout(() => {
+                    if (!sidebar.classList.contains("is-open")) {
+                        if (backdrop) backdrop.hidden = true;
+                    }
+                }, 180);
+            }
+
+            function toggleSidebar() {
+                sidebar.classList.contains("is-open") ? closeSidebar() : openSidebar();
+            }
+
+            menuButton.addEventListener("click", toggleSidebar);
+            backdrop?.addEventListener("click", closeSidebar);
+            closeButton?.addEventListener("click", closeSidebar);
+
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape") closeSidebar();
+            });
+
+            links.forEach((link) => {
+                link.addEventListener("click", () => {
+                    if (window.matchMedia("(max-width: 980px)").matches) {
+                        closeSidebar();
+                    }
+                });
+            });
+
+            if (searchInput && toc) {
+                searchInput.addEventListener("input", () => {
+                    const term = searchInput.value.trim().toLowerCase();
+
+                    links.forEach((link) => {
+                        const match = link.textContent.toLowerCase().includes(term);
+                        link.hidden = Boolean(term) && !match;
+                    });
+                });
+            }
+
+            if (sections.length && links.length && "IntersectionObserver" in window) {
+                const linkById = new Map(
+                    links.map((link) => [decodeURIComponent(link.getAttribute("href").replace("#", "")), link])
+                );
+
+                const observer = new IntersectionObserver((entries) => {
+                    const visible = entries
+                        .filter((entry) => entry.isIntersecting)
+                        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+                    if (!visible) return;
+
+                    links.forEach((link) => link.classList.remove("is-active"));
+                    linkById.get(visible.target.id)?.classList.add("is-active");
+                }, {
+                    root: null,
+                    rootMargin: "-20% 0px -65% 0px",
+                    threshold: [0, 0.15, 0.4]
+                });
+
+                sections.forEach((section) => observer.observe(section));
+            }
+
+            if (backToTop) {
+                function updateBackToTop() {
+                    backToTop.classList.toggle("is-visible", window.scrollY > 520);
+                }
+
+                window.addEventListener("scroll", updateBackToTop, { passive: true });
+                updateBackToTop();
+
+                backToTop.addEventListener("click", () => {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                });
+            }
+        })();
+    </script>
 </body>
 </html>
