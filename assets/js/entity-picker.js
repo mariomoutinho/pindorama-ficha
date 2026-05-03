@@ -81,6 +81,81 @@
             'Místico das matas e ermos, guia entre espíritos selvagens, visões e transformações. Para quem quer um curandeiro-pajé conectado à natureza, com poderes de cura, espíritos animais e domínio das forças vivas da terra.',
     };
 
+    const RESUMOS_DIVINDADE = {
+        aelohim:
+            'Juiz implacável dos povos caucazis — sábio ancião sedento por vingança e ordem absoluta. Devoção severa: hierarquia rígida, exclusivismo religioso, ausência de clemência. Para personagens que servem causas dogmáticas e justiça punitiva — Guerreiros e Inquisidores caucazis.',
+        anhanga:
+            'Senhor das entranhas do submundo, protetor dos animais selvagens e justiceiro dos indefesos. Veado branco de olhos em chamas. Devoção sombria mas justa: caça com oferenda de tabaco, vingança contra quem fere os fracos. Caçadores, Inquisidores, Rústicos e Xamãs pindorins.',
+        anhum:
+            'Deus da arte que esculpiu o vento em cânticos, pintou a luz e deu o dom da expressão a todos os seres. Para artistas, poetas e xamãs que entendem a arte como manifestação divina. Reverenciado por Brincantes, Fanfarrões e Xamãs.',
+        axumewa:
+            'Senhora das águas doces, do amor, da fertilidade e do cuidado com a gestação. Cura que flui pelos rios e cascatas. Devoção amorosa que abomina a crueldade — cultiva beleza e respeito a toda vida em formação. Aceita devotos de todas as raças.',
+        caaporia:
+            'Personificação da bondade da natureza, principal deusa dos xamãs e protetora das vidas selvagens. Pode aparecer como animal majestoso ou criatura híbrida. Para Caçadores, Inquisidores, Rústicos e Xamãs que defendem o equilíbrio entre civilização e mata.',
+        exus:
+            'Guardião que abre e fecha todos os caminhos, mensageiro entre mundos. Patrono da liberdade de expressão, da mudança, da comunicação franca. Para tricksters e libertários — Brincantes, Malandros e Fanfarrões que desafiam fanatismo e censura.',
+        guianala:
+            'O ancião curvado pelo cajado opaxorô, Deus da Paz e da serenidade. Aceito por todos os povos e classes. Para personagens diplomatas, conciliadores e que rejeitam violência por princípio — devoção universal de humildade e fraternidade.',
+        gumede:
+            'Civilizador que ensinou o domínio do fogo, a forja e a metalurgia — guerreiro, agricultor e ferreiro do Orum. Devoção pragmática à transformação e ao progresso. Para Artífices, Guerreiros, Rústicos e Inquisidores que constroem o futuro com as próprias mãos.',
+        iacyr:
+            'Deusa dos sonhos e soberana das noites, suavidade sobre o descanso do mundo. Protetora dos caçadores noturnos e dos sonhadores. Para Brincantes, Caçadores, Feiticeiros, Malandros e Xamãs que se movem pelas sombras gentis e pela luz da lua.',
+        kiantomere:
+            'Guardião supremo da metamorfose, deus do dinheiro e das fortunas — cobra arco-íris, senhor dos opostos. Para quem celebra mudança, comércio e transformação contínua, e zomba do conservadorismo. Aceita Arcanistas, Artífices, Brincantes, Fanfarrões, Feiticeiros e Malandros.',
+        kuaracyr:
+            'Glorioso deus sol, guardião do dia e da justiça que ilumina a todos por igual. Devoção luminosa e esperançosa — agir com equidade, iluminar o caminho dos perdidos. Para Arcanistas, Cangaceiros, Caçadores, Guerreiros, Rústicos e Inquisidores.',
+        mice:
+            'Amante de Anhangá, deusa da morte e dos feitiços das trevas — necromancia, sacrifícios e maldições. Para Arcanistas, Brincantes, Caçadores, Cangaceiros, Feiticeiros e Malandros que abraçam o lado sombrio sem hesitação.',
+        mondja:
+            'Grande Matriarca dos mares, deusa do oceano e das criaturas marinhas. Tornados e redemoinhos demonstram seu poder. Para Brincantes, Fanfarrões e Xamãs ligados à navegação e ao mar — Oiáras a reverenciam como mãe original.',
+        namburuk:
+            'A grande avó, deusa dos pântanos e das águas estagnadas. Senhora dos mistérios entre vida e morte: cura e adoece conforme o destino de cada um. Para Fanfarrões e Feiticeiros que dançam na zona crepuscular entre os mundos.',
+        odessi:
+            'Senhor da caça e da intuição, irmão de Gumedé que usa as ferramentas forjadas por ele. Guia dos caminhos da mata e conhecedor profundo de seus habitantes. Para Caçadores, Guerreiros, Rústicos e Xamãs.',
+        'ruach-hakodechi':
+            'A Luz, o Espírito Divino, governante do livre-arbítrio e da centelha mágica do cosmos. Reverenciado por todas as raças e classes — devoção universal centrada na liberdade, na verdade e na vida como dádiva.',
+        sain:
+            'Grande Deus das folhas, detentor dos segredos das plantas sagradas. Sem ele, nenhuma cerimônia ritualística existe — é quem desperta o "sangue verde". Para Xamãs, Artífices, Brincantes e Curandeiros que trabalham com o poder das ervas.',
+        tessa:
+            'Deusa dos ventos, redemoinhos e tempestades — principal divindade dos viajantes e nômades. Manifesta-se como mulher de cabelos vermelhos ou pássaro gigante. Para quem combate tiranos e protege o livre movimento — múltiplas classes a aceitam.',
+        tumpa:
+            'Espírito do Trovão e Deus da Justiça, líder supremo entre os deuses pindorins. Para os unhabás é Nangô, deus guerreiro da diáspora. Para Guerreiros, Cangaceiros, Caçadores, Inquisidores e Rústicos que defendem oprimidos e revelam a mentira.',
+        yexua:
+            'Divindade portadora da redenção, da compaixão e das curas milagrosas. Sacrificou-se para libertar a humanidade da ira de Aelohim. Devoção universal de fé, perdão e amor — exclusiva dos Inquisidores como classe principal.',
+    };
+
+    const PERICIAS_DESC = {
+        'Acrobacia': 'Equilibrar-se, mover-se em terreno difícil, saltar com graça e amortecer quedas.',
+        'Adestramento': 'Treinar e ensinar comandos a animais; lidar com criaturas selvagens.',
+        'Atletismo': 'Correr, escalar, nadar, saltar — qualquer feito de força corporal.',
+        'Atuação': 'Música, teatro, dança, oratória — qualquer arte de palco.',
+        'Cavalgar': 'Conduzir cavalos, mulas, javalis e outras montarias em ritmo, terreno e combate.',
+        'Conhecimento': 'Lembrar de fatos, civilizações, geografia, história e ciências em geral.',
+        'Cura': 'Tratar feridas e doenças sem usar magia; estabilizar moribundos.',
+        'Diplomacia': 'Negociar, persuadir e mudar atitudes alheias com argumentação razoável.',
+        'Enganação': 'Mentir, blefar, disfarçar a verdade e enrolar com convicção.',
+        'Fortitude': 'Resistência física a venenos, doenças, fadiga e efeitos corporais.',
+        'Furtividade': 'Esconder-se, mover-se sem ser ouvido, evitar olhos curiosos.',
+        'Guerra': 'Estratégia militar, formações, manobras e leitura tática do campo.',
+        'Iniciativa': 'Reagir rápido no início do combate; agir antes dos outros.',
+        'Intimidação': 'Forçar obediência ou render adversários com presença ameaçadora.',
+        'Intuição': 'Pressentir mentiras, motivações ocultas e sentimentos disfarçados.',
+        'Investigação': 'Buscar pistas, decifrar evidências e juntar fragmentos lógicos.',
+        'Jogatina': 'Jogos de azar, apostas, cartas e dados — com sorte ou trapaça.',
+        'Ladinagem': 'Abrir fechaduras, desarmar armadilhas, batidas de carteira.',
+        'Luta': 'Combate corpo-a-corpo com armas, escudo ou desarmado.',
+        'Misticismo': 'Reconhecer magias, criaturas mágicas, escolas e itens encantados.',
+        'Nobreza': 'Genealogia, etiqueta, política e protocolo entre os poderosos.',
+        'Ofício': 'Criar e reparar itens manuais — armaria, alfaiataria, alquimia, joalheria.',
+        'Percepção': 'Notar detalhes, ouvir sons, encontrar coisas escondidas.',
+        'Pilotagem': 'Conduzir veículos — carroças, embarcações, máquinas de Cearina.',
+        'Pontaria': 'Combate à distância — arcos, bestas, armas de fogo e arremesso.',
+        'Reflexos': 'Esquivar de armadilhas, magias de área e perigos súbitos.',
+        'Religião': 'Conhecimento sobre divindades, rituais, símbolos e mortos-vivos.',
+        'Sobrevivência': 'Caça, rastreio, navegação selvagem, montar acampamento.',
+        'Vontade': 'Resistir a magias mentais, medo e tentação.',
+    };
+
     const RESUMOS_ORIGEM = {
         'amigo-dos-animais':
             'Quem cresceu domando, criando ou defendendo animais — cavalariço, ginete, criador. Traz consigo um companheiro animal e a habilidade natural de lidar com criaturas silvestres.',
@@ -384,20 +459,29 @@
 
         const summary = escapeHtml(summaryFor(item, state.resumos));
         const temImg = !!item.imagem;
-        const tracos = Array.isArray(item.tracos) ? item.tracos : [];
 
-        const tagsHtml = tracos.length ? `
+        // Compatibilidade com formato antigo (tracos) → converte para gruposTags
+        const grupos = Array.isArray(item.gruposTags) && item.gruposTags.length
+            ? item.gruposTags
+            : (Array.isArray(item.tracos) && item.tracos.length
+                ? [{ label: 'Traços ancestrais', tags: item.tracos }]
+                : []);
+
+        const tagsHtml = grupos.length ? `
             <div class="anc-picker-tags-wrap">
-                <div class="anc-picker-tags-label">Traços ancestrais</div>
-                <div class="anc-picker-tags">
-                    ${tracos.map(t => `
-                        <button type="button" class="anc-picker-tag" data-traco="${escapeHtml(t.id || '')}">
-                            ${escapeHtml(t.nome || '')}
-                        </button>
-                    `).join('')}
-                </div>
+                ${grupos.map((g, gi) => `
+                    <div class="anc-picker-tags-label">${escapeHtml(g.label || '')}</div>
+                    <div class="anc-picker-tags">
+                        ${(g.tags || []).map((t, ti) => `
+                            <button type="button" class="anc-picker-tag"
+                                    data-grupo="${gi}" data-tag="${ti}">
+                                ${escapeHtml(t.nome || t.id || '')}
+                            </button>
+                        `).join('')}
+                    </div>
+                `).join('')}
                 <div class="anc-picker-traco-detail" data-empty="true">
-                    <em>Clique em um traço para ver detalhes.</em>
+                    <em>Clique em uma tag para ver detalhes.</em>
                 </div>
             </div>
         ` : '';
@@ -421,18 +505,17 @@
 
         el.classList.toggle('anc-picker-preview-no-image', !temImg);
 
-        // Vincula clique nas tags de traço
+        // Vincula clique nas tags
         el.querySelectorAll('.anc-picker-tag').forEach(btn => {
             btn.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 ev.stopPropagation();
-                alternarTraco(state, item, btn);
+                alternarTag(state, grupos, btn);
             });
         });
     }
 
-    function alternarTraco(state, item, btn) {
-        const tracoId = btn.dataset.traco;
+    function alternarTag(state, grupos, btn) {
         const detail = state.previewEl.querySelector('.anc-picker-traco-detail');
         if (!detail) return;
 
@@ -442,22 +525,25 @@
 
         if (jaAtiva) {
             detail.dataset.empty = 'true';
-            detail.innerHTML = '<em>Clique em um traço para ver detalhes.</em>';
+            detail.innerHTML = '<em>Clique em uma tag para ver detalhes.</em>';
             return;
         }
 
         btn.classList.add('is-active');
-        const traco = (item.tracos || []).find(t => t.id === tracoId);
-        if (!traco) {
+        const gi = parseInt(btn.dataset.grupo, 10);
+        const ti = parseInt(btn.dataset.tag, 10);
+        const grupo = grupos[gi];
+        const tag   = grupo && grupo.tags ? grupo.tags[ti] : null;
+        if (!tag) {
             detail.dataset.empty = 'true';
-            detail.innerHTML = '<em>(traço não encontrado)</em>';
+            detail.innerHTML = '<em>(item não encontrado)</em>';
             return;
         }
 
         detail.dataset.empty = 'false';
         detail.innerHTML = `
-            <h4 class="anc-picker-traco-name">${escapeHtml(traco.nome || '')}</h4>
-            <p class="anc-picker-traco-desc">${escapeHtml(traco.descricao || '(sem descrição)')}</p>
+            <h4 class="anc-picker-traco-name">${escapeHtml(tag.nome || tag.id || '')}</h4>
+            <p class="anc-picker-traco-desc">${escapeHtml(tag.descricao || '(sem descrição)')}</p>
         `;
     }
 
@@ -524,6 +610,26 @@
      * Inicializadores das 3 entidades
      * ============================================================ */
 
+    /**
+     * Constrói um índice id → poder a partir de poderes-gerais.json,
+     * filtrando por categoria (ex.: 'divinos', 'origem').
+     */
+    function indexarPoderesPorCategoria(poderesGerais, categoria) {
+        const cat = (poderesGerais.categorias || []).find(c => c.id === categoria);
+        const map = {};
+        if (cat && Array.isArray(cat.poderes)) {
+            cat.poderes.forEach(p => { map[p.id] = p; });
+        }
+        return map;
+    }
+
+    let _poderesGeraisCache = null;
+    async function carregarPoderesGerais() {
+        if (_poderesGeraisCache) return _poderesGeraisCache;
+        _poderesGeraisCache = await fetch('data/poderes-gerais.json').then(r => r.json());
+        return _poderesGeraisCache;
+    }
+
     async function initAncestralidades() {
         try {
             const data = await fetch('data/ancestralidades.json').then(r => r.json());
@@ -532,7 +638,9 @@
                 nome: a.nome,
                 descricao: a.descricao,
                 imagem: 'assets/img/ancestralidades/' + a.id + '.webp',
-                tracos: a.tracos || [],
+                gruposTags: (a.tracos && a.tracos.length)
+                    ? [{ label: 'Traços ancestrais', tags: a.tracos }]
+                    : [],
             }));
             montar({
                 selectId: 'ancestralidadeSelect',
@@ -571,13 +679,44 @@
 
     async function initOrigens() {
         try {
-            const data = await fetch('data/origens.json').then(r => r.json());
-            const items = (data.origens || []).map(o => ({
-                id: o.id,
-                nome: o.nome,
-                descricao: o.descricao,
-                imagem: 'assets/img/origens/' + o.id + '.webp',
-            }));
+            const [data, poderesGerais] = await Promise.all([
+                fetch('data/origens.json').then(r => r.json()),
+                carregarPoderesGerais(),
+            ]);
+            const idxOrigemPoder = indexarPoderesPorCategoria(poderesGerais, 'origem');
+
+            const items = (data.origens || []).map(o => {
+                const grupos = [];
+                if (Array.isArray(o.pericias) && o.pericias.length) {
+                    grupos.push({
+                        label: 'Perícias possíveis',
+                        tags: o.pericias.map(nome => ({
+                            id: 'pericia-' + nome,
+                            nome,
+                            descricao: PERICIAS_DESC[nome] || 'Perícia disponível como benefício de origem.',
+                        })),
+                    });
+                }
+                if (Array.isArray(o.poderes) && o.poderes.length) {
+                    grupos.push({
+                        label: 'Poderes possíveis',
+                        tags: o.poderes.map(pid => {
+                            const p = idxOrigemPoder[pid];
+                            return p
+                                ? { id: p.id, nome: p.nome, descricao: p.descricao }
+                                : { id: pid, nome: pid, descricao: '(poder não encontrado no catálogo)' };
+                        }),
+                    });
+                }
+                return {
+                    id: o.id,
+                    nome: o.nome,
+                    descricao: o.descricao,
+                    imagem: 'assets/img/origens/' + o.id + '.webp',
+                    gruposTags: grupos,
+                };
+            });
+
             montar({
                 selectId: 'origemSelect',
                 titulo: 'Selecionar Origem',
@@ -591,8 +730,56 @@
         }
     }
 
+    async function initDivindades() {
+        try {
+            const [data, poderesGerais] = await Promise.all([
+                fetch('data/divindades.json').then(r => r.json()),
+                carregarPoderesGerais(),
+            ]);
+            const idxDivinos = indexarPoderesPorCategoria(poderesGerais, 'divinos');
+
+            const items = (data.divindades || []).map(d => {
+                const grupos = [];
+                if (Array.isArray(d.poderes) && d.poderes.length) {
+                    grupos.push({
+                        label: 'Poderes divinos',
+                        tags: d.poderes.map(pid => {
+                            const p = idxDivinos[pid];
+                            return p
+                                ? { id: p.id, nome: p.nome, descricao: p.descricao }
+                                : { id: pid, nome: pid, descricao: '(poder não encontrado no catálogo)' };
+                        }),
+                    });
+                }
+                return {
+                    id: d.id,
+                    nome: d.nome,
+                    descricao: d.descricao,
+                    imagem: 'assets/img/divindades/' + d.id + '.webp',
+                    gruposTags: grupos,
+                };
+            });
+
+            montar({
+                selectId: 'divindadeSelect',
+                titulo: 'Selecionar Divindade',
+                items,
+                resumos: RESUMOS_DIVINDADE,
+                valueField: 'id',
+                placeholder: 'Sem devoção',
+            });
+        } catch (err) {
+            console.error('[picker] divindades:', err);
+        }
+    }
+
     async function init() {
-        await Promise.all([initAncestralidades(), initClasses(), initOrigens()]);
+        await Promise.all([
+            initAncestralidades(),
+            initClasses(),
+            initOrigens(),
+            initDivindades(),
+        ]);
     }
 
     if (document.readyState === 'loading') {
