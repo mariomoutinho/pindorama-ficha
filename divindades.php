@@ -157,6 +157,6 @@ $idx = indexarPoderesGerais();
     </main>
 
     <button type="button" class="back-to-top-btn" aria-label="Voltar ao topo" title="Voltar ao topo">↑</button>
-    <script src="assets/js/classes.js"></script>
+    <script src="assets/js/classes.js?v=20260503d"></script>
 </body>
 </html>

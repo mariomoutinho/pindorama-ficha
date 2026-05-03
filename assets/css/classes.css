@@ -121,6 +121,57 @@
     display: none;
 }
 
+/* Backdrop real (criado por classes.js quando o menu mobile abre).
+   Funciona melhor que body::before porque é um elemento de verdade
+   com seu próprio listener de clique — confiável em qualquer toque. */
+.mobile-menu-backdrop-real {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 998;
+    background: rgba(24, 12, 30, 0.42);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    cursor: pointer;
+}
+
+.mobile-menu-backdrop-real.is-visible {
+    display: block;
+}
+
+/* Botão X dentro da sidebar (injetado por classes.js) — caminho
+   óbvio de fechar, não depende de cliques externos. */
+.sidebar-close-btn {
+    display: none;             /* só aparece em mobile */
+    background: transparent;
+    border: 1px solid rgba(118, 84, 124, 0.45);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    color: var(--purple-dark, #3b1d43);
+    cursor: pointer;
+    font-size: 1.4rem;
+    line-height: 1;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    transition: background 120ms ease, color 120ms ease;
+    flex-shrink: 0;
+}
+
+.sidebar-close-btn:hover,
+.sidebar-close-btn:focus-visible {
+    background: var(--purple, #69436f);
+    color: #fff;
+    outline: none;
+}
+
+@media (max-width: 980px) {
+    .sidebar-close-btn {
+        display: inline-flex;
+    }
+}
+
 .classes-search {
     width: 100%;
     margin-bottom: 14px;
@@ -663,14 +714,8 @@ mark.search-hit {
         color: #ffffff;
     }
 
-    body.mobile-menu-open::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        z-index: 998;
-        background: rgba(24, 12, 30, 0.42);
-        backdrop-filter: blur(2px);
-    }
+    /* Backdrop antigo (body::before) substituído por .mobile-menu-backdrop-real
+       gerenciado pelo JS — esse é mais confiável para clicks no mobile. */
 
     .classes-content {
         padding: 28px 24px;
@@ -1073,14 +1118,8 @@ mark.search-hit {
         display: block;
     }
 
-    body.mobile-menu-open::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        z-index: 998;
-        background: rgba(24, 12, 30, 0.42);
-        backdrop-filter: blur(2px);
-    }
+    /* Backdrop antigo (body::before) substituído por .mobile-menu-backdrop-real
+       gerenciado pelo JS — esse é mais confiável para clicks no mobile. */
 }
 
 /* celulares */
@@ -1257,14 +1296,8 @@ body {
         transform: translateY(-8px) rotate(-45deg);
     }
 
-    body.mobile-menu-open::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        z-index: 998;
-        background: rgba(24, 12, 30, 0.42);
-        backdrop-filter: blur(2px);
-    }
+    /* Backdrop antigo (body::before) substituído por .mobile-menu-backdrop-real
+       gerenciado pelo JS — esse é mais confiável para clicks no mobile. */
 
     .classes-topbar {
         margin-top: 0;

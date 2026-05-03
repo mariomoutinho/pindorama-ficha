@@ -7,6 +7,36 @@ document.addEventListener('DOMContentLoaded', function () {
     const mobileMenuToggle = document.getElementById('mobileMenuToggle');
     const tocLinks = document.querySelectorAll('#classesToc .toc-link');
 
+    /* Backdrop real (em vez do body::before do CSS) — garante que clicar
+       no escurecido feche o menu de forma confiável em qualquer dispositivo. */
+    let backdropEl = null;
+    function getBackdrop() {
+        if (backdropEl) return backdropEl;
+        backdropEl = document.createElement('div');
+        backdropEl.className = 'mobile-menu-backdrop-real';
+        backdropEl.setAttribute('aria-hidden', 'true');
+        backdropEl.addEventListener('click', closeMobileMenu);
+        document.body.appendChild(backdropEl);
+        return backdropEl;
+    }
+
+    /* Injeta um botão X dentro da sidebar pra fornecer um caminho
+       claro de fechar (caso o usuário não consiga atingir o toggle). */
+    function injetarBotaoFecharNaSidebar() {
+        if (!sidebar) return;
+        const head = sidebar.querySelector('.sidebar-mobile-head');
+        if (!head) return;
+        if (head.querySelector('.sidebar-close-btn')) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sidebar-close-btn';
+        btn.setAttribute('aria-label', 'Fechar menu');
+        btn.textContent = '×';
+        btn.addEventListener('click', closeMobileMenu);
+        head.appendChild(btn);
+    }
+    injetarBotaoFecharNaSidebar();
+
     function isMobileMenuMode() {
         return window.innerWidth <= 980;
     }
@@ -18,6 +48,9 @@ document.addEventListener('DOMContentLoaded', function () {
         mobileMenuToggle.classList.add('is-open');
         mobileMenuToggle.setAttribute('aria-expanded', 'true');
         document.body.classList.add('mobile-menu-open');
+
+        const bd = getBackdrop();
+        bd.classList.add('is-visible');
     }
 
     function closeMobileMenu() {
@@ -27,6 +60,8 @@ document.addEventListener('DOMContentLoaded', function () {
         mobileMenuToggle.classList.remove('is-open');
         mobileMenuToggle.setAttribute('aria-expanded', 'false');
         document.body.classList.remove('mobile-menu-open');
+
+        if (backdropEl) backdropEl.classList.remove('is-visible');
     }
 
     function toggleMobileMenu() {

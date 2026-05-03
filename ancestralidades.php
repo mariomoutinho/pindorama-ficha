@@ -25,7 +25,7 @@ function imagemAncestralidade(string $id): ?string {
     <title>Ancestralidades - Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/classes.css" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260503d" />
     <link rel="stylesheet" href="assets/css/ancestralidades.css?v=20260501a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503c" />
 </head>
@@ -136,6 +136,6 @@ function imagemAncestralidade(string $id): ?string {
         <span></span>
     </button>
 
-    <script src="assets/js/classes.js"></script>
+    <script src="assets/js/classes.js?v=20260503d"></script>
 </body>
 </html>
