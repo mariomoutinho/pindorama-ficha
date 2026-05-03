@@ -38,10 +38,45 @@
         return IMG_BASE + id + '.webp';
     }
 
+    /* ----------------------------------------------------------------
+     * Resumos curados por ancestralidade — escritos a partir da
+     * descrição completa em ancestralidades.json. Cada resumo destaca:
+     *  • essência cultural / origem mítica;
+     *  • marca visual ou física distinta;
+     *  • função no grupo / dica pro jogador.
+     * ---------------------------------------------------------------- */
+    const RESUMOS = {
+        arajuba:
+            'Povo-pássaro vindo de além-mar — humanoides aviários com cabeça de papagaio, plumagem colorida e garras afiadas. Vivem nas copas das montanhas e detestam confinamento; em batalha mergulham do céu e voam para longe. Para quem busca um batedor aéreo ágil, vaidoso e com instinto irrefreável de liberdade.',
+        candango:
+            'Encantados nascidos da Batalha do Esquecimento, quando a sacerdotisa Nzinga rogou a Kiantomerê para salvar seu povo. Pequeninos, com orelhas e cauda de roedor, ágeis e prestativos — sua aparência inofensiva esconde uma brutalidade surpreendente. Indicados para quem quer um companheiro acolhedor, persistente e que será sempre subestimado pelos inimigos.',
+        curinqueas:
+            'Gigantes pacíficos de pele cor de cobre que crescem por toda a vida (3m e além), dominando magia, diplomacia e a arte da guerra. Vivem em aldeias ocultas por magias ancestrais e só lutam quando provocados, mas então são implacáveis. Para quem quer um colosso sábio: presença imponente em combate ou em mesa de negociação.',
+        florata:
+            'Guardiões-vegetais despertados pela essência de Wesuirã, orixá das plantas sagradas. Pele esverdeada, beleza etérea, vestes de cipó e folha — tratam cada planta como família ainda em sono. São embaixadores entre civilização e natureza; perfeitos para quem deseja um druida nato, defensor das matas e voz da Grande Fraternidade Verdejante.',
+        goiazi:
+            'Inventores risonhos de menos de um metro que falam mais rápido do que pensam e celebram a vida com gargalhadas, engrenagens e pequenas explosões. Perderam seu reino aos caucazis e hoje aparecem como lapidários, sábios, engenheiros e professores espalhados pelos demais reinos. Indicados para quem quer um artífice extrovertido com energia caótica e otimismo inabalável.',
+        iakare:
+            'Répteis bípedes territoriais com escamas verde-acinzentadas, presas e garras — mestres das emboscadas em rios e pântanos. A sociedade tribal é dura e hierárquica, mas há os dissidentes que partem para o mundo provando seu valor como xamãs, sacerdotes ou fanfarrões. Para quem quer um caçador letal ou o "renegado nobre" buscando lugar entre aventureiros estranhos.',
+        'kai-porah':
+            'Caiporas: pequeninos mágicos de cabelo vermelho que se camuflam na floresta com roupas de folha e cascas. Conversam com animais, criam ilusões, montam javalis e aceitam fumo como gesto de amizade. Pacíficos por natureza, mas vulneráveis a magias mentais — escolha ideal para um explorador silencioso, trickster folclórico ou companheiro da fauna selvagem.',
+        muiraquita:
+            'Filhos do casamento entre Fogo e Metal, forjados por Gumedé com um fragmento do sol roubado de Kuarasy. Pele metálica (rubra, prateada, dourada) com cristais incrustados; construíram cidades-fortaleza nas montanhas e ensinam metalurgia desde Alagbedê. Corações generosos e teimosia de rocha — para quem quer um durão leal, ferreiro de essência divina, guerreiro ou artífice com convicção inabalável.',
+        oiara:
+            'Híbridos de Iemanjá: cauda de animal marinho na água, pernas em terra firme. Comunicam-se com criaturas aquáticas, respiram embaixo d\'água e ergueram reinos nos abismos do mar; Oxum lhes deu beleza e voz encantadora. Para quem busca um conjurador das águas, encantador de sereias e protetor de ecossistemas marinhos.',
+        orumere:
+            'Seres nascidos da união entre uma divindade e a energia cósmica, aparecem em Pindorama como crianças abandonadas para corrigir injustiças. Corpos atléticos, olhos brilhando com a essência divina; são acolhidos como sinal de proximidade dos deuses pelos unhabás e caçados como ameaça pelos caucazis. Para quem quer um paladino/inquisidor com missão clara e narrativa de propósito.',
+        saci:
+            'Encantados travessos de meio metro, pele e cabelo negros, com um redemoinho mágico nos pés que lhes permite flutuar. Cultura oral festiva: dançam, contam histórias e o gorro vermelho marca a passagem para a maturidade. Vivem em pequenas comunidades em harmonia com o Grande Verdejante — perfeitos para um trickster ágil, lutador acrobático ou bardo de raízes folclóricas profundas.',
+        humano:
+            'A ancestralidade mais numerosa de Pindorama, vinda do mar em cobras-canoas pela vontade dos Deuses Criadores. Adaptáveis e contraditórios, capazes de plantar e queimar, acolher e ferir; pindorins se vestem de fibras naturais, caucazis em couraças sóbrias. Para quem quer versatilidade total: encaixa em qualquer classe, qualquer região e qualquer tom narrativo.',
+    };
+
     function summaryFor(item) {
+        if (item && item.id && RESUMOS[item.id]) return RESUMOS[item.id];
         const desc = item.descricao;
         if (!desc) return '';
-        if (Array.isArray(desc)) return desc[0] || '';
+        if (Array.isArray(desc)) return desc.slice(0, 2).join(' ');
         return String(desc);
     }
 
@@ -247,16 +282,16 @@
 
         const summary = escapeHtml(summaryFor(item));
         el.innerHTML = `
+            <div class="anc-picker-preview-text">
+                <p class="anc-picker-preview-id">${escapeHtml(item.id)}</p>
+                <h3 class="anc-picker-preview-name">${escapeHtml(item.nome)}</h3>
+                <p class="anc-picker-preview-summary">${summary || '<em>(sem descrição)</em>'}</p>
+            </div>
             <div class="anc-picker-preview-image">
                 <img src="${escapeHtml(item.imagem)}"
                      alt="${escapeHtml(item.nome)}"
                      onerror="this.style.display='none';this.parentElement.innerHTML='<span class=&quot;placeholder&quot;>?</span>';" />
             </div>
-            <div>
-                <p class="anc-picker-preview-id">${escapeHtml(item.id)}</p>
-                <h3 class="anc-picker-preview-name">${escapeHtml(item.nome)}</h3>
-            </div>
-            <p class="anc-picker-preview-summary">${summary || '<em>(sem descrição)</em>'}</p>
         `;
     }
 

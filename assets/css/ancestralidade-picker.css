@@ -266,17 +266,19 @@
     box-shadow: 0 0 6px rgba(248, 216, 255, 0.7);
 }
 
-/* Painel de preview (direita) */
+/* Painel de preview (direita) — texto à esquerda + imagem retrato à direita */
 .anc-picker-preview {
     padding: 22px 24px;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
     color: var(--purple-light);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+    gap: 22px;
+    align-items: start;
 }
 
 .anc-picker-preview-empty {
+    grid-column: 1 / -1;
     text-align: center;
     margin: auto;
     color: rgba(233, 216, 241, 0.5);
@@ -284,23 +286,42 @@
     padding: 30px 20px;
 }
 
+.anc-picker-preview-text {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
 .anc-picker-preview-image {
     width: 100%;
-    aspect-ratio: 16 / 10;
-    border-radius: 10px;
+    aspect-ratio: 3 / 4;
+    border-radius: 12px;
     overflow: hidden;
     background: rgba(15, 5, 25, 0.4);
     border: 1px solid rgba(233, 216, 241, 0.22);
-    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.4);
+    box-shadow:
+        inset 0 0 40px rgba(0, 0, 0, 0.5),
+        0 4px 18px rgba(0, 0, 0, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+}
+
+.anc-picker-preview-image::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent 60%, rgba(15, 5, 25, 0.55) 100%);
 }
 
 .anc-picker-preview-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center top;
 }
 
 .anc-picker-preview-image .placeholder {
@@ -311,12 +332,14 @@
 .anc-picker-preview-name {
     margin: 0;
     font-family: Georgia, "Times New Roman", serif;
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     color: var(--pink-light);
     letter-spacing: 0.4px;
+    line-height: 1.15;
 }
 
 .anc-picker-preview-id {
+    margin: 0;
     color: rgba(233, 216, 241, 0.55);
     font-size: 0.78rem;
     text-transform: uppercase;
@@ -326,8 +349,8 @@
 
 .anc-picker-preview-summary {
     margin: 0;
-    color: rgba(255, 255, 255, 0.86);
-    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.88);
+    line-height: 1.6;
     font-size: 0.96rem;
 }
 
@@ -385,6 +408,18 @@
     .anc-picker-list {
         border-right: none;
         border-bottom: 1px solid rgba(233, 216, 241, 0.16);
-        max-height: 38vh;
+        max-height: 32vh;
+    }
+
+    .anc-picker-preview {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .anc-picker-preview-image {
+        order: -1;          /* imagem aparece primeiro no mobile */
+        max-width: 220px;
+        margin: 0 auto;
+        aspect-ratio: 3 / 4;
     }
 }
