@@ -6,7 +6,8 @@
     <title>Perícias - Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/pericias.css?v=20260503-sem-blur" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
+    <link rel="stylesheet" href="assets/css/pericias.css?v=20260503-padrao" />
 </head>
 
 <body>
@@ -20,8 +21,7 @@
 
             <div class="actions">
                 <a class="system-link-btn" href="index.php">Menu</a>
-                <a class="system-link-btn" href="classes.php">Classes</a>
-                <a class="system-link-btn" href="ficha.php">Ficha</a>
+                <a class="system-link-btn" href="referencia.php">Referências</a>
             </div>
         </header>
 

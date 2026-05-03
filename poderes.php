@@ -12,7 +12,7 @@ $introducaoPoderes = $dadosPoderes['introducao'] ?? [];
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260430" />
     <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
-    <link rel="stylesheet" href="assets/css/poderes.css?v=20260430b" />
+    <link rel="stylesheet" href="assets/css/poderes.css?v=20260503a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
 </head>
 <body>
@@ -28,7 +28,7 @@ $introducaoPoderes = $dadosPoderes['introducao'] ?? [];
 
             <div class="actions">
                 <a href="index.php" class="system-link-btn">Menu</a>
-                <a href="ficha.php" class="system-link-btn">Ficha</a>
+                <a class="system-link-btn" href="referencia.php">Referências</a>
             </div>
         </header>
 
@@ -52,7 +52,7 @@ $introducaoPoderes = $dadosPoderes['introducao'] ?? [];
 
             <article class="sheet classes-content poderes-page" id="classesContent">
 
-                <section class="panel content-section" id="regras-uso">
+                <section class="panel content-section poderes-page-regras" id="regras-uso">
                     <div class="panel-title">Regras de uso</div>
                     <div class="poderes-page-intro">
                         <?php foreach ($introducaoPoderes as $paragrafo): ?>

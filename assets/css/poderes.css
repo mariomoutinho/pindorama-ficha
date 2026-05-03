@@ -510,6 +510,27 @@
 .poderes-page {
     gap: 16px;
 }
+.poderes-page-regras {
+    position: relative;
+    margin-top: 18px;
+    padding-top: 48px;
+}
+.poderes-page-regras .panel-title {
+    position: absolute;
+    top: -18px;
+    left: 28px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    width: auto;
+    margin: 0;
+    padding: 7px 22px;
+    border-radius: 0 0 14px 14px;
+    background: var(--purple, #69436f);
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(79, 49, 86, 0.18);
+    z-index: 2;
+}
 .poderes-page-intro {
     display: grid;
     gap: 8px;

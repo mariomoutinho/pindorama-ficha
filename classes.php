@@ -26,7 +26,7 @@
 
             <div class="actions">
                 <a class="system-link-btn" href="index.php">Menu</a>
-                <a class="system-link-btn" href="ficha.php">Ficha</a>
+                <a class="system-link-btn" href="referencia.php">Referências</a>
             </div>
         </header>
 

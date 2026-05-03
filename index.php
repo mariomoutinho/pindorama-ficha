@@ -23,6 +23,7 @@
         <nav class="home-actions">
             <a class="home-btn" href="ficha.php">Nova Ficha</a>
             <a class="home-btn" href="fichas.php">Listar Fichas</a>
+            <a class="home-btn" href="campo-batalha.php">Campo de Batalha</a>
             <a class="home-btn" href="referencia.php">Referência</a>
         </nav>
 
