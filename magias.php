@@ -22,8 +22,8 @@ function magiaOptions(array $valores): string
     <title>Magias - Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260430" />
-    <link rel="stylesheet" href="assets/css/classes.css?v=20260503i" />
-    <link rel="stylesheet" href="assets/css/magias.css?v=20260430" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
+    <link rel="stylesheet" href="assets/css/magias.css?v=20260503a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
 </head>
 <body>
@@ -37,7 +37,7 @@ function magiaOptions(array $valores): string
             </div>
             <div class="actions">
                 <a class="system-link-btn" href="index.php">Menu</a>
-                <a class="system-link-btn" href="ficha.php">Ficha</a>
+                <a class="system-link-btn" href="referencia.php">Referências</a>
             </div>
         </header>
 

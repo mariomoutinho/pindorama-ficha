@@ -46,22 +46,23 @@
         }
 
         // Backdrop real (mais confiável que body::before pra clicks)
+        const backdropRoot = sidebar.closest('main') || document.body;
         let backdrop = document.querySelector('.mobile-menu-backdrop-real');
         if (!backdrop) {
             backdrop = document.createElement('div');
             backdrop.className = 'mobile-menu-backdrop-real';
             backdrop.setAttribute('aria-hidden', 'true');
             backdrop.hidden = true;
-            document.body.appendChild(backdrop);
         }
+        backdropRoot.appendChild(backdrop);
 
         function openSidebar() {
+            body.classList.add('mobile-menu-open');
             sidebar.classList.add('is-open');
             backdrop.hidden = false;
             requestAnimationFrame(() => backdrop.classList.add('is-visible'));
             menuButton.classList.add('is-open');
             menuButton.setAttribute('aria-expanded', 'true');
-            body.classList.add('mobile-menu-open');
         }
 
         function closeSidebar() {

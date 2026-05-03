@@ -6,7 +6,7 @@
     <title>Feiticeiro - Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/classes.css" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
 </head>
 
 <body>
@@ -402,6 +402,6 @@
     >
         ↑
     </button>
-    <script src="assets/js/classes.js"></script>
+    <script src="assets/js/classes.js?v=20260503j"></script>
 </body>
 </html>

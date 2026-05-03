@@ -8,6 +8,7 @@
     grid-template-columns: 290px minmax(0, 1fr);
     gap: 18px;
     align-items: start;
+    margin-top: 18px;
 }
 
 .magias-filtros {
@@ -15,7 +16,24 @@
     top: 16px;
     display: grid;
     gap: 12px;
-    padding: 24px 18px 18px;
+    padding: 34px 18px 18px;
+}
+
+.magias-filtros .panel-title {
+    position: absolute;
+    top: -18px;
+    left: 22px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    width: auto;
+    margin: 0;
+    padding: 7px 22px;
+    border-radius: 0 0 14px 14px;
+    background: var(--purple, #69436f);
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(79, 49, 86, 0.18);
+    z-index: 2;
 }
 
 .magias-filtros label {
@@ -205,6 +223,7 @@
 @media (max-width: 900px) {
     .magias-layout {
         grid-template-columns: 1fr;
+        margin-top: 20px;
     }
 
     .magias-filtros {
