@@ -411,15 +411,58 @@
         max-height: 32vh;
     }
 
+    /* No mobile o preview vira pilha vertical com flex (não grid).
+       Isto evita qualquer auto-placement do grid colocar imagem e
+       texto na mesma célula. */
     .anc-picker-preview {
-        grid-template-columns: 1fr;
-        gap: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+        padding: 18px;
+    }
+
+    .anc-picker-preview-empty {
+        align-self: center;
     }
 
     .anc-picker-preview-image {
-        order: -1;          /* imagem aparece primeiro no mobile */
-        max-width: 220px;
-        margin: 0 auto;
+        order: -1;                          /* imagem antes do texto */
+        align-self: center;
+        width: 100%;
+        max-width: 170px;
         aspect-ratio: 3 / 4;
+        margin: 0;
+        flex: 0 0 auto;                     /* não expande nem encolhe */
+        background: rgba(15, 5, 25, 0.85);  /* mais opaco — sem vazamento */
+    }
+
+    .anc-picker-preview-image::after {
+        background: linear-gradient(180deg, transparent 70%, rgba(15, 5, 25, 0.4) 100%);
+    }
+
+    .anc-picker-preview-text {
+        width: 100%;
+        order: 0;                           /* texto explicitamente depois */
+    }
+
+    .anc-picker-preview-name {
+        font-size: 1.4rem;
+    }
+
+    .anc-picker-preview-summary {
+        font-size: 0.92rem;
+        line-height: 1.55;
+    }
+}
+
+/* Telas muito estreitas (< 380px): imagem ainda menor para liberar leitura */
+@media (max-width: 380px) {
+    .anc-picker-preview-image {
+        max-width: 140px;
+    }
+
+    .anc-picker-panel {
+        max-height: 92vh;
     }
 }
