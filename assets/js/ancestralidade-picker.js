@@ -283,7 +283,6 @@
         const summary = escapeHtml(summaryFor(item));
         el.innerHTML = `
             <div class="anc-picker-preview-text">
-                <p class="anc-picker-preview-id">${escapeHtml(item.id)}</p>
                 <h3 class="anc-picker-preview-name">${escapeHtml(item.nome)}</h3>
                 <p class="anc-picker-preview-summary">${summary || '<em>(sem descrição)</em>'}</p>
             </div>
