@@ -40,8 +40,7 @@ $nomeAtributo = [
             </div>
             <div class="actions">
                 <a class="system-link-btn" href="index.php">Menu</a>
-                <a class="system-link-btn" href="classes.php">Classes</a>
-                <a class="system-link-btn" href="ficha.php">Ficha</a>
+                <a class="system-link-btn" href="referencia.php">Referência</a>
             </div>
         </header>
 

@@ -27,12 +27,11 @@ function imagemAncestralidade(string $id): ?string {
     <link rel="stylesheet" href="assets/css/ficha.css" />
     <link rel="stylesheet" href="assets/css/classes.css?v=20260503i" />
     <link rel="stylesheet" href="assets/css/ancestralidades.css?v=20260501a" />
-    <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
+    <link rel="stylesheet" href="assets/css/ancestralidades-menu-fix.css?v=20260503a" />
 </head>
 
 <body>
-    <script src="assets/js/transitions.js?v=20260503d"></script>
-    <main class="page-wrapper classes-page">
+    <main class="page-wrapper classes-page ancestralidades-page">
 
         <header class="top-actions classes-topbar">
             <div>
@@ -51,6 +50,7 @@ function imagemAncestralidade(string $id): ?string {
             <aside class="classes-sidebar panel" id="classesSidebar">
                 <div class="sidebar-mobile-head">
                     <div class="panel-title">Navegação</div>
+                    <button type="button" class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Fechar menu de navegação">×</button>
                 </div>
 
                 <div class="sidebar-content" id="mobileSidebarContent">
@@ -136,6 +136,85 @@ function imagemAncestralidade(string $id): ?string {
         <span></span>
     </button>
 
-    <script src="assets/js/classes.js?v=20260503i"></script>
+    <script>
+        (function () {
+            const body = document.body;
+            const sidebar = document.getElementById("classesSidebar");
+            const menuButton = document.getElementById("mobileMenuToggle");
+            const closeButton = document.getElementById("sidebarCloseBtn");
+            const searchInput = document.getElementById("classesSearch");
+            const links = Array.from(document.querySelectorAll("#classesToc .toc-link"));
+            const sections = Array.from(document.querySelectorAll(".classes-content .content-section"));
+
+            if (!sidebar || !menuButton) return;
+
+            function openSidebar() {
+                sidebar.classList.add("is-open");
+                menuButton.classList.add("is-open");
+                menuButton.setAttribute("aria-expanded", "true");
+                body.classList.add("ancestralidades-menu-open");
+            }
+
+            function closeSidebar() {
+                sidebar.classList.remove("is-open");
+                menuButton.classList.remove("is-open");
+                menuButton.setAttribute("aria-expanded", "false");
+                body.classList.remove("ancestralidades-menu-open");
+            }
+
+            function toggleSidebar() {
+                sidebar.classList.contains("is-open") ? closeSidebar() : openSidebar();
+            }
+
+            menuButton.addEventListener("click", toggleSidebar);
+            closeButton?.addEventListener("click", closeSidebar);
+
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape") closeSidebar();
+            });
+
+            links.forEach((link) => {
+                link.addEventListener("click", () => {
+                    if (window.matchMedia("(max-width: 980px)").matches) {
+                        closeSidebar();
+                    }
+                });
+            });
+
+            if (searchInput) {
+                searchInput.addEventListener("input", () => {
+                    const term = searchInput.value.trim().toLowerCase();
+
+                    links.forEach((link) => {
+                        const match = link.textContent.toLowerCase().includes(term);
+                        link.hidden = Boolean(term) && !match;
+                    });
+                });
+            }
+
+            if (sections.length && links.length && "IntersectionObserver" in window) {
+                const linkById = new Map(
+                    links.map((link) => [decodeURIComponent(link.getAttribute("href").replace("#", "")), link])
+                );
+
+                const observer = new IntersectionObserver((entries) => {
+                    const visible = entries
+                        .filter((entry) => entry.isIntersecting)
+                        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+                    if (!visible) return;
+
+                    links.forEach((link) => link.classList.remove("is-active"));
+                    linkById.get(visible.target.id)?.classList.add("is-active");
+                }, {
+                    root: null,
+                    rootMargin: "-20% 0px -65% 0px",
+                    threshold: [0, 0.15, 0.4]
+                });
+
+                sections.forEach((section) => observer.observe(section));
+            }
+        })();
+    </script>
 </body>
 </html>
