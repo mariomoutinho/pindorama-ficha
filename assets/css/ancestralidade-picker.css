@@ -254,6 +254,11 @@
     align-items: start;
 }
 
+/* Preview sem imagem (classes / origens) — texto ocupa toda largura */
+.anc-picker-preview.anc-picker-preview-no-image {
+    grid-template-columns: 1fr;
+}
+
 .anc-picker-preview-empty {
     grid-column: 1 / -1;
     text-align: center;
