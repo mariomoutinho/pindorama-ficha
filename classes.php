@@ -7,7 +7,7 @@
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
     <link rel="stylesheet" href="assets/css/classes.css" />
-    <link rel="stylesheet" href="assets/css/transitions.css?v=20260503b" />
+    <link rel="stylesheet" href="assets/css/transitions.css?v=20260503c" />
 </head>
 
 <body>

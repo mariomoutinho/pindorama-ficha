@@ -21,6 +21,12 @@ body.page-leaving > main {
     animation: pageLeave 220ms ease-in forwards;
 }
 
+/* Importante: as keyframes finais usam `transform: none` e `filter: none`,
+   não `translateY(0)`/`blur(0)`. Isso é deliberado: valores como
+   `translateY(0)` ou `blur(0)` ainda contam como transform/filter aplicados
+   (ainda criam containing block para descendentes `position: fixed`).
+   `none` resolve para identidade limpa, sem efeito colateral. */
+
 @keyframes pageEnter {
     from {
         opacity: 0;
@@ -29,16 +35,16 @@ body.page-leaving > main {
     }
     to {
         opacity: 1;
-        transform: translateY(0);
-        filter: blur(0);
+        transform: none;
+        filter: none;
     }
 }
 
 @keyframes pageLeave {
     from {
         opacity: 1;
-        transform: translateY(0);
-        filter: blur(0);
+        transform: none;
+        filter: none;
     }
     to {
         opacity: 0;
