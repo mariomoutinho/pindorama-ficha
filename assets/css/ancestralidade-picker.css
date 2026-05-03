@@ -155,14 +155,6 @@
     font-weight: 500;
 }
 
-.anc-picker-title::before {
-    content: "◆";
-    margin-right: 10px;
-    color: rgba(248, 216, 255, 0.55);
-    font-size: 0.7em;
-    vertical-align: middle;
-}
-
 .anc-picker-close {
     background: transparent;
     border: 1px solid rgba(233, 216, 241, 0.4);
