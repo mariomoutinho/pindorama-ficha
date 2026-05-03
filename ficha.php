@@ -20,7 +20,7 @@ $divindadesFicha = $dadosDivindades['divindades'] ?? [];
     <link rel="stylesheet" href="assets/css/ancestralidades.css?v=20260430" />
     <link rel="stylesheet" href="assets/css/origens.css?v=20260430x" />
     <link rel="stylesheet" href="assets/css/divindades.css?v=20260430j" />
-    <link rel="stylesheet" href="assets/css/ancestralidade-picker.css?v=20260503a" />
+    <link rel="stylesheet" href="assets/css/ancestralidade-picker.css?v=20260503b" />
 </head>
 <body>
 
@@ -789,7 +789,7 @@ $divindadesFicha = $dadosDivindades['divindades'] ?? [];
     <script src="assets/js/ancestralidades-ficha.js?v=20260501s"></script>
     <script src="assets/js/origens.js?v=20260430x"></script>
     <script src="assets/js/divindades.js?v=20260430j"></script>
-    <script src="assets/js/entity-picker.js?v=20260503a"></script>
+    <script src="assets/js/entity-picker.js?v=20260503b"></script>
 
     <script>
     /* Auto-carrega ficha se ?id=N estiver na URL (vem da página fichas.php) */

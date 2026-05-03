@@ -382,6 +382,24 @@
 
         const summary = escapeHtml(summaryFor(item, state.resumos));
         const temImg = !!item.imagem;
+        const tracos = Array.isArray(item.tracos) ? item.tracos : [];
+
+        const tagsHtml = tracos.length ? `
+            <div class="anc-picker-tags-wrap">
+                <div class="anc-picker-tags-label">Traços ancestrais</div>
+                <div class="anc-picker-tags">
+                    ${tracos.map(t => `
+                        <button type="button" class="anc-picker-tag" data-traco="${escapeHtml(t.id || '')}">
+                            ${escapeHtml(t.nome || '')}
+                        </button>
+                    `).join('')}
+                </div>
+                <div class="anc-picker-traco-detail" data-empty="true">
+                    <em>Clique em um traço para ver detalhes.</em>
+                </div>
+            </div>
+        ` : '';
+
         const imgHtml = temImg
             ? `<div class="anc-picker-preview-image">
                    <img src="${escapeHtml(item.imagem)}"
@@ -394,12 +412,51 @@
             <div class="anc-picker-preview-text">
                 <h3 class="anc-picker-preview-name">${escapeHtml(item.nome)}</h3>
                 <p class="anc-picker-preview-summary">${summary || '<em>(sem descrição)</em>'}</p>
+                ${tagsHtml}
             </div>
             ${imgHtml}
         `;
 
-        // sem imagem? texto ocupa toda a largura.
         el.classList.toggle('anc-picker-preview-no-image', !temImg);
+
+        // Vincula clique nas tags de traço
+        el.querySelectorAll('.anc-picker-tag').forEach(btn => {
+            btn.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                alternarTraco(state, item, btn);
+            });
+        });
+    }
+
+    function alternarTraco(state, item, btn) {
+        const tracoId = btn.dataset.traco;
+        const detail = state.previewEl.querySelector('.anc-picker-traco-detail');
+        if (!detail) return;
+
+        const todasTags = state.previewEl.querySelectorAll('.anc-picker-tag');
+        const jaAtiva   = btn.classList.contains('is-active');
+        todasTags.forEach(b => b.classList.remove('is-active'));
+
+        if (jaAtiva) {
+            detail.dataset.empty = 'true';
+            detail.innerHTML = '<em>Clique em um traço para ver detalhes.</em>';
+            return;
+        }
+
+        btn.classList.add('is-active');
+        const traco = (item.tracos || []).find(t => t.id === tracoId);
+        if (!traco) {
+            detail.dataset.empty = 'true';
+            detail.innerHTML = '<em>(traço não encontrado)</em>';
+            return;
+        }
+
+        detail.dataset.empty = 'false';
+        detail.innerHTML = `
+            <h4 class="anc-picker-traco-name">${escapeHtml(traco.nome || '')}</h4>
+            <p class="anc-picker-traco-desc">${escapeHtml(traco.descricao || '(sem descrição)')}</p>
+        `;
     }
 
     /* ---------- abrir / fechar / confirmar ---------- */
@@ -473,6 +530,7 @@
                 nome: a.nome,
                 descricao: a.descricao,
                 imagem: 'assets/img/ancestralidades/' + a.id + '.webp',
+                tracos: a.tracos || [],
             }));
             montar({
                 selectId: 'ancestralidadeSelect',

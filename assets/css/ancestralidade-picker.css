@@ -320,6 +320,89 @@
     font-size: 0.96rem;
 }
 
+/* ---------- Tags de traços ancestrais ---------- */
+
+.anc-picker-tags-wrap {
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.anc-picker-tags-label {
+    color: rgba(233, 216, 241, 0.6);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    font-family: "Courier New", monospace;
+}
+
+.anc-picker-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.anc-picker-tag {
+    background: rgba(248, 216, 255, 0.10);
+    border: 1px solid rgba(248, 216, 255, 0.4);
+    color: var(--pink-light);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-family: Georgia, "Times New Roman", serif;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.anc-picker-tag:hover {
+    background: rgba(248, 216, 255, 0.22);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.anc-picker-tag.is-active {
+    background: var(--pink-light);
+    color: var(--purple-deep);
+    border-color: var(--pink-light);
+    box-shadow: 0 0 8px rgba(248, 216, 255, 0.4);
+}
+
+.anc-picker-traco-detail {
+    margin-top: 4px;
+    padding: 12px 14px;
+    background: rgba(15, 5, 25, 0.4);
+    border-left: 2px solid var(--pink-light);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.92rem;
+    line-height: 1.55;
+}
+
+.anc-picker-traco-detail[data-empty="true"] {
+    color: rgba(233, 216, 241, 0.5);
+    font-style: italic;
+    border-left-color: rgba(233, 216, 241, 0.25);
+    background: rgba(15, 5, 25, 0.18);
+    text-align: center;
+    padding: 8px 12px;
+}
+
+.anc-picker-traco-name {
+    margin: 0 0 6px;
+    font-family: 'Cordel Encarnado', Georgia, "Times New Roman", serif;
+    font-size: 1.15rem;
+    text-transform: uppercase;
+    color: var(--pink-light);
+    letter-spacing: 0.6px;
+    line-height: 1.1;
+}
+
+.anc-picker-traco-desc {
+    margin: 0;
+    white-space: pre-line;
+}
+
 /* ---------- Footer ---------- */
 
 .anc-picker-footer {
