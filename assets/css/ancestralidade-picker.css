@@ -3,17 +3,17 @@
    Usa as variáveis de paleta de ficha.css (--purple, --purple-dark, ...)
    ==================================================================== */
 
-/* Fonte temática "Cordel Encarnado" — coloque o arquivo em
+/* Fonte temática "Eldes Cordel" — coloque o arquivo em
    assets/fonts/ com um destes nomes:
-     CordelEncarnado.woff2 / .woff / .ttf / .otf
+     EldesCordel.woff2 / .woff / .ttf / .otf
    Se a fonte não estiver presente, o navegador usa o fallback
    abaixo (serifa pesada do projeto). */
 @font-face {
-    font-family: 'Cordel Encarnado';
-    src: url('../fonts/CordelEncarnado.woff2') format('woff2'),
-         url('../fonts/CordelEncarnado.woff')  format('woff'),
-         url('../fonts/CordelEncarnado.ttf')   format('truetype'),
-         url('../fonts/CordelEncarnado.otf')   format('opentype');
+    font-family: 'Eldes Cordel';
+    src: url('../fonts/EldesCordel.woff2') format('woff2'),
+         url('../fonts/EldesCordel.woff')  format('woff'),
+         url('../fonts/EldesCordel.ttf')   format('truetype'),
+         url('../fonts/EldesCordel.otf')   format('opentype');
     font-display: swap;
     font-weight: normal;
     font-style: normal;
@@ -305,7 +305,7 @@
 
 .anc-picker-preview-name {
     margin: 0;
-    font-family: 'Cordel Encarnado', Georgia, "Times New Roman", serif;
+    font-family: 'Eldes Cordel', Georgia, "Times New Roman", serif;
     font-size: 2.4rem;
     color: var(--pink-light);
     letter-spacing: 1px;
