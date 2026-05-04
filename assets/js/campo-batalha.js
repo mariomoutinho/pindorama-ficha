@@ -12,9 +12,24 @@
     // ----------------------------------------------------------------
 
     const STORAGE_KEY = 'pindorama:campo-batalha:v1';
+    const BESTIARIO_STORAGE_KEY = 'pindorama.bestiario.criaturas';
+    const BESTIARIO_TOKEN_KEY = 'pindorama.campoBatalha.tokenPendente';
     const CELL_SIZE = 56;          // tamanho base da célula em pixels
     const MIN_SCALE = 0.4;
     const MAX_SCALE = 3;
+    const LONG_PRESS_MS = 520;
+    const LONG_PRESS_MOVE_TOLERANCE = 8;
+    const GRID_METERS = 1.5;
+    const SIZE_BY_CATEGORY = {
+        minusculo: 1,
+        minúsculo: 1,
+        pequeno: 1,
+        medio: 1,
+        médio: 1,
+        grande: 2,
+        enorme: 3,
+        colossal: 6
+    };
 
     const state = {
         cols: 20,
@@ -24,7 +39,14 @@
         tokens: [],                // { id, fichaId|null, name, image, col, row, sizeCells, rotation }
         selectedId: null,
         fichas: [],                // cache da lista de fichas
-        fichasLoaded: false
+        fichasLoaded: false,
+        bestiario: [],             // cache da lista de criaturas do bestiário
+        bestiarioFiltros: {},
+        bestiarioLoaded: false,
+        ancestralidadeSizes: {},
+        ancestralidadeSizesLoaded: false,
+        modalMode: 'fichas',
+        reachPreview: null
     };
 
     // ----------------------------------------------------------------
@@ -37,6 +59,7 @@
         board: document.getElementById('cbBoard'),
         tokensLayer: document.getElementById('cbTokensLayer'),
         addToken: document.getElementById('cbAddToken'),
+        addBestiaryToken: document.getElementById('cbAddBestiaryToken'),
         removeToken: document.getElementById('cbRemoveToken'),
         rotateToken: document.getElementById('cbRotateToken'),
         clearAll: document.getElementById('cbClearAll'),
@@ -51,9 +74,47 @@
         modal: document.getElementById('cbModal'),
         modalClose: document.getElementById('cbModalClose'),
         modalSearch: document.getElementById('cbModalSearch'),
+        modalTitle: document.getElementById('cbModalTitle'),
+        bestiaryFilters: document.getElementById('cbBestiaryFilters'),
+        bestiaryNd: document.getElementById('cbBestiaryNd'),
+        bestiaryTipo: document.getElementById('cbBestiaryTipo'),
+        bestiaryTamanho: document.getElementById('cbBestiaryTamanho'),
+        bestiaryBioma: document.getElementById('cbBestiaryBioma'),
+        bestiaryPapel: document.getElementById('cbBestiaryPapel'),
         fichaList: document.getElementById('cbFichaList'),
         addGenericToken: document.getElementById('cbAddGenericToken'),
-        tooltip: document.getElementById('cbTooltip')
+        tooltip: document.getElementById('cbTooltip'),
+        actionPanel: document.getElementById('cbActionPanel'),
+        actionTitle: document.getElementById('cbActionTitle'),
+        actionList: document.getElementById('cbActionList'),
+        actionClose: document.getElementById('cbActionClose'),
+        confirm: document.getElementById('cbConfirm'),
+        confirmText: document.getElementById('cbConfirmText'),
+        confirmTargetThumb: document.getElementById('cbConfirmTargetThumb'),
+        confirmTargetName: document.getElementById('cbConfirmTargetName'),
+        confirmTargetMeta: document.getElementById('cbConfirmTargetMeta'),
+        confirmClose: document.getElementById('cbConfirmClose'),
+        confirmCancel: document.getElementById('cbConfirmCancel'),
+        confirmOk: document.getElementById('cbConfirmOk')
+    };
+
+    // Estado pendente do modal de confirmação de ação
+    let pendingAttack = null;
+
+    const ACTION_LABELS = {
+        ataques: 'Ataques',
+        magias: 'Magias',
+        poderes: 'Poderes',
+        equipamentos: 'Equipamentos',
+        manobras: 'Manobras'
+    };
+
+    const ACTION_SHORT_LABELS = {
+        ataques: 'ATQ',
+        magias: 'MAG',
+        poderes: 'POD',
+        equipamentos: 'EQP',
+        manobras: 'MAN'
     };
 
     // ----------------------------------------------------------------
@@ -105,11 +166,19 @@
         els.board.classList.toggle('show-numbers', state.showNumbers);
         els.board.innerHTML = '';
 
+        const targetCells = computeReachTargetCellSet();
+
         const frag = document.createDocumentFragment();
         for (let r = 0; r < state.rows; r++) {
             for (let c = 0; c < state.cols; c++) {
                 const cell = document.createElement('div');
                 cell.className = 'cb-cell' + (((r + c) % 2 === 0) ? ' is-even' : '');
+                if (isReachPreviewCell(c, r)) {
+                    cell.classList.add('cb-cell--alcance');
+                    if (targetCells.has(occupiedKey(c, r))) {
+                        cell.classList.add('cb-cell--target');
+                    }
+                }
                 if (state.showNumbers) {
                     const lbl = document.createElement('span');
                     lbl.className = 'cb-cell-label';
@@ -161,6 +230,12 @@
         }
         wrap.appendChild(circle);
 
+        const resources = buildResourceBars(token);
+        if (resources) {
+            wrap.classList.add('has-resources');
+            wrap.appendChild(resources);
+        }
+
         const nameLbl = document.createElement('div');
         nameLbl.className = 'cb-token-name';
         nameLbl.textContent = token.name || 'Sem nome';
@@ -177,6 +252,50 @@
         wrap.appendChild(rotate);
 
         return wrap;
+    }
+
+    function buildResourceBars(token) {
+        const bars = [];
+        const pvMax = numberOrNull(token.pvMax);
+        const pmMax = numberOrNull(token.pmMax);
+
+        if (pvMax !== null && pvMax > 0) {
+            bars.push(buildResourceBar('pv', token.pvAtual, pvMax, 'PV'));
+        }
+        if (pmMax !== null && pmMax > 0) {
+            bars.push(buildResourceBar('pm', token.pmAtual, pmMax, 'PM'));
+        }
+        if (!bars.length) return null;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'cb-token-resources';
+        for (const bar of bars) wrap.appendChild(bar);
+        return wrap;
+    }
+
+    function buildResourceBar(resource, current, max, label) {
+        const value = clampResource(current, max);
+        const ratio = max > 0 ? value / max : 0;
+
+        const bar = document.createElement('button');
+        bar.type = 'button';
+        bar.className = `cb-resource-bar cb-resource-bar--${resource}`;
+        bar.dataset.resource = resource;
+        bar.title = `Ajustar ${label}`;
+        bar.setAttribute('aria-label', `Ajustar ${label} de ${value} para ${max}`);
+
+        const fill = document.createElement('span');
+        fill.className = 'cb-resource-fill';
+        fill.style.width = `${Math.max(0, Math.min(100, ratio * 100))}%`;
+        fill.style.opacity = String(0.28 + ratio * 0.72);
+        bar.appendChild(fill);
+
+        const text = document.createElement('span');
+        text.className = 'cb-resource-text';
+        text.textContent = `${value}/${max}`;
+        bar.appendChild(text);
+
+        return bar;
     }
 
     function updateTokenElement(token) {
@@ -261,6 +380,13 @@
         // Verificamos se o alvo é um token, handle ou stage vazio
         const tokenEl = ev.target.closest('.cb-token');
         const handle = ev.target.closest('.cb-token-handle');
+        const resourceBar = ev.target.closest('.cb-resource-bar');
+        if (resourceBar && tokenEl) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            selectToken(tokenEl.dataset.tokenId);
+            return;
+        }
 
         if (handle && tokenEl) {
             const token = state.tokens.find(t => t.id === tokenEl.dataset.tokenId);
@@ -278,7 +404,24 @@
         }
 
         if (tokenEl) {
-            const token = state.tokens.find(t => t.id === tokenEl.dataset.tokenId);
+            const clickedId = tokenEl.dataset.tokenId;
+
+            // Se o alcance de uma ação está ativo em outro token e o token clicado
+            // está dentro do alcance, abre a confirmação para direcionar a ação a ele.
+            if (state.reachPreview
+                && state.reachPreview.tokenId !== clickedId
+                && state.reachPreview.action) {
+                const attacker = state.tokens.find(t => t.id === state.reachPreview.tokenId);
+                const target = state.tokens.find(t => t.id === clickedId);
+                if (attacker && target && isTokenInMeleeReach(target, attacker)) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    openAttackConfirmation(attacker, target, state.reachPreview.action);
+                    return;
+                }
+            }
+
+            const token = state.tokens.find(t => t.id === clickedId);
             if (!token) return;
             ev.preventDefault();
             selectToken(token.id);
@@ -406,16 +549,31 @@
             offsetX: start.x - token.col * CELL_SIZE,
             offsetY: start.y - token.row * CELL_SIZE,
             tempCol: token.col,
-            tempRow: token.row
+            tempRow: token.row,
+            startClientX: ev.clientX,
+            startClientY: ev.clientY,
+            longPressFired: false,
+            longPressTimer: null
         };
         const el = els.tokensLayer.querySelector(`[data-token-id="${token.id}"]`);
         if (el) el.classList.add('is-dragging');
+        interaction.longPressTimer = setTimeout(() => {
+            if (!interaction || interaction.type !== 'token-drag' || interaction.pointerId !== ev.pointerId) return;
+            interaction.longPressFired = true;
+            if (el) el.classList.remove('is-dragging');
+            openTokenActionPanel(token.id);
+        }, LONG_PRESS_MS);
         try { els.stage.setPointerCapture(ev.pointerId); } catch (_) {}
     }
 
     function handleTokenDragMove(ev) {
         const token = state.tokens.find(t => t.id === interaction.tokenId);
         if (!token) return;
+        const moved = Math.hypot(ev.clientX - interaction.startClientX, ev.clientY - interaction.startClientY);
+        if (moved > LONG_PRESS_MOVE_TOLERANCE) {
+            clearTokenLongPress();
+        }
+        if (interaction.longPressFired) return;
         const p = screenToViewport(ev.clientX, ev.clientY);
         const rawCol = (p.x - interaction.offsetX) / CELL_SIZE;
         const rawRow = (p.y - interaction.offsetY) / CELL_SIZE;
@@ -427,11 +585,30 @@
         }
         interaction.tempCol = rawCol;
         interaction.tempRow = rawRow;
+
+        // Se o alcance da ação está ativo neste token, atualiza a marcação ao mover
+        if (state.reachPreview && state.reachPreview.tokenId === token.id) {
+            const max = Math.max(1, Number(token.sizeCells || 1));
+            const roundedCol = clamp(Math.round(rawCol), 0, state.cols - max);
+            const roundedRow = clamp(Math.round(rawRow), 0, state.rows - max);
+            if (interaction.lastReachCol !== roundedCol || interaction.lastReachRow !== roundedRow) {
+                interaction.lastReachCol = roundedCol;
+                interaction.lastReachRow = roundedRow;
+                renderBoard();
+            }
+        }
     }
 
     function finishTokenDrag() {
         const token = state.tokens.find(t => t.id === interaction.tokenId);
         if (!token) {
+            interaction = null;
+            return;
+        }
+        clearTokenLongPress();
+        if (interaction.longPressFired) {
+            const el = els.tokensLayer.querySelector(`[data-token-id="${token.id}"]`);
+            if (el) el.classList.remove('is-dragging');
             interaction = null;
             return;
         }
@@ -444,8 +621,18 @@
         const el = els.tokensLayer.querySelector(`[data-token-id="${token.id}"]`);
         if (el) el.classList.remove('is-dragging');
         updateTokenElement(token);
+        if (state.reachPreview && state.reachPreview.tokenId === token.id) {
+            renderBoard();
+        }
         saveState();
         interaction = null;
+    }
+
+    function clearTokenLongPress() {
+        if (interaction && interaction.longPressTimer) {
+            clearTimeout(interaction.longPressTimer);
+            interaction.longPressTimer = null;
+        }
     }
 
     // ----------- Resize
@@ -525,6 +712,12 @@
     // ----------------------------------------------------------------
 
     function selectToken(id) {
+        if (id !== state.selectedId && els.actionPanel && !els.actionPanel.hidden) {
+            closeTokenActionPanel();
+        }
+        if (id !== state.selectedId) {
+            clearReachPreview(true);
+        }
         state.selectedId = id;
         updateSelectionVisuals();
     }
@@ -533,6 +726,8 @@
         if (!state.selectedId) return;
         state.tokens = state.tokens.filter(t => t.id !== state.selectedId);
         state.selectedId = null;
+        clearReachPreview(false);
+        renderBoard();
         renderTokens();
         saveState();
     }
@@ -551,6 +746,8 @@
         if (!confirm('Remover todos os tokens do campo?')) return;
         state.tokens = [];
         state.selectedId = null;
+        clearReachPreview(false);
+        renderBoard();
         renderTokens();
         saveState();
     }
@@ -562,25 +759,40 @@
     }
 
     // ----------------------------------------------------------------
-    // Adicionar token a partir de uma ficha
+    // Adicionar token a partir de uma ficha ou criatura
     // ----------------------------------------------------------------
 
     function addTokenFromFicha(ficha) {
         const t = {
             id: genId(),
             fichaId: ficha.id,
+            source: ficha.source || 'ficha',
             name: ficha.personagem || 'Sem nome',
             image: ficha.personagem_imagem ? resolveImage(ficha.personagem_imagem) : null,
+            tamanho: ficha.tamanho || null,
+            deslocamento: ficha.deslocamento || null,
+            nd: ficha.nd || null,
+            tipo: ficha.tipo || null,
+            pvAtual: parseResource(ficha.pv_atuais ?? ficha.pvAtual ?? ficha.pvMax ?? ficha.pv_total),
+            pvMax: parseResource(ficha.pv_total ?? ficha.pvMax),
+            pmAtual: parseResource(ficha.pm_atuais ?? ficha.pmAtual ?? ficha.pmMax ?? ficha.pm_total),
+            pmMax: parseResource(ficha.pm_total ?? ficha.pmMax),
+            defesa: ficha.defesa || null,
+            bioma: ficha.bioma || null,
+            papelTatico: ficha.papelTatico || null,
+            ataquesPrincipais: ficha.ataquesPrincipais || [],
+            habilidadesPrincipais: ficha.habilidadesPrincipais || [],
+            actions: ficha.actions || buildActionsFromFicha(ficha),
             col: 0,
             row: 0,
-            sizeCells: 1,
+            sizeCells: sizeCellsFromCategory(ficha.tamanho),
             rotation: 0
         };
         // tenta achar uma célula vazia
-        const occupied = new Set(state.tokens.map(x => x.col + ',' + x.row));
+        const occupied = buildOccupiedCells();
         outer: for (let r = 0; r < state.rows; r++) {
             for (let c = 0; c < state.cols; c++) {
-                if (!occupied.has(c + ',' + r)) {
+                if (canPlaceTokenAt(t, c, r, occupied)) {
                     t.col = c; t.row = r;
                     break outer;
                 }
@@ -590,6 +802,66 @@
         state.selectedId = t.id;
         renderTokens();
         saveState();
+    }
+
+    function addTokenFromBestiaryToken(token) {
+        addTokenFromFicha({
+            id: token.id,
+            source: 'bestiario',
+            personagem: token.nome || 'Criatura',
+            personagem_imagem: token.imagem || null,
+            tamanho: token.tamanho,
+            deslocamento: token.deslocamento,
+            nd: token.nd,
+            tipo: token.tipo,
+            pvAtual: token.pvAtual ?? token.pvAtuais ?? token.pvMax,
+            pvMax: token.pvMax,
+            pmAtual: token.pmAtual ?? token.pmAtuais ?? token.pmMax,
+            pmMax: token.pmMax,
+            defesa: token.defesa,
+            bioma: token.bioma,
+            papelTatico: token.papelTatico,
+            ataquesPrincipais: token.ataquesPrincipais || [],
+            habilidadesPrincipais: token.habilidadesPrincipais || [],
+            actions: buildActionsFromBestiaryToken(token)
+        });
+    }
+
+    function montarTokenCriatura(criatura) {
+        const token = criatura.token || {
+            id: criatura.id,
+            nome: criatura.nome,
+            nd: criatura.nd,
+            tipo: criatura.tipo,
+            tamanho: criatura.tamanho,
+            imagem: criatura.imagem,
+            pvAtual: criatura.pvAtual ?? criatura.pvAtuais ?? criatura.pvMax,
+            pvMax: criatura.pvMax,
+            pmAtual: criatura.pmAtual ?? criatura.pmAtuais ?? criatura.pmMax,
+            pmMax: criatura.pmMax,
+            defesa: criatura.defesa,
+            deslocamento: criatura.deslocamento,
+            ataquesPrincipais: (criatura.ataques || []).slice(0, 3),
+            habilidadesPrincipais: (criatura.habilidades || []).slice(0, 5).map(h => String(h).split('.')[0]),
+            bioma: criatura.bioma,
+            papelTatico: criatura.papelTatico
+        };
+        return Object.assign({}, token, {
+            id: token.id || criatura.id,
+            nome: token.nome || criatura.nome,
+            nd: token.nd ?? criatura.nd,
+            tipo: token.tipo || criatura.tipo,
+            tamanho: token.tamanho || criatura.tamanho,
+            imagem: token.imagem || criatura.imagem,
+            pvAtual: token.pvAtual ?? token.pvAtuais ?? criatura.pvAtual ?? criatura.pvAtuais ?? criatura.pvMax,
+            pvMax: token.pvMax ?? criatura.pvMax,
+            pmAtual: token.pmAtual ?? token.pmAtuais ?? criatura.pmAtual ?? criatura.pmAtuais ?? criatura.pmMax,
+            pmMax: token.pmMax ?? criatura.pmMax,
+            defesa: token.defesa ?? criatura.defesa,
+            deslocamento: token.deslocamento || criatura.deslocamento,
+            bioma: token.bioma || criatura.bioma,
+            papelTatico: token.papelTatico || criatura.papelTatico
+        });
     }
 
     function addGenericToken() {
@@ -602,6 +874,216 @@
         });
     }
 
+    function sizeCellsFromCategory(category) {
+        const key = normalizeText(category || 'Médio');
+        return SIZE_BY_CATEGORY[key] || 1;
+    }
+
+    function occupiedKey(col, row) {
+        return col + ',' + row;
+    }
+
+    function buildOccupiedCells(exceptId = null) {
+        const occupied = new Set();
+        for (const token of state.tokens) {
+            if (token.id === exceptId) continue;
+            const size = Math.max(1, Number(token.sizeCells || 1));
+            for (let row = token.row; row < token.row + size; row++) {
+                for (let col = token.col; col < token.col + size; col++) {
+                    occupied.add(occupiedKey(col, row));
+                }
+            }
+        }
+        return occupied;
+    }
+
+    function canPlaceTokenAt(token, col, row, occupied) {
+        const size = Math.max(1, Number(token.sizeCells || 1));
+        if (col < 0 || row < 0 || col + size > state.cols || row + size > state.rows) return false;
+        for (let y = row; y < row + size; y++) {
+            for (let x = col; x < col + size; x++) {
+                if (occupied.has(occupiedKey(x, y))) return false;
+            }
+        }
+        return true;
+    }
+
+    function buildActionsFromFicha(ficha) {
+        const ataques = normalizeActionItems(parseJsonSafe(ficha.ataques, ficha.ataquesPrincipais || []), 'ataque');
+        const magias = normalizeMagicItems(parseJsonSafe(ficha.habilidades_magias, ficha.magias || []));
+        const poderes = normalizePowerItems(ficha.poderes || []);
+        const equipamentos = normalizeActionItems(parseJsonSafe(ficha.equipamentos, []), 'equipamento');
+        const baseManobras = [
+            ...ataques,
+            ...normalizeActionItems(ficha.habilidadesPrincipais || [], 'habilidade'),
+            ...poderes
+        ];
+
+        return pruneActionGroups({
+            ataques,
+            magias,
+            poderes,
+            equipamentos,
+            manobras: extractManeuvers(baseManobras)
+        });
+    }
+
+    function buildActionsFromBestiaryToken(token) {
+        const ataques = normalizeActionItems(token.ataquesPrincipais || [], 'ataque');
+        const poderes = normalizeActionItems(token.habilidadesPrincipais || [], 'habilidade');
+        return pruneActionGroups({
+            ataques,
+            magias: [],
+            poderes,
+            equipamentos: [],
+            manobras: extractManeuvers([...ataques, ...poderes])
+        });
+    }
+
+    function getTokenActionGroups(token) {
+        return pruneActionGroups(token.actions || {});
+    }
+
+    function pruneActionGroups(groups) {
+        return Object.keys(ACTION_LABELS).reduce((acc, key) => {
+            acc[key] = Array.isArray(groups[key]) ? groups[key].filter(Boolean) : [];
+            return acc;
+        }, {});
+    }
+
+    function parseJsonSafe(value, fallback = []) {
+        if (Array.isArray(value)) return value;
+        if (value && typeof value === 'object') return [value];
+        if (typeof value !== 'string' || !value.trim()) return fallback;
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }
+
+    function normalizeActionItems(items, fallbackType) {
+        if (!Array.isArray(items)) return [];
+        return items.map(item => normalizeActionItem(item, fallbackType)).filter(Boolean);
+    }
+
+    function normalizeMagicItems(items) {
+        if (!Array.isArray(items)) return [];
+        return items.map(item => {
+            if (typeof item === 'string') {
+                return { nome: item, tipo: 'magia' };
+            }
+            if (!item || typeof item !== 'object') return null;
+            return {
+                nome: item.nome || item.id || 'Magia',
+                tipo: 'magia',
+                origem: item.origem || '',
+                detalhe: item.circulo ? `${item.circulo}º círculo` : ''
+            };
+        }).filter(Boolean);
+    }
+
+    function normalizePowerItems(items) {
+        if (!Array.isArray(items)) return [];
+        return items.map(item => {
+            if (typeof item === 'string') {
+                return { nome: item, tipo: 'poder' };
+            }
+            if (!item || typeof item !== 'object') return null;
+            return {
+                nome: item.nome || item.id || item.poder_id || 'Poder',
+                tipo: item.tipo || 'poder',
+                origem: item.classe || item.classe_id || item.categoria || '',
+                detalhe: item.tipo ? `Tipo: ${item.tipo}` : ''
+            };
+        }).filter(Boolean);
+    }
+
+    function normalizeActionItem(item, fallbackType) {
+        if (typeof item === 'string') {
+            const trimmed = item.trim();
+            if (!trimmed) return null;
+            const alcance = inferActionReach(trimmed);
+            return {
+                nome: trimmed,
+                tipo: fallbackType,
+                alcance,
+                detalhe: alcance ? `Alcance: ${alcance}` : ''
+            };
+        }
+        if (!item || typeof item !== 'object') return null;
+
+        const nome = item.nome || item.name || item.arma || item.item || item.id || fallbackType;
+        const alcance = item.alcance || inferActionReach(`${nome || ''} ${item.descricao || ''}`);
+        const quantidadeAtaques = parseAttackCount(item, nome);
+        const bonusAtaque = parseAttackBonus(item);
+        const danoFormula = item.danoFormula || parseDamageFormula(item.dano || item.descricao || '');
+        const partes = [];
+        [
+            ['Teste', item.teste || item.ataque || item.bonus],
+            ['Dano', item.dano],
+            ['Crítico', item.critico],
+            ['Alcance', alcance],
+            ['Qtd.', item.quantidade],
+            ['Espaços', item.espacos],
+            ['Tipo', item.tipo],
+            ['Descrição', item.descricao]
+        ].forEach(([label, value]) => {
+            if (value !== undefined && value !== null && String(value).trim() !== '') {
+                partes.push(`${label}: ${value}`);
+            }
+        });
+
+        return {
+            nome: String(nome || fallbackType),
+            tipo: fallbackType,
+            alcance,
+            quantidadeAtaques,
+            bonusAtaque,
+            danoFormula,
+            detalhe: partes.join(' | ')
+        };
+    }
+
+    function inferActionReach(text) {
+        const normalized = normalizeText(text);
+        if (normalized.includes('corpo a corpo')) return 'corpo a corpo';
+        if (normalized.includes('gavioes espinhosos')) return 'corpo a corpo';
+        return '';
+    }
+
+    function extractManeuvers(items) {
+        const catalog = [
+            'agarrar',
+            'derrubar',
+            'desarmar',
+            'empurrar',
+            'quebrar',
+            'atropelar',
+            'fintar'
+        ];
+        const found = new Map();
+        for (const item of items) {
+            const text = normalizeText(`${item.nome || ''} ${item.detalhe || ''} ${item.descricao || ''}`);
+            for (const manobra of catalog) {
+                if (text.includes(normalizeText(manobra))) {
+                    found.set(manobra, {
+                        nome: capitalizePt(manobra),
+                        tipo: 'manobra',
+                        detalhe: item.nome ? `Presente em: ${item.nome}` : ''
+                    });
+                }
+            }
+        }
+        return Array.from(found.values());
+    }
+
+    function capitalizePt(value) {
+        const text = String(value || '');
+        return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+    }
+
     function resolveImage(path) {
         if (!path) return null;
         if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
@@ -610,11 +1092,33 @@
         return path; // caminho relativo já serve (mesma origem)
     }
 
+    function parseResource(value) {
+        if (value === undefined || value === null || value === '') return null;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : null;
+    }
+
+    function numberOrNull(value) {
+        const parsed = parseResource(value);
+        return parsed === null ? null : parsed;
+    }
+
+    function clampResource(value, max) {
+        const parsedMax = Math.max(0, Math.round(Number(max) || 0));
+        const parsedValue = parseResource(value);
+        if (parsedValue === null) return parsedMax;
+        return clamp(parsedValue, 0, parsedMax);
+    }
+
     // ----------------------------------------------------------------
-    // Modal de fichas
+    // Modal de fichas e criaturas
     // ----------------------------------------------------------------
 
     async function openModal() {
+        state.modalMode = 'fichas';
+        els.modalTitle.textContent = 'Adicionar personagem';
+        els.modalSearch.placeholder = 'Buscar por nome ou jogador...';
+        els.bestiaryFilters.hidden = true;
         els.modal.hidden = false;
         els.modalSearch.value = '';
         els.modalSearch.focus();
@@ -636,8 +1140,92 @@
         renderFichaList(state.fichas);
     }
 
+    async function openBestiaryModal() {
+        state.modalMode = 'bestiario';
+        els.modalTitle.textContent = 'Adicionar criatura';
+        els.modalSearch.placeholder = 'Buscar criatura por nome, tipo ou bioma...';
+        els.bestiaryFilters.hidden = false;
+        els.modal.hidden = false;
+        els.modalSearch.value = '';
+        els.modalSearch.focus();
+        if (!state.bestiarioLoaded) {
+            els.fichaList.innerHTML = '<li class="cb-ficha-empty">Carregando criaturas...</li>';
+            try {
+                const resp = await fetch('data/bestiario.json', { credentials: 'same-origin' });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const data = await resp.json();
+                loadBestiaryData(data);
+                state.bestiarioLoaded = true;
+            } catch (e) {
+                els.fichaList.innerHTML = '<li class="cb-ficha-empty">Não foi possível carregar o bestiário.</li>';
+                return;
+            }
+        }
+        resetBestiaryFilterFields();
+        renderBestiaryList(state.bestiario);
+    }
+
     function closeModal() {
         els.modal.hidden = true;
+    }
+
+    function loadBestiaryData(data) {
+        const byId = new Map();
+        const baseCreatures = Array.isArray(data.criaturas) ? data.criaturas : [];
+        for (const criatura of baseCreatures) {
+            if (criatura && criatura.id) byId.set(criatura.id, criatura);
+        }
+
+        try {
+            const local = JSON.parse(localStorage.getItem(BESTIARIO_STORAGE_KEY) || '[]');
+            if (Array.isArray(local)) {
+                for (const criatura of local) {
+                    if (criatura && criatura.id) byId.set(criatura.id, criatura);
+                }
+            }
+        } catch (e) {
+            // Bestiário local inválido: mantém apenas a base do projeto.
+        }
+
+        state.bestiario = Array.from(byId.values());
+        state.bestiarioFiltros = data.filtros || {};
+        fillBestiaryFilters();
+    }
+
+    function fillBestiaryFilters() {
+        fillSelect(els.bestiaryNd, buildNdOptions(), 'ND');
+        fillSelect(els.bestiaryTipo, state.bestiarioFiltros.tipos || [], 'Tipo');
+        fillSelect(els.bestiaryTamanho, state.bestiarioFiltros.tamanhos || [], 'Tamanho');
+        fillSelect(els.bestiaryBioma, state.bestiarioFiltros.biomas || [], 'Bioma');
+        fillSelect(els.bestiaryPapel, state.bestiarioFiltros.papeisTaticos || [], 'Papel');
+    }
+
+    function buildNdOptions() {
+        return Array.from(new Set(state.bestiario.map(c => c.nd).filter(v => v !== undefined && v !== null)))
+            .sort((a, b) => Number(a) - Number(b))
+            .map(String);
+    }
+
+    function fillSelect(select, values, placeholder) {
+        select.innerHTML = '';
+        const first = document.createElement('option');
+        first.value = '';
+        first.textContent = placeholder;
+        select.appendChild(first);
+        for (const value of values) {
+            const opt = document.createElement('option');
+            opt.value = String(value);
+            opt.textContent = String(value);
+            select.appendChild(opt);
+        }
+    }
+
+    function resetBestiaryFilterFields() {
+        els.bestiaryNd.value = '';
+        els.bestiaryTipo.value = '';
+        els.bestiaryTamanho.value = '';
+        els.bestiaryBioma.value = '';
+        els.bestiaryPapel.value = '';
     }
 
     function renderFichaList(items) {
@@ -678,6 +1266,62 @@
         els.fichaList.appendChild(frag);
     }
 
+    function renderBestiaryList(items) {
+        els.fichaList.innerHTML = '';
+        if (!items.length) {
+            els.fichaList.innerHTML = '<li class="cb-ficha-empty">Nenhuma criatura encontrada.</li>';
+            return;
+        }
+
+        const frag = document.createDocumentFragment();
+        for (const criatura of items) {
+            const token = montarTokenCriatura(criatura);
+            const li = document.createElement('li');
+            li.dataset.criaturaId = criatura.id;
+
+            const thumb = document.createElement('div');
+            thumb.className = 'cb-ficha-thumb';
+            if (token.imagem) {
+                const img = document.createElement('img');
+                img.src = resolveImage(token.imagem);
+                img.alt = criatura.nome || 'Criatura';
+                img.loading = 'lazy';
+                img.onerror = () => {
+                    img.remove();
+                    thumb.textContent = (criatura.nome || '?').trim().charAt(0) || '?';
+                };
+                thumb.appendChild(img);
+            } else {
+                thumb.textContent = (criatura.nome || '?').trim().charAt(0) || '?';
+            }
+            li.appendChild(thumb);
+
+            const info = document.createElement('div');
+            info.className = 'cb-ficha-info';
+
+            const nm = document.createElement('div');
+            nm.className = 'cb-ficha-name';
+            nm.textContent = criatura.nome || 'Criatura sem nome';
+            info.appendChild(nm);
+
+            const meta = document.createElement('div');
+            meta.className = 'cb-ficha-meta';
+            meta.innerHTML = [
+                token.nd !== undefined && token.nd !== null ? `<strong>ND ${escapeHtml(token.nd)}</strong>` : '',
+                token.tipo,
+                token.tamanho,
+                token.bioma,
+                token.papelTatico
+            ].filter(Boolean).map(escapeHtmlExceptStrong).join(' • ') || '—';
+            info.appendChild(meta);
+
+            li.appendChild(info);
+            li.addEventListener('click', () => onBestiaryPicked(criatura));
+            frag.appendChild(li);
+        }
+        els.fichaList.appendChild(frag);
+    }
+
     async function onFichaPicked(fichaListItem) {
         // Buscar ficha completa para obter a imagem (vem em data.ficha)
         try {
@@ -687,10 +1331,19 @@
             const data = await resp.json();
             const ficha = (data && data.success !== false) ? (data.ficha || data) : null;
             if (ficha) {
+                const tamanhoInferido = await inferFichaSize(ficha);
                 addTokenFromFicha({
+                    ...ficha,
                     id: ficha.id || fichaListItem.id,
                     personagem: ficha.personagem || fichaListItem.personagem,
-                    personagem_imagem: ficha.personagem_imagem || null
+                    personagem_imagem: ficha.personagem_imagem || null,
+                    tamanho: ficha.tamanho || ficha.categoria_tamanho || tamanhoInferido || 'Médio',
+                    pv_total: ficha.pv_total,
+                    pv_atuais: ficha.pv_atuais,
+                    pm_total: ficha.pm_total,
+                    pm_atuais: ficha.pm_atuais,
+                    defesa: ficha.defesa_total,
+                    poderes: ficha.poderes || []
                 });
             } else {
                 addTokenFromFicha(fichaListItem);
@@ -699,6 +1352,66 @@
             addTokenFromFicha(fichaListItem);
         }
         closeModal();
+    }
+
+    async function inferFichaSize(ficha) {
+        if (ficha.tamanho || ficha.categoria_tamanho) {
+            return ficha.tamanho || ficha.categoria_tamanho;
+        }
+        const byAncestralidade = await getAncestralidadeSizes();
+        const key = normalizeText(ficha.ancestralidade || '');
+        return byAncestralidade[key] || null;
+    }
+
+    async function getAncestralidadeSizes() {
+        if (state.ancestralidadeSizesLoaded) return state.ancestralidadeSizes;
+        state.ancestralidadeSizesLoaded = true;
+
+        try {
+            const resp = await fetch('data/ancestralidades.json', { credentials: 'same-origin' });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const data = await resp.json();
+            const lista = Array.isArray(data) ? data : (data.ancestralidades || []);
+
+            for (const ancestralidade of lista) {
+                const tamanho = inferSizeFromAncestralidade(ancestralidade);
+                if (!tamanho) continue;
+                [ancestralidade.id, ancestralidade.nome].filter(Boolean).forEach(value => {
+                    state.ancestralidadeSizes[normalizeText(value)] = tamanho;
+                });
+            }
+        } catch (e) {
+            state.ancestralidadeSizes = {};
+        }
+
+        return state.ancestralidadeSizes;
+    }
+
+    function inferSizeFromAncestralidade(ancestralidade) {
+        const tamanhos = [];
+        for (const traco of (ancestralidade.tracos || [])) {
+            const tamanho = inferSizeFromText(traco.descricao || '');
+            if (tamanho) tamanhos.push(tamanho);
+        }
+        return tamanhos.sort((a, b) => sizeCellsFromCategory(b) - sizeCellsFromCategory(a))[0] || null;
+    }
+
+    function inferSizeFromText(text) {
+        const match = String(text || '').match(/tamanho\s+(?:é|e)\s+(Minúsculo|Minusculo|Pequeno|Médio|Medio|Grande|Enorme|Colossal)/i);
+        return match ? normalizeSizeLabel(match[1]) : null;
+    }
+
+    function normalizeSizeLabel(value) {
+        const key = normalizeText(value);
+        const labels = {
+            minusculo: 'Minúsculo',
+            pequeno: 'Pequeno',
+            medio: 'Médio',
+            grande: 'Grande',
+            enorme: 'Enorme',
+            colossal: 'Colossal'
+        };
+        return labels[key] || value;
     }
 
     function filterFichas(term) {
@@ -711,6 +1424,478 @@
             return hay.includes(q);
         });
         renderFichaList(filtered);
+    }
+
+    function filterBestiary() {
+        const q = normalizeText(els.modalSearch.value);
+        const nd = els.bestiaryNd.value;
+        const tipo = normalizeText(els.bestiaryTipo.value);
+        const tamanho = normalizeText(els.bestiaryTamanho.value);
+        const bioma = normalizeText(els.bestiaryBioma.value);
+        const papel = normalizeText(els.bestiaryPapel.value);
+
+        const filtered = state.bestiario.filter(criatura => {
+            const token = montarTokenCriatura(criatura);
+            const hay = normalizeText([
+                criatura.nome,
+                criatura.nomeAlternativo,
+                criatura.fraseImpacto,
+                token.tipo,
+                token.tamanho,
+                token.bioma,
+                token.papelTatico
+            ].filter(Boolean).join(' '));
+
+            if (q && !hay.includes(q)) return false;
+            if (nd && String(token.nd) !== nd) return false;
+            if (tipo && normalizeText(token.tipo) !== tipo) return false;
+            if (tamanho && normalizeText(token.tamanho) !== tamanho) return false;
+            if (bioma && normalizeText(token.bioma) !== bioma) return false;
+            if (papel && !normalizeText(token.papelTatico).includes(papel)) return false;
+            return true;
+        });
+
+        renderBestiaryList(filtered);
+    }
+
+    function onBestiaryPicked(criatura) {
+        const token = montarTokenCriatura(criatura);
+        addTokenFromBestiaryToken(token);
+        closeModal();
+    }
+
+    function consumePendingBestiaryToken() {
+        try {
+            const raw = localStorage.getItem(BESTIARIO_TOKEN_KEY);
+            if (!raw) return;
+            const token = JSON.parse(raw);
+            if (token && token.id && token.nome) {
+                addTokenFromBestiaryToken(token);
+            }
+            localStorage.removeItem(BESTIARIO_TOKEN_KEY);
+        } catch (e) {
+            localStorage.removeItem(BESTIARIO_TOKEN_KEY);
+        }
+    }
+
+    function adjustTokenResource(tokenId, resource) {
+        const token = state.tokens.find(t => t.id === tokenId);
+        if (!token) return;
+        const isPv = resource === 'pv';
+        const maxKey = isPv ? 'pvMax' : 'pmMax';
+        const currentKey = isPv ? 'pvAtual' : 'pmAtual';
+        const max = numberOrNull(token[maxKey]);
+        if (max === null || max <= 0) return;
+
+        const current = clampResource(token[currentKey], max);
+        const label = isPv ? 'PV atuais' : 'PM atuais';
+        const raw = prompt(`${label} de ${token.name || 'token'}:`, String(current));
+        if (raw === null) return;
+
+        const next = parseResource(raw);
+        if (next === null) return;
+        token[currentKey] = clamp(next, 0, max);
+        renderTokens();
+        selectToken(token.id);
+        saveState();
+    }
+
+    function openTokenActionPanel(tokenId, actionType = null) {
+        const token = state.tokens.find(t => t.id === tokenId);
+        if (!token) return;
+        const groups = getTokenActionGroups(token);
+        const types = actionType
+            ? [actionType]
+            : Object.keys(ACTION_LABELS).filter(type => groups[type] && groups[type].length);
+        els.actionTitle.textContent = 'Ações';
+        els.actionList.innerHTML = '';
+
+        if (!types.length) {
+            els.actionList.innerHTML = '<p class="cb-action-empty">Nada cadastrado nesta categoria.</p>';
+        } else {
+            const frag = document.createDocumentFragment();
+            for (const type of types) {
+                const section = document.createElement('section');
+                section.className = 'cb-action-section';
+
+                const sectionTitle = document.createElement('h3');
+                sectionTitle.className = 'cb-action-section-title';
+                sectionTitle.textContent = ACTION_LABELS[type] || 'Ações';
+                section.appendChild(sectionTitle);
+
+                for (const item of (groups[type] || [])) {
+                    section.appendChild(buildActionCard(item, token));
+                }
+                frag.appendChild(section);
+            }
+            els.actionList.appendChild(frag);
+        }
+
+        els.actionPanel.hidden = false;
+    }
+
+    function buildActionCard(item, token) {
+        const card = document.createElement('article');
+        card.className = 'cb-action-card';
+
+        const title = document.createElement('h4');
+        title.textContent = item.nome || 'Ação';
+        card.appendChild(title);
+
+        const metaParts = [item.tipo, item.origem].filter(Boolean);
+        if (metaParts.length) {
+            const meta = document.createElement('span');
+            meta.className = 'cb-action-meta';
+            meta.textContent = metaParts.join(' • ');
+            card.appendChild(meta);
+        }
+
+        if (item.detalhe) {
+            const detail = document.createElement('p');
+            detail.textContent = item.detalhe;
+            card.appendChild(detail);
+        }
+
+        if (isMeleeAction(item)) {
+            const buttons = document.createElement('div');
+            buttons.className = 'cb-action-buttons';
+
+            const reach = document.createElement('button');
+            reach.type = 'button';
+            reach.className = 'cb-action-reach-btn';
+            const setReachLabel = () => {
+                const active = isReachPreviewActive(token.id, item);
+                reach.textContent = active ? 'Ocultar alcance' : 'Mostrar alcance';
+                reach.classList.toggle('is-active', active);
+            };
+            setReachLabel();
+            reach.addEventListener('click', () => {
+                toggleMeleeReachPreview(token, item);
+                setReachLabel();
+            });
+            buttons.appendChild(reach);
+
+            const attack = document.createElement('button');
+            attack.type = 'button';
+            attack.className = 'cb-action-attack-btn';
+            attack.textContent = 'Atacar alvo';
+            attack.addEventListener('click', () => executeMeleeAttack(token, item));
+            buttons.appendChild(attack);
+
+            card.appendChild(buttons);
+        }
+
+        return card;
+    }
+
+    function isMeleeAction(item) {
+        return normalizeText(`${item && item.alcance || ''} ${item && item.nome || ''}`).includes('corpo a corpo')
+            || normalizeText(item && item.nome).includes('gavioes espinhosos');
+    }
+
+    function actionKey(item) {
+        return normalizeText(`${item && item.tipo || ''}:${item && item.nome || ''}:${item && item.alcance || ''}`);
+    }
+
+    function isReachPreviewActive(tokenId, item) {
+        return !!state.reachPreview
+            && state.reachPreview.tokenId === tokenId
+            && state.reachPreview.actionKey === actionKey(item);
+    }
+
+    function toggleMeleeReachPreview(token, item) {
+        if (isReachPreviewActive(token.id, item)) {
+            clearReachPreview(true);
+            return;
+        }
+        state.reachPreview = {
+            tokenId: token.id,
+            actionKey: actionKey(item),
+            alcance: item.alcance || 'corpo a corpo',
+            action: item
+        };
+        renderBoard();
+    }
+
+    function clearReachPreview(shouldRender = true) {
+        if (!state.reachPreview) return;
+        state.reachPreview = null;
+        if (shouldRender) renderBoard();
+    }
+
+    function getReachAttackerPosition(token) {
+        if (interaction
+            && interaction.type === 'token-drag'
+            && interaction.tokenId === token.id
+            && typeof interaction.tempCol === 'number') {
+            const max = Math.max(1, Number(token.sizeCells || 1));
+            return {
+                col: clamp(Math.round(interaction.tempCol), 0, state.cols - max),
+                row: clamp(Math.round(interaction.tempRow), 0, state.rows - max)
+            };
+        }
+        return { col: token.col, row: token.row };
+    }
+
+    function isReachPreviewCell(col, row) {
+        if (!state.reachPreview) return false;
+        const token = state.tokens.find(t => t.id === state.reachPreview.tokenId);
+        if (!token) return false;
+        if (!normalizeText(state.reachPreview.alcance).includes('corpo a corpo')) return false;
+
+        const { col: baseCol, row: baseRow } = getReachAttackerPosition(token);
+        const size = Math.max(1, Number(token.sizeCells || 1));
+        const minCol = baseCol - 1;
+        const maxCol = baseCol + size;
+        const minRow = baseRow - 1;
+        const maxRow = baseRow + size;
+        const insideRing = col >= minCol && col <= maxCol && row >= minRow && row <= maxRow;
+        const insideToken = col >= baseCol && col < baseCol + size && row >= baseRow && row < baseRow + size;
+        return insideRing && !insideToken && col >= 0 && row >= 0 && col < state.cols && row < state.rows;
+    }
+
+    function computeReachTargetCellSet() {
+        const set = new Set();
+        if (!state.reachPreview) return set;
+        const attacker = state.tokens.find(t => t.id === state.reachPreview.tokenId);
+        if (!attacker) return set;
+        if (!normalizeText(state.reachPreview.alcance).includes('corpo a corpo')) return set;
+        const { col, row } = getReachAttackerPosition(attacker);
+        const reach = buildMeleeReachCellsAt(col, row, attacker.sizeCells);
+        for (const target of state.tokens) {
+            if (target.id === attacker.id) continue;
+            for (const cell of getTokenCells(target)) {
+                if (reach.has(occupiedKey(cell.col, cell.row))) {
+                    set.add(occupiedKey(cell.col, cell.row));
+                }
+            }
+        }
+        return set;
+    }
+
+    function executeMeleeAttack(attacker, item) {
+        const targets = getTokensInMeleeReach(attacker);
+        if (!targets.length) {
+            if (!isReachPreviewActive(attacker.id, item)) {
+                toggleMeleeReachPreview(attacker, item);
+            }
+            alert('Nenhum alvo dentro do alcance corpo a corpo.');
+            return;
+        }
+
+        const target = chooseAttackTarget(targets);
+        if (!target) return;
+        performMeleeAttack(attacker, item, target);
+    }
+
+    function performMeleeAttack(attacker, item, target) {
+        if (!attacker || !target) return;
+        const attackCount = item.quantidadeAtaques || parseAttackCount(item, item.nome) || 1;
+        const attackBonus = item.bonusAtaque ?? parseAttackBonus(item);
+        const defense = parseDefense(target);
+        const damageFormula = item.danoFormula || parseDamageFormula(item.detalhe || item.nome || '') || '1d8+4';
+        const results = [];
+        let totalDamage = 0;
+
+        for (let i = 0; i < attackCount; i++) {
+            const d20 = rollDie(20);
+            const total = d20 + attackBonus;
+            if (total > defense) {
+                const damage = rollDamage(damageFormula);
+                totalDamage += damage.total;
+                results.push(`Ataque ${i + 1}: ${d20}+${attackBonus}=${total} contra Defesa ${defense}. Acertou: ${damage.rollsText}+${damage.modifier}=${damage.total} perfuração.`);
+            } else {
+                results.push(`Ataque ${i + 1}: ${d20}+${attackBonus}=${total} contra Defesa ${defense}. Errou.`);
+            }
+        }
+
+        if (totalDamage > 0) {
+            applyDamageToToken(target, totalDamage);
+        }
+
+        renderTokens();
+        selectToken(attacker.id);
+        saveState();
+        alert(`${attacker.name} atacou ${target.name} com ${item.nome}.\n\n${results.join('\n')}\n\nDano total: ${totalDamage}. PV de ${target.name}: ${clampResource(target.pvAtual, target.pvMax)}/${target.pvMax || 0}.`);
+    }
+
+    function getTokensInMeleeReach(attacker) {
+        const reachable = buildMeleeReachCells(attacker);
+        return state.tokens.filter(token => {
+            if (token.id === attacker.id) return false;
+            return getTokenCells(token).some(cell => reachable.has(occupiedKey(cell.col, cell.row)));
+        });
+    }
+
+    function isTokenInMeleeReach(target, attacker) {
+        const reach = buildMeleeReachCells(attacker);
+        return getTokenCells(target).some(cell => reach.has(occupiedKey(cell.col, cell.row)));
+    }
+
+    function buildMeleeReachCells(token) {
+        const { col, row } = getReachAttackerPosition(token);
+        return buildMeleeReachCellsAt(col, row, token.sizeCells);
+    }
+
+    function buildMeleeReachCellsAt(baseCol, baseRow, sizeCells) {
+        const cells = new Set();
+        const size = Math.max(1, Number(sizeCells || 1));
+        for (let row = baseRow - 1; row <= baseRow + size; row++) {
+            for (let col = baseCol - 1; col <= baseCol + size; col++) {
+                const insideToken = col >= baseCol && col < baseCol + size && row >= baseRow && row < baseRow + size;
+                if (!insideToken && col >= 0 && row >= 0 && col < state.cols && row < state.rows) {
+                    cells.add(occupiedKey(col, row));
+                }
+            }
+        }
+        return cells;
+    }
+
+    function getTokenCells(token) {
+        const cells = [];
+        const size = Math.max(1, Number(token.sizeCells || 1));
+        for (let row = token.row; row < token.row + size; row++) {
+            for (let col = token.col; col < token.col + size; col++) {
+                cells.push({ col, row });
+            }
+        }
+        return cells;
+    }
+
+    function chooseAttackTarget(targets) {
+        if (targets.length === 1) return targets[0];
+        const options = targets.map((target, index) => `${index + 1}. ${target.name || 'Token'} (Defesa ${parseDefense(target)}, PV ${clampResource(target.pvAtual, target.pvMax)}/${target.pvMax || 0})`).join('\n');
+        const raw = prompt(`Escolha o alvo:\n${options}`, '1');
+        if (raw === null) return null;
+        const index = Number(raw) - 1;
+        return targets[index] || null;
+    }
+
+    function parseDefense(token) {
+        const parsed = Number(String(token.defesa ?? '').match(/-?\d+/)?.[0]);
+        return Number.isFinite(parsed) ? parsed : 10;
+    }
+
+    function applyDamageToToken(token, damage) {
+        const max = numberOrNull(token.pvMax);
+        if (max === null || max <= 0) return;
+        const current = clampResource(token.pvAtual, max);
+        token.pvAtual = clamp(current - damage, 0, max);
+    }
+
+    function parseAttackCount(item, text = '') {
+        const explicit = Number(item.quantidadeAtaques ?? item.quantidade);
+        if (Number.isFinite(explicit) && explicit > 0) return Math.round(explicit);
+        const match = String(text || '').match(/^\s*(\d+)\s+/);
+        return match ? Number(match[1]) : 1;
+    }
+
+    function parseAttackBonus(item) {
+        const explicit = Number(item.bonusAtaque);
+        if (Number.isFinite(explicit)) return explicit;
+        const text = `${item.teste || ''} ${item.ataque || ''} ${item.bonus || ''} ${item.detalhe || ''} ${item.nome || ''}`;
+        const match = String(text).match(/([+-]\s*\d+)/);
+        return match ? Number(match[1].replace(/\s+/g, '')) : 0;
+    }
+
+    function parseDamageFormula(text) {
+        const match = String(text || '').match(/(\d+)d(\d+)\s*([+-]\s*\d+)?/i);
+        if (!match) return '';
+        return `${match[1]}d${match[2]}${match[3] ? match[3].replace(/\s+/g, '') : ''}`;
+    }
+
+    function rollDamage(formula) {
+        const match = String(formula || '').match(/(\d+)d(\d+)\s*([+-]\s*\d+)?/i);
+        if (!match) return { total: 0, rollsText: '0', modifier: 0 };
+        const count = Number(match[1]);
+        const sides = Number(match[2]);
+        const modifier = match[3] ? Number(match[3].replace(/\s+/g, '')) : 0;
+        const rolls = [];
+        for (let i = 0; i < count; i++) {
+            rolls.push(rollDie(sides));
+        }
+        return {
+            total: rolls.reduce((sum, value) => sum + value, 0) + modifier,
+            rollsText: rolls.join('+'),
+            modifier
+        };
+    }
+
+    function rollDie(sides) {
+        return Math.floor(Math.random() * sides) + 1;
+    }
+
+    function closeTokenActionPanel() {
+        els.actionPanel.hidden = true;
+    }
+
+    // ----------------------------------------------------------------
+    // Modal de confirmação de ação direcionada
+    // ----------------------------------------------------------------
+
+    function openAttackConfirmation(attacker, target, action) {
+        if (!els.confirm) return;
+        pendingAttack = { attacker, target, action };
+
+        const actionName = (action && action.nome) ? action.nome : 'esta ação';
+        const attackerName = attacker.name || 'Atacante';
+        els.confirmText.innerHTML =
+            `Direcionar <strong>${escapeHtml(actionName)}</strong> de ` +
+            `<strong>${escapeHtml(attackerName)}</strong> ao alvo abaixo?`;
+
+        // Thumbnail do alvo
+        els.confirmTargetThumb.innerHTML = '';
+        if (target.image) {
+            const img = document.createElement('img');
+            img.src = target.image;
+            img.alt = target.name || 'Alvo';
+            img.draggable = false;
+            els.confirmTargetThumb.appendChild(img);
+        } else {
+            els.confirmTargetThumb.textContent = (target.name || '?').trim().charAt(0) || '?';
+        }
+
+        els.confirmTargetName.textContent = target.name || 'Alvo';
+
+        const metaParts = [];
+        const pvMax = numberOrNull(target.pvMax);
+        if (pvMax !== null && pvMax > 0) {
+            metaParts.push(`PV ${clampResource(target.pvAtual, pvMax)}/${pvMax}`);
+        }
+        const defesa = target.defesa ?? null;
+        if (defesa !== null && defesa !== '') metaParts.push(`Defesa ${defesa}`);
+        if (target.tipo) metaParts.push(target.tipo);
+        els.confirmTargetMeta.textContent = metaParts.join(' • ');
+
+        els.confirm.hidden = false;
+    }
+
+    function closeAttackConfirmation() {
+        if (!els.confirm) return;
+        els.confirm.hidden = true;
+        pendingAttack = null;
+    }
+
+    function confirmPendingAttack() {
+        if (!pendingAttack) return;
+        const { attacker, target, action } = pendingAttack;
+        closeAttackConfirmation();
+        performMeleeAttack(attacker, action, target);
+        clearReachPreview(true);
+        closeTokenActionPanel();
+    }
+
+    function normalizeText(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+    }
+
+    function escapeHtmlExceptStrong(value) {
+        if (String(value).startsWith('<strong>')) return value;
+        return escapeHtml(value);
     }
 
     // ----------------------------------------------------------------
@@ -737,12 +1922,31 @@
     }
 
     function showTooltip(token, x, y) {
+        const bestiaryInfo = token.source === 'bestiario'
+            ? `<span>ND ${escapeHtml(token.nd ?? '—')} • PV ${escapeHtml(token.pvMax ?? '—')} • Defesa ${escapeHtml(token.defesa ?? '—')}</span>`
+            : '';
+        const resourceInfo = buildTooltipResourceInfo(token);
         els.tooltip.hidden = false;
         els.tooltip.innerHTML = `
             <strong>${escapeHtml(token.name || 'Sem nome')}</strong>
-            <span>Tamanho: ${token.sizeCells}x${token.sizeCells} • Posição: ${token.col + 1},${token.row + 1}</span>
+            ${bestiaryInfo}
+            ${resourceInfo}
+            <span>Ocupa: ${token.sizeCells}x${token.sizeCells} (${formatMeters(token.sizeCells)}m) • Posição: ${token.col + 1},${token.row + 1}</span>
         `;
         positionTooltip(x, y);
+    }
+
+    function formatMeters(cells) {
+        return String(Number(cells || 1) * GRID_METERS).replace('.', ',');
+    }
+
+    function buildTooltipResourceInfo(token) {
+        const parts = [];
+        const pvMax = numberOrNull(token.pvMax);
+        const pmMax = numberOrNull(token.pmMax);
+        if (pvMax !== null && pvMax > 0) parts.push(`PV ${clampResource(token.pvAtual, pvMax)}/${pvMax}`);
+        if (pmMax !== null && pmMax > 0) parts.push(`PM ${clampResource(token.pmAtual, pmMax)}/${pmMax}`);
+        return parts.length ? `<span>${escapeHtml(parts.join(' • '))}</span>` : '';
     }
 
     function positionTooltip(x, y) {
@@ -783,13 +1987,42 @@
         els.stage.addEventListener('wheel', onWheel, { passive: false });
         // Bloquear menu contextual no stage para permitir botão direito como pan no desktop
         els.stage.addEventListener('contextmenu', (e) => e.preventDefault());
+        els.tokensLayer.addEventListener('click', (e) => {
+            const resourceBar = e.target.closest('.cb-resource-bar');
+            const tokenEl = e.target.closest('.cb-token');
+            if (!resourceBar || !tokenEl) return;
+            e.preventDefault();
+            e.stopPropagation();
+            adjustTokenResource(tokenEl.dataset.tokenId, resourceBar.dataset.resource);
+        });
 
         els.addToken.addEventListener('click', openModal);
+        els.addBestiaryToken.addEventListener('click', openBestiaryModal);
+        els.actionClose.addEventListener('click', closeTokenActionPanel);
+
+        if (els.confirm) {
+            els.confirmClose.addEventListener('click', closeAttackConfirmation);
+            els.confirmCancel.addEventListener('click', closeAttackConfirmation);
+            els.confirmOk.addEventListener('click', confirmPendingAttack);
+            els.confirm.addEventListener('click', (e) => {
+                if (e.target === els.confirm) closeAttackConfirmation();
+            });
+        }
         els.modalClose.addEventListener('click', closeModal);
         els.modal.addEventListener('click', (e) => {
             if (e.target === els.modal) closeModal();
         });
-        els.modalSearch.addEventListener('input', (e) => filterFichas(e.target.value));
+        els.modalSearch.addEventListener('input', (e) => {
+            if (state.modalMode === 'bestiario') filterBestiary();
+            else filterFichas(e.target.value);
+        });
+        [
+            els.bestiaryNd,
+            els.bestiaryTipo,
+            els.bestiaryTamanho,
+            els.bestiaryBioma,
+            els.bestiaryPapel
+        ].forEach(select => select.addEventListener('change', filterBestiary));
         els.addGenericToken.addEventListener('click', () => {
             closeModal();
             addGenericToken();
@@ -834,7 +2067,9 @@
                     removeSelectedToken();
                 }
             } else if (e.key === 'Escape') {
-                if (!els.modal.hidden) closeModal();
+                if (els.confirm && !els.confirm.hidden) closeAttackConfirmation();
+                else if (!els.actionPanel.hidden) closeTokenActionPanel();
+                else if (!els.modal.hidden) closeModal();
                 else selectToken(null);
             }
         });
@@ -856,6 +2091,7 @@
         els.toggleNumbers.checked = state.showNumbers;
         renderBoard();
         renderTokens();
+        consumePendingBestiaryToken();
         if (state.viewport.scale === 1 && state.viewport.x === 0 && state.viewport.y === 0) {
             centerBoard();
         } else {

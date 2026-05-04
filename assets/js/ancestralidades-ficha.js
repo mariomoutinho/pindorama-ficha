@@ -3,6 +3,7 @@
 
     let ancestralidades = [];
     let catalogoMagias = [];
+    let ancoraModalTraco = null;
 
     function normalizar(valor) {
         return String(valor || '')
@@ -241,12 +242,13 @@
         });
     }
 
-    function abrirModalTraco(traco) {
+    function abrirModalTraco(traco, ancora = ancoraModalTraco) {
         const modal = document.getElementById('ancestralidadeTracoModal');
         const titulo = document.getElementById('ancestralidadeTracoTitulo');
         const body = document.getElementById('ancestralidadeTracoBody');
 
         if (!modal || !titulo || !body) return;
+        ancoraModalTraco = ancora || ancoraModalTraco;
 
         titulo.textContent = traco.nome;
         body.innerHTML = `
@@ -259,7 +261,7 @@
             btn.addEventListener('click', () => {
                 const idMagia = btn.dataset.magiaAncestralidade;
                 if (alternarMagiaAncestralidade(idMagia, traco.concede_magias?.limite || 0)) {
-                    abrirModalTraco(traco);
+                    abrirModalTraco(traco, ancoraModalTraco);
                 }
             });
         });
@@ -269,17 +271,55 @@
                 const nome = btn.dataset.periciaTreinada;
                 const limite = traco.concede_pericias_treinadas?.limite || 1;
                 if (alternarPericiaTreinadaPorTraco(nome, traco.id, limite)) {
-                    abrirModalTraco(traco);
+                    abrirModalTraco(traco, ancoraModalTraco);
                 }
             });
         });
 
         modal.hidden = false;
+        posicionarModalTraco(modal, ancoraModalTraco);
+    }
+
+    function posicionarModalTraco(modal, ancora) {
+        const card = modal.querySelector('.poder-modal');
+        if (!card || !ancora) return;
+
+        card.style.position = 'fixed';
+        card.style.margin = '0';
+        card.style.width = 'min(480px, calc(100vw - 24px))';
+
+        const rect = ancora.getBoundingClientRect();
+        const cardRect = card.getBoundingClientRect();
+        const margem = 12;
+
+        let left = rect.left;
+        let top = rect.bottom + 8;
+
+        if (left + cardRect.width > window.innerWidth - margem) {
+            left = window.innerWidth - cardRect.width - margem;
+        }
+        if (top + cardRect.height > window.innerHeight - margem) {
+            top = rect.top - cardRect.height - 8;
+        }
+        if (top < margem) top = margem;
+        if (left < margem) left = margem;
+
+        card.style.left = `${left}px`;
+        card.style.top = `${top}px`;
     }
 
     function fecharModalTraco() {
         const modal = document.getElementById('ancestralidadeTracoModal');
+        const card = modal?.querySelector('.poder-modal');
         if (modal) modal.hidden = true;
+        if (card) {
+            card.style.position = '';
+            card.style.margin = '';
+            card.style.width = '';
+            card.style.left = '';
+            card.style.top = '';
+        }
+        ancoraModalTraco = null;
     }
 
     /**
@@ -553,7 +593,7 @@
         container.querySelectorAll('[data-traco-id]').forEach(botao => {
             botao.addEventListener('click', () => {
                 const traco = ancestralidade.tracos.find(item => item.id === botao.dataset.tracoId);
-                if (traco) abrirModalTraco(traco);
+                if (traco) abrirModalTraco(traco, botao);
             });
         });
 

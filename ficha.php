@@ -788,7 +788,7 @@ $divindadesFicha = $dadosDivindades['divindades'] ?? [];
     <script src="assets/js/ficha.js?v=20260503h"></script>
     <script src="assets/js/atributos.js?v=20260501u"></script>
     <script src="assets/js/poderes.js?v=20260430j"></script>
-    <script src="assets/js/ancestralidades-ficha.js?v=20260501s"></script>
+    <script src="assets/js/ancestralidades-ficha.js?v=20260504a"></script>
     <script src="assets/js/origens.js?v=20260430x"></script>
     <script src="assets/js/divindades.js?v=20260430j"></script>
     <script src="assets/js/entity-picker.js?v=20260503e"></script>

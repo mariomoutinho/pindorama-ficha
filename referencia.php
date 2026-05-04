@@ -53,6 +53,10 @@
                 <strong>Equipamentos</strong>
                 <span>Itens, espaços e regras.</span>
             </a>
+            <a class="home-card-ref" href="bestiario.php">
+                <strong>Bestiário</strong>
+                <span>Criaturas, fichas e tokens.</span>
+            </a>
         </section>
 
         <div class="home-list-footer">
