@@ -459,7 +459,7 @@
                 && state.reachPreview.action) {
                 const attacker = state.tokens.find(t => t.id === state.reachPreview.tokenId);
                 const target = state.tokens.find(t => t.id === clickedId);
-                if (attacker && target && isTokenInMeleeReach(target, attacker)) {
+                if (attacker && target && isTokenInActionReach(target, attacker, state.reachPreview.action)) {
                     ev.preventDefault();
                     ev.stopPropagation();
                     openAttackConfirmation(attacker, target, state.reachPreview.action);
@@ -660,6 +660,8 @@
         }
         // snap-to-grid + clamp dentro do tabuleiro
         const max = token.sizeCells;
+        const didClick = Math.abs((interaction.tempCol ?? token.col) - token.col) < 0.18
+            && Math.abs((interaction.tempRow ?? token.row) - token.row) < 0.18;
         const snappedCol = clamp(Math.round(interaction.tempCol), 0, state.cols - max);
         const snappedRow = clamp(Math.round(interaction.tempRow), 0, state.rows - max);
         token.col = snappedCol;
@@ -671,6 +673,9 @@
             renderBoard();
         }
         saveState();
+        if (didClick) {
+            openTokenActionPanel(token.id);
+        }
         interaction = null;
     }
 
@@ -858,6 +863,66 @@
         saveState();
     }
 
+    async function syncBestiaryTokensFromLocal() {
+        const bestiaryTokens = state.tokens.filter(t => t.source === 'bestiario' && t.fichaId);
+        if (!bestiaryTokens.length) return;
+
+        // Garante que state.bestiario está populado (carrega se ainda não foi feito)
+        if (!state.bestiarioLoaded) {
+            try {
+                const resp = await fetch('data/bestiario.json', { credentials: 'same-origin', cache: 'no-store' });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    loadBestiaryData(data);
+                    state.bestiarioLoaded = true;
+                }
+            } catch (_) {
+                return;
+            }
+        }
+
+        const byId = new Map(state.bestiario.map(c => [c.id, c]));
+        let synced = 0;
+        for (const token of bestiaryTokens) {
+            const criatura = byId.get(token.fichaId);
+            if (!criatura) continue;
+            // Recompõe o token com base nos dados atuais da criatura,
+            // preservando posição/rotação/PV-PM atuais (estado de combate).
+            const fresh = montarTokenCriatura(criatura);
+            token.name = fresh.nome || token.name;
+            token.tipo = fresh.tipo;
+            token.tamanho = fresh.tamanho;
+            token.deslocamento = fresh.deslocamento;
+            token.nd = fresh.nd;
+            token.bioma = fresh.bioma;
+            token.papelTatico = fresh.papelTatico;
+            token.defesa = fresh.defesa;
+            token.pvMax = fresh.pvMax ?? token.pvMax;
+            token.pmMax = fresh.pmMax ?? token.pmMax;
+            // Re-cap PV/PM atuais ao novo máximo, sem zerá-los à toa
+            if (typeof token.pvMax === 'number' && typeof token.pvAtual === 'number') {
+                token.pvAtual = Math.min(token.pvAtual, token.pvMax);
+            }
+            if (typeof token.pmMax === 'number' && typeof token.pmAtual === 'number') {
+                token.pmAtual = Math.min(token.pmAtual, token.pmMax);
+            }
+            token.ataquesPrincipais = fresh.ataquesPrincipais || fresh.ataques || [];
+            token.habilidadesPrincipais = fresh.habilidadesPrincipais || [];
+            token.actions = buildActionsFromBestiaryToken(fresh);
+            const novaImg = fresh.imagem ? resolveImage(fresh.imagem) : null;
+            if (novaImg) {
+                token.tokenImage = novaImg;
+                token.fotoImage = novaImg;
+            }
+            synced++;
+        }
+
+        if (synced > 0) {
+            renderTokens();
+            saveState();
+        }
+    }
+
     async function syncFichaTokensFromServer() {
         const fichaTokens = state.tokens.filter(token => token.fichaId && token.source !== 'bestiario');
         if (!fichaTokens.length) return;
@@ -912,7 +977,7 @@
             defesa: token.defesa,
             bioma: token.bioma,
             papelTatico: token.papelTatico,
-            ataquesPrincipais: token.ataquesPrincipais || [],
+            ataquesPrincipais: token.ataques || token.ataquesPrincipais || [],
             habilidadesPrincipais: token.habilidadesPrincipais || [],
             actions: buildActionsFromBestiaryToken(token)
         });
@@ -932,7 +997,8 @@
             pmMax: criatura.pmMax,
             defesa: criatura.defesa,
             deslocamento: criatura.deslocamento,
-            ataquesPrincipais: (criatura.ataques || []).slice(0, 3),
+            ataquesPrincipais: criatura.ataques || [],
+            ataques: criatura.ataques || [],
             habilidadesPrincipais: (criatura.habilidades || []).slice(0, 5).map(h => String(h).split('.')[0]),
             bioma: criatura.bioma,
             papelTatico: criatura.papelTatico
@@ -950,6 +1016,8 @@
             pmMax: token.pmMax ?? criatura.pmMax,
             defesa: token.defesa ?? criatura.defesa,
             deslocamento: token.deslocamento || criatura.deslocamento,
+            ataques: token.ataques || token.ataquesPrincipais || criatura.ataques || [],
+            ataquesPrincipais: token.ataquesPrincipais || token.ataques || criatura.ataques || [],
             bioma: token.bioma || criatura.bioma,
             papelTatico: token.papelTatico || criatura.papelTatico
         });
@@ -1020,7 +1088,7 @@
     }
 
     function buildActionsFromBestiaryToken(token) {
-        const ataques = normalizeActionItems(token.ataquesPrincipais || [], 'ataque');
+        const ataques = normalizeActionItems(token.ataques || token.ataquesPrincipais || [], 'ataque');
         const poderes = normalizeActionItems(token.habilidadesPrincipais || [], 'habilidade');
         return pruneActionGroups({
             ataques,
@@ -1120,6 +1188,7 @@
         [
             ['Teste', item.teste || item.ataque || item.bonus],
             ['Dano', item.dano],
+            ['Tipo de dano', item.tipoDano || item.tipo_dano],
             ['Crítico', item.critico],
             ['Alcance', alcance],
             ['Qtd.', item.quantidade],
@@ -1139,6 +1208,8 @@
             quantidadeAtaques,
             bonusAtaque,
             danoFormula,
+            dano: item.dano || danoFormula,
+            tipoDano: item.tipoDano || item.tipo_dano || '',
             detalhe: partes.join(' | ')
         };
     }
@@ -1146,6 +1217,8 @@
     function inferActionReach(text) {
         const normalized = normalizeText(text);
         if (normalized.includes('corpo a corpo')) return 'corpo a corpo';
+        if (normalized.includes('curto') || normalized.includes('9m') || normalized.includes('6 quadr')) return 'curto';
+        if (normalized.includes('longo') || normalized.includes('90m') || normalized.includes('60 quadr')) return 'longo';
         if (normalized.includes('gavioes espinhosos')) return 'corpo a corpo';
         return '';
     }
@@ -1750,7 +1823,7 @@
     function buildActionCard(item, token) {
         const card = document.createElement('article');
         card.className = 'cb-action-card';
-        const melee = isMeleeAction(item);
+        const attackWithReach = isAttackWithReach(item);
 
         const title = document.createElement('h4');
         title.textContent = getActionDisplayName(item);
@@ -1764,7 +1837,7 @@
             card.appendChild(meta);
         }
 
-        if (melee) {
+        if (attackWithReach) {
             card.appendChild(buildAttackFields(item));
         } else if (item.detalhe) {
             const detail = document.createElement('p');
@@ -1772,7 +1845,7 @@
             card.appendChild(detail);
         }
 
-        if (melee) {
+        if (attackWithReach) {
             const buttons = document.createElement('div');
             buttons.className = 'cb-action-buttons';
 
@@ -1781,12 +1854,12 @@
             selectAttack.className = 'cb-action-attack-btn';
             const setAttackLabel = () => {
                 const active = isReachPreviewActive(token.id, item);
-                selectAttack.textContent = active ? 'Ataque selecionado' : 'Selecionar ataque';
+                selectAttack.textContent = active ? 'Alcance selecionado' : 'Mostrar alcance';
                 selectAttack.classList.toggle('is-active', active);
             };
             setAttackLabel();
             selectAttack.addEventListener('click', () => {
-                toggleMeleeReachPreview(token, item);
+                toggleReachPreview(token, item);
                 setAttackLabel();
                 if (isReachPreviewActive(token.id, item)) {
                     closeTokenActionPanel();
@@ -1811,7 +1884,7 @@
             ['Alcance', item.alcance || 'corpo a corpo'],
             ['Quantidade', quantidade === 1 ? '1 ataque' : `${quantidade} ataques`],
             ['Teste', formatSignedBonus(bonus)],
-            ['Dano', formatDamageLabel(dano)]
+            ['Dano', formatDamageLabel(dano, item.tipoDano)]
         ];
 
         for (const [label, value] of fields) {
@@ -1842,15 +1915,16 @@
         return parsed >= 0 ? `+${parsed}` : String(parsed);
     }
 
-    function formatDamageLabel(value) {
+    function formatDamageLabel(value, tipoDano = '') {
         const text = String(value || '').trim();
-        if (!text) return '1d8+4 perfuração cada';
-        if (normalizeText(text).includes('perfuracao')) return text;
-        return `${text} perfuração cada`;
+        if (!text) return tipoDano ? `0 ${tipoDano}` : '0';
+        if (!tipoDano || normalizeText(text).includes(normalizeText(tipoDano))) return text;
+        return `${text} ${tipoDano}`;
     }
 
-    function isMeleeAction(item) {
-        return normalizeText(`${item && item.alcance || ''} ${item && item.nome || ''}`).includes('corpo a corpo')
+    function isAttackWithReach(item) {
+        return normalizeText(item && item.tipo).includes('ataque')
+            || ['corpo a corpo', 'curto', 'longo'].some(alvo => normalizeText(item && item.alcance).includes(alvo))
             || normalizeText(item && item.nome).includes('gavioes espinhosos')
             || normalizeText(item && item.nome).includes('gavinhos espinhosos')
             || normalizeText(item && item.nome).includes('gravetos espinhosos');
@@ -1866,7 +1940,7 @@
             && state.reachPreview.actionKey === actionKey(item);
     }
 
-    function toggleMeleeReachPreview(token, item) {
+    function toggleReachPreview(token, item) {
         if (isReachPreviewActive(token.id, item)) {
             clearReachPreview(true);
             return;
@@ -1906,17 +1980,7 @@
         if (!state.reachPreview) return false;
         const token = state.tokens.find(t => t.id === state.reachPreview.tokenId);
         if (!token) return false;
-        if (!normalizeText(state.reachPreview.alcance).includes('corpo a corpo')) return false;
-
-        const { col: baseCol, row: baseRow } = getReachAttackerPosition(token);
-        const size = Math.max(1, Number(token.sizeCells || 1));
-        const minCol = baseCol - 1;
-        const maxCol = baseCol + size;
-        const minRow = baseRow - 1;
-        const maxRow = baseRow + size;
-        const insideRing = col >= minCol && col <= maxCol && row >= minRow && row <= maxRow;
-        const insideToken = col >= baseCol && col < baseCol + size && row >= baseRow && row < baseRow + size;
-        return insideRing && !insideToken && col >= 0 && row >= 0 && col < state.cols && row < state.rows;
+        return buildActionReachCells(token, state.reachPreview.action).has(occupiedKey(col, row));
     }
 
     function computeReachTargetCellSet() {
@@ -1924,9 +1988,7 @@
         if (!state.reachPreview) return set;
         const attacker = state.tokens.find(t => t.id === state.reachPreview.tokenId);
         if (!attacker) return set;
-        if (!normalizeText(state.reachPreview.alcance).includes('corpo a corpo')) return set;
-        const { col, row } = getReachAttackerPosition(attacker);
-        const reach = buildMeleeReachCellsAt(col, row, attacker.sizeCells);
+        const reach = buildActionReachCells(attacker, state.reachPreview.action);
         for (const target of state.tokens) {
             if (target.id === attacker.id) continue;
             for (const cell of getTokenCells(target)) {
@@ -1939,17 +2001,17 @@
     }
 
     function executeMeleeAttack(attacker, item) {
-        const targets = getTokensInMeleeReach(attacker);
+        const targets = getTokensInActionReach(attacker, item);
         if (!targets.length) {
             if (!isReachPreviewActive(attacker.id, item)) {
-                toggleMeleeReachPreview(attacker, item);
+                toggleReachPreview(attacker, item);
             }
             openAttackResultModal({
                 attacker,
                 target: null,
                 actionName: getActionDisplayName(item),
                 totalDamage: 0,
-                message: 'Nenhum alvo dentro do alcance corpo a corpo.'
+                message: 'Nenhum alvo dentro do alcance.'
             });
             return;
         }
@@ -1986,9 +2048,9 @@
     }
 
     function rollSingleMeleeAttack(attacker, item, target, index) {
-        const attackBonus = item.bonusAtaque ?? parseAttackBonus(item);
+        const attackBonus = parseAttackBonus(item);
         const defense = parseDefense(target);
-        const damageFormula = item.danoFormula || parseDamageFormula(item.detalhe || item.nome || '') || '1d8+4';
+        const damageFormula = item.danoFormula || parseDamageFormula(item.dano || item.detalhe || item.nome || '') || '1d8';
         const d20 = rollDie(20);
         const total = d20 + attackBonus;
 
@@ -2025,31 +2087,45 @@
         };
     }
 
-    function getTokensInMeleeReach(attacker) {
-        const reachable = buildMeleeReachCells(attacker);
+    function getTokensInActionReach(attacker, action) {
+        const reachable = buildActionReachCells(attacker, action);
         return state.tokens.filter(token => {
             if (token.id === attacker.id) return false;
             return getTokenCells(token).some(cell => reachable.has(occupiedKey(cell.col, cell.row)));
         });
     }
 
-    function isTokenInMeleeReach(target, attacker) {
-        const reach = buildMeleeReachCells(attacker);
+    function isTokenInActionReach(target, attacker, action) {
+        const reach = buildActionReachCells(attacker, action);
         return getTokenCells(target).some(cell => reach.has(occupiedKey(cell.col, cell.row)));
     }
 
-    function buildMeleeReachCells(token) {
+    function buildActionReachCells(token, action) {
         const { col, row } = getReachAttackerPosition(token);
-        return buildMeleeReachCellsAt(col, row, token.sizeCells);
+        return buildReachCellsAt(col, row, token.sizeCells, getActionReachSquares(action));
     }
 
-    function buildMeleeReachCellsAt(baseCol, baseRow, sizeCells) {
+    function getActionReachSquares(action) {
+        const alcance = normalizeText(action?.alcance || '');
+        if (alcance.includes('longo') || alcance.includes('90') || alcance.includes('60')) return 60;
+        if (alcance.includes('curto') || alcance.includes('9m') || alcance.includes('6 quadr')) return 6;
+        return 1;
+    }
+
+    function buildReachCellsAt(baseCol, baseRow, sizeCells, radius) {
         const cells = new Set();
         const size = Math.max(1, Number(sizeCells || 1));
-        for (let row = baseRow - 1; row <= baseRow + size; row++) {
-            for (let col = baseCol - 1; col <= baseCol + size; col++) {
+        const reach = Math.max(1, Number(radius || 1));
+        const minCol = Math.max(0, baseCol - reach);
+        const maxCol = Math.min(state.cols - 1, baseCol + size - 1 + reach);
+        const minRow = Math.max(0, baseRow - reach);
+        const maxRow = Math.min(state.rows - 1, baseRow + size - 1 + reach);
+        for (let row = minRow; row <= maxRow; row++) {
+            for (let col = minCol; col <= maxCol; col++) {
                 const insideToken = col >= baseCol && col < baseCol + size && row >= baseRow && row < baseRow + size;
-                if (!insideToken && col >= 0 && row >= 0 && col < state.cols && row < state.rows) {
+                const dx = col < baseCol ? baseCol - col : (col >= baseCol + size ? col - (baseCol + size - 1) : 0);
+                const dy = row < baseRow ? baseRow - row : (row >= baseRow + size ? row - (baseRow + size - 1) : 0);
+                if (!insideToken && Math.max(dx, dy) <= reach) {
                     cells.add(occupiedKey(col, row));
                 }
             }
@@ -2523,7 +2599,10 @@
             // mantém o tabuleiro visível em redimensionamentos extremos
             applyViewport();
         });
-        window.addEventListener('focus', syncFichaTokensFromServer);
+        window.addEventListener('focus', () => {
+            syncFichaTokensFromServer();
+            syncBestiaryTokensFromLocal();
+        });
     }
 
     // ----------------------------------------------------------------
@@ -2540,6 +2619,7 @@
         renderTokens();
         consumePendingBestiaryToken();
         syncFichaTokensFromServer();
+        syncBestiaryTokensFromLocal();
         if (state.viewport.scale === 1 && state.viewport.x === 0 && state.viewport.y === 0) {
             centerBoard();
         } else {

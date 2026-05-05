@@ -20,7 +20,7 @@ function bestiarioOptions(array $valores): string
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260430" />
     <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
-    <link rel="stylesheet" href="assets/css/bestiario.css?v=20260503a" />
+    <link rel="stylesheet" href="assets/css/bestiario.css?v=20260505b" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
 </head>
 <body>
@@ -101,58 +101,73 @@ function bestiarioOptions(array $valores): string
                     <form class="bestiario-form" id="bestiarioForm">
                         <input type="hidden" id="criaturaId" />
 
-                        <fieldset>
-                            <legend>Identificação</legend>
-                            <label>Nome <input id="criaturaNome" required /></label>
-                            <label>Nome alternativo <input id="criaturaNomeAlternativo" /></label>
-                            <label>Frase de impacto <input id="criaturaFraseImpacto" /></label>
-                            <label>ND <input id="criaturaNd" type="number" min="0" step="1" /></label>
-                            <label>Tipo <select id="criaturaTipo"><?= bestiarioOptions($filtrosBestiario['tipos'] ?? []) ?></select></label>
-                            <label>Tamanho <select id="criaturaTamanho"><?= bestiarioOptions($filtrosBestiario['tamanhos'] ?? []) ?></select></label>
-                            <label>Bioma principal <select id="criaturaBioma"><?= bestiarioOptions($filtrosBestiario['biomas'] ?? []) ?></select></label>
-                            <label>Habitat específico <input id="criaturaHabitat" /></label>
-                            <label>Papel tático <select id="criaturaPapelTatico"><?= bestiarioOptions($filtrosBestiario['papeisTaticos'] ?? []) ?></select></label>
-                            <label>Imagem/token <input id="criaturaImagem" placeholder="assets/img/bestiario/criatura.png" /></label>
-                        </fieldset>
+                        <details class="criatura-secao">
+                            <summary>Identificação</summary>
+                            <div class="criatura-secao-conteudo">
+                                <label>Nome <input id="criaturaNome" required /></label>
+                                <label>Nome alternativo <input id="criaturaNomeAlternativo" /></label>
+                                <label>Frase de impacto <input id="criaturaFraseImpacto" /></label>
+                                <label>ND <input id="criaturaNd" type="number" min="0" step="1" /></label>
+                                <label>Tipo <select id="criaturaTipo"><?= bestiarioOptions($filtrosBestiario['tipos'] ?? []) ?></select></label>
+                                <label>Tamanho <select id="criaturaTamanho"><?= bestiarioOptions($filtrosBestiario['tamanhos'] ?? []) ?></select></label>
+                                <label>Bioma principal <select id="criaturaBioma"><?= bestiarioOptions($filtrosBestiario['biomas'] ?? []) ?></select></label>
+                                <label>Habitat específico <input id="criaturaHabitat" /></label>
+                                <label>Papel tático <select id="criaturaPapelTatico"><?= bestiarioOptions($filtrosBestiario['papeisTaticos'] ?? []) ?></select></label>
+                                <label>Imagem/token <input id="criaturaImagem" placeholder="assets/img/bestiario/criatura.png" /></label>
+                            </div>
+                        </details>
 
-                        <fieldset>
-                            <legend>Conteúdo narrativo</legend>
-                            <label>Conceito <textarea id="criaturaConceito"></textarea></label>
-                            <label>Descrição <textarea id="criaturaDescricao"></textarea></label>
-                            <label>Origem e inspiração <textarea id="criaturaOrigemInspiracao"></textarea></label>
-                            <label>Comportamento <textarea id="criaturaComportamento"></textarea></label>
-                            <label>Sinais de presença <textarea id="criaturaSinaisPresenca" placeholder="Um item por linha"></textarea></label>
-                            <label>Táticas de combate <textarea id="criaturaTaticasCombate"></textarea></label>
-                            <label>Uso em campanha <textarea id="criaturaUsoCampanha"></textarea></label>
-                            <label>Ganchos de aventura <textarea id="criaturaGanchosAventura" placeholder="Um item por linha"></textarea></label>
-                            <label>Tesouro, recursos ou recompensas <textarea id="criaturaTesouroRecompensas"></textarea></label>
-                            <label>Variações de ND <textarea id="criaturaVariacoesNd"></textarea></label>
-                            <label>Comparação de equilíbrio <textarea id="criaturaComparacaoEquilibrio"></textarea></label>
-                            <label>Registro de consistência <textarea id="criaturaRegistroConsistencia"></textarea></label>
-                            <label>Notas de design <textarea id="criaturaNotasDesign"></textarea></label>
-                        </fieldset>
+                        <details class="criatura-secao">
+                            <summary>Conteúdo narrativo</summary>
+                            <div class="criatura-secao-conteudo">
+                                <label>Conceito <textarea id="criaturaConceito"></textarea></label>
+                                <label>Descrição <textarea id="criaturaDescricao"></textarea></label>
+                                <label>Origem e inspiração <textarea id="criaturaOrigemInspiracao"></textarea></label>
+                                <label>Comportamento <textarea id="criaturaComportamento"></textarea></label>
+                                <label>Sinais de presença <textarea id="criaturaSinaisPresenca" placeholder="Um item por linha"></textarea></label>
+                                <label>Táticas de combate <textarea id="criaturaTaticasCombate"></textarea></label>
+                                <label>Uso em campanha <textarea id="criaturaUsoCampanha"></textarea></label>
+                                <label>Ganchos de aventura <textarea id="criaturaGanchosAventura" placeholder="Um item por linha"></textarea></label>
+                                <label>Tesouro, recursos ou recompensas <textarea id="criaturaTesouroRecompensas"></textarea></label>
+                                <label>Variações de ND <textarea id="criaturaVariacoesNd"></textarea></label>
+                                <label>Comparação de equilíbrio <textarea id="criaturaComparacaoEquilibrio"></textarea></label>
+                                <label>Registro de consistência <textarea id="criaturaRegistroConsistencia"></textarea></label>
+                                <label>Notas de design <textarea id="criaturaNotasDesign"></textarea></label>
+                            </div>
+                        </details>
 
-                        <fieldset>
-                            <legend>Ficha mecânica</legend>
-                            <label>Iniciativa <input id="criaturaIniciativa" /></label>
-                            <label>Sentidos <input id="criaturaSentidos" /></label>
-                            <label>Percepção <input id="criaturaPercepcao" /></label>
-                            <label>Defesa <input id="criaturaDefesa" type="number" min="0" step="1" /></label>
-                            <label>Fortitude <input id="criaturaFortitude" /></label>
-                            <label>Reflexos <input id="criaturaReflexos" /></label>
-                            <label>Vontade <input id="criaturaVontade" /></label>
-                            <label>Pontos de Vida <input id="criaturaPvMax" type="number" min="0" step="1" /></label>
-                            <label>Deslocamento <input id="criaturaDeslocamento" /></label>
-                            <label>Ataques <textarea id="criaturaAtaques" placeholder="Um ataque por linha"></textarea></label>
-                            <label>Atributos <textarea id="criaturaAtributos" placeholder="forca: +0&#10;destreza: +0"></textarea></label>
-                            <label>Perícias <textarea id="criaturaPericias" placeholder="Uma perícia por linha"></textarea></label>
-                            <label>Habilidades <textarea id="criaturaHabilidades" placeholder="Uma habilidade por linha"></textarea></label>
-                            <label>Vulnerabilidades <textarea id="criaturaVulnerabilidades" placeholder="Uma por linha"></textarea></label>
-                            <label>Resistências <textarea id="criaturaResistencias" placeholder="Uma por linha"></textarea></label>
-                            <label>Imunidades <textarea id="criaturaImunidades" placeholder="Uma por linha"></textarea></label>
-                            <label>Tesouro mecânico <textarea id="criaturaTesouroMecanico"></textarea></label>
-                            <label>Ficha completa em texto livre <textarea id="criaturaFichaCompleta"></textarea></label>
-                        </fieldset>
+                        <details class="criatura-secao">
+                            <summary>Ficha mecânica</summary>
+                            <div class="criatura-secao-conteudo">
+                                <label>Iniciativa <input id="criaturaIniciativa" /></label>
+                                <label>Sentidos <input id="criaturaSentidos" /></label>
+                                <label>Percepção <input id="criaturaPercepcao" /></label>
+                                <label>Defesa <input id="criaturaDefesa" type="number" min="0" step="1" /></label>
+                                <label>Fortitude <input id="criaturaFortitude" /></label>
+                                <label>Reflexos <input id="criaturaReflexos" /></label>
+                                <label>Vontade <input id="criaturaVontade" /></label>
+                                <label>Pontos de Vida <input id="criaturaPvMax" type="number" min="0" step="1" /></label>
+                                <label>Pontos de Mana <input id="criaturaPmMax" type="number" min="0" step="1" /></label>
+                                <label>Deslocamento <input id="criaturaDeslocamento" /></label>
+                                <label>Atributos <textarea id="criaturaAtributos" placeholder="forca: +0&#10;destreza: +0"></textarea></label>
+                                <label>Perícias <textarea id="criaturaPericias" placeholder="Uma perícia por linha"></textarea></label>
+                                <label>Habilidades <textarea id="criaturaHabilidades" placeholder="Uma habilidade por linha"></textarea></label>
+                                <label>Vulnerabilidades <textarea id="criaturaVulnerabilidades" placeholder="Uma por linha"></textarea></label>
+                                <label>Resistências <textarea id="criaturaResistencias" placeholder="Uma por linha"></textarea></label>
+                                <label>Imunidades <textarea id="criaturaImunidades" placeholder="Uma por linha"></textarea></label>
+                                <label>Tesouro mecânico <textarea id="criaturaTesouroMecanico"></textarea></label>
+                                <label>Ficha completa em texto livre <textarea id="criaturaFichaCompleta"></textarea></label>
+                                <label>Notas do Mestre <textarea id="criaturaNotasMestre"></textarea></label>
+                            </div>
+                        </details>
+
+                        <details class="criatura-secao criatura-ataques-fieldset">
+                            <summary>Ataques</summary>
+                            <div class="criatura-secao-conteudo">
+                                <div class="criatura-ataques-lista" id="criaturaAtaquesContainer"></div>
+                                <button type="button" class="criatura-add-ataque" id="criaturaAdicionarAtaque">+ Adicionar Ataque</button>
+                            </div>
+                        </details>
 
                         <div class="bestiario-form-actions">
                             <button type="submit" class="primary">Salvar criatura</button>
@@ -174,6 +189,6 @@ function bestiarioOptions(array $valores): string
     <script>
         window.BESTIARIO_BASE = <?= json_encode($dadosBestiario, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     </script>
-    <script src="assets/js/bestiario.js?v=20260504a"></script>
+    <script src="assets/js/bestiario.js?v=20260505a"></script>
 </body>
 </html>

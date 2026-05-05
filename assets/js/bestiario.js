@@ -23,8 +23,16 @@
         formPanel: document.getElementById('bestiarioFormPanel'),
         formTitulo: document.getElementById('bestiarioFormTitulo'),
         form: document.getElementById('bestiarioForm'),
-        cancelar: document.getElementById('bestiarioCancelarEdicao')
+        cancelar: document.getElementById('bestiarioCancelarEdicao'),
+        ataquesContainer: document.getElementById('criaturaAtaquesContainer'),
+        adicionarAtaque: document.getElementById('criaturaAdicionarAtaque')
     };
+
+    const ALCANCES_ATAQUE = [
+        { value: 'corpo a corpo', label: 'Corpo a corpo - 1 quadrado / 1,5m' },
+        { value: 'curto', label: 'Curto - 9m / 6 quadrados' },
+        { value: 'longo', label: 'Longo - 90m / 60 quadrados' }
+    ];
 
     function carregarCriaturas() {
         try {
@@ -72,6 +80,130 @@
         const itens = Array.isArray(valor) ? valor : linhas(valor);
         if (!itens.length) return '<p>Sem registro.</p>';
         return `<ul>${itens.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+    }
+
+    function normalizarAtaques(valor) {
+        if (!valor) return [];
+        const lista = Array.isArray(valor) ? valor : linhas(valor);
+        return lista.map((item) => {
+            if (typeof item === 'string') {
+                const texto = item.trim();
+                if (!texto) return null;
+                return {
+                    nome: texto.split(/[,(|-]/)[0].trim() || 'Ataque',
+                    alcance: inferirAlcanceAtaque(texto),
+                    dano: extrairDano(texto),
+                    tipoDano: extrairTipoDano(texto),
+                    bonusAtaque: extrairBonusAtaque(texto),
+                    descricao: texto
+                };
+            }
+            if (!item || typeof item !== 'object') return null;
+            return {
+                nome: String(item.nome || item.name || 'Ataque'),
+                alcance: normalizarAlcanceAtaque(item.alcance || ''),
+                dano: String(item.dano || item.danoFormula || ''),
+                tipoDano: String(item.tipoDano || item.tipo_dano || item.tipo || ''),
+                bonusAtaque: String(item.bonusAtaque ?? item.bonus_ataque ?? item.bonus ?? ''),
+                descricao: String(item.descricao || item.detalhe || '')
+            };
+        }).filter(Boolean);
+    }
+
+    function normalizarAlcanceAtaque(valor) {
+        const chave = normalizar(valor);
+        if (chave.includes('longo') || chave.includes('90') || chave.includes('60')) return 'longo';
+        if (chave.includes('curto') || chave.includes('9m') || chave.includes('6 quadr')) return 'curto';
+        return 'corpo a corpo';
+    }
+
+    function inferirAlcanceAtaque(texto) {
+        return normalizarAlcanceAtaque(texto || 'corpo a corpo');
+    }
+
+    function extrairDano(texto) {
+        return String(texto || '').match(/\d+d\d+\s*(?:[+-]\s*\d+)?/i)?.[0]?.replace(/\s+/g, '') || '';
+    }
+
+    function extrairBonusAtaque(texto) {
+        const match = String(texto || '').match(/(?:ataque|teste|b[oô]nus)?\s*([+-]\s*\d+)/i);
+        return match ? match[1].replace(/\s+/g, '') : '';
+    }
+
+    function extrairTipoDano(texto) {
+        const tipos = ['cortante', 'perfurante', 'contundente', 'fogo', 'frio', 'eletricidade', 'ácido', 'acido', 'veneno', 'mental', 'energia', 'trevas', 'luz'];
+        const chave = normalizar(texto);
+        return tipos.find((tipo) => chave.includes(normalizar(tipo))) || '';
+    }
+
+    function rotuloAlcance(valor) {
+        const alcance = normalizarAlcanceAtaque(valor);
+        return ALCANCES_ATAQUE.find((item) => item.value === alcance)?.label || 'Corpo a corpo - 1 quadrado / 1,5m';
+    }
+
+    function renderAtaquesForm(ataques = []) {
+        if (!els.ataquesContainer) return;
+        els.ataquesContainer.innerHTML = '';
+        const lista = normalizarAtaques(ataques);
+        if (!lista.length) lista.push({ nome: 'Ataque', alcance: 'corpo a corpo', dano: '', tipoDano: '', bonusAtaque: '', descricao: '' });
+        lista.forEach((ataque) => adicionarAtaqueForm(ataque));
+    }
+
+    function adicionarAtaqueForm(ataque = {}) {
+        if (!els.ataquesContainer) return;
+        const row = document.createElement('article');
+        row.className = 'criatura-ataque-row';
+        row.innerHTML = `
+            <label>Nome <input data-criatura-ataque="nome" placeholder="Ataque" value="${escapeHtml(ataque.nome || 'Ataque')}" /></label>
+            <label>Alcance
+                <select data-criatura-ataque="alcance">
+                    ${ALCANCES_ATAQUE.map((item) => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`).join('')}
+                </select>
+            </label>
+            <label>Dano <input data-criatura-ataque="dano" placeholder="2d6+3" value="${escapeHtml(ataque.dano || '')}" /></label>
+            <label>Tipo de dano <input data-criatura-ataque="tipoDano" placeholder="cortante" value="${escapeHtml(ataque.tipoDano || '')}" /></label>
+            <label>Bônus <input data-criatura-ataque="bonusAtaque" type="number" step="1" placeholder="0" value="${escapeHtml(ataque.bonusAtaque ?? '')}" /></label>
+            <label class="criatura-ataque-desc">Descrição <textarea data-criatura-ataque="descricao" placeholder="Efeitos especiais do ataque">${escapeHtml(ataque.descricao || '')}</textarea></label>
+            <button type="button" class="criatura-remover-ataque" data-attack-remove>Remover</button>
+        `;
+        row.querySelector('[data-criatura-ataque="alcance"]').value = normalizarAlcanceAtaque(ataque.alcance);
+        row.querySelector('[data-attack-remove]').addEventListener('click', () => {
+            row.remove();
+            if (!els.ataquesContainer.querySelector('.criatura-ataque-row')) {
+                adicionarAtaqueForm();
+            }
+        });
+        els.ataquesContainer.appendChild(row);
+    }
+
+    function lerAtaquesForm() {
+        if (!els.ataquesContainer) return [];
+        return Array.from(els.ataquesContainer.querySelectorAll('.criatura-ataque-row')).map((row) => {
+            const ataque = {};
+            row.querySelectorAll('[data-criatura-ataque]').forEach((campo) => {
+                ataque[campo.dataset.criaturaAtaque] = campo.value.trim();
+            });
+            ataque.alcance = normalizarAlcanceAtaque(ataque.alcance);
+            return ataque;
+        }).filter((ataque) => Object.values(ataque).some((valor) => String(valor || '').trim() !== ''));
+    }
+
+    function ataqueResumoHtml(ataque) {
+        const partes = [
+            ataque.dano && `Dano ${ataque.dano}`,
+            ataque.tipoDano,
+            ataque.bonusAtaque !== '' && ataque.bonusAtaque !== undefined && `Ataque ${Number(ataque.bonusAtaque) >= 0 ? '+' : ''}${ataque.bonusAtaque}`,
+            rotuloAlcance(ataque.alcance)
+        ].filter(Boolean);
+        return `
+            <article class="bestiario-ataque-card">
+                <div>
+                    <strong>${escapeHtml(ataque.nome || 'Ataque')}</strong>
+                    <span>${escapeHtml(partes.join(' • ') || rotuloAlcance(ataque.alcance))}</span>
+                </div>
+                ${ataque.descricao ? `<p>${escapeHtml(ataque.descricao)}</p>` : ''}
+            </article>
+        `;
     }
 
     function criaturaFiltrada(criatura) {
@@ -133,35 +265,24 @@
 
     function fichaHtml(criatura) {
         return `
-            <header class="bestiario-ficha-header">
-                <h2 id="bestiarioModalTitulo">${escapeHtml(criatura.nome)}</h2>
-                ${criatura.nomeAlternativo ? `<p><strong>Nome alternativo:</strong> ${escapeHtml(criatura.nomeAlternativo)}</p>` : ''}
-                <p><em>${escapeHtml(criatura.fraseImpacto || '')}</em></p>
-                <div class="bestiario-meta">
-                    <span>ND ${escapeHtml(criatura.nd)}</span>
-                    <span>${escapeHtml(criatura.tipo)}</span>
-                    <span>${escapeHtml(criatura.tamanho)}</span>
-                    <span>${escapeHtml(criatura.bioma)}</span>
-                    <span>${escapeHtml(criatura.papelTatico)}</span>
+            <header class="bestiario-ficha-header bestiario-ficha-header--compacta">
+                ${imagemCriaturaHtml(criatura)}
+                <div>
+                    <h2 id="bestiarioModalTitulo">${escapeHtml(criatura.nome)}</h2>
+                    ${criatura.nomeAlternativo ? `<p><strong>${escapeHtml(criatura.nomeAlternativo)}</strong></p>` : ''}
+                    <p>${escapeHtml(criatura.tipo || 'Criatura')} ${criatura.tamanho ? `• ${escapeHtml(criatura.tamanho)}` : ''} ${criatura.nd !== undefined ? `• ND ${escapeHtml(criatura.nd)}` : ''}</p>
+                    ${criatura.fraseImpacto ? `<p><em>${escapeHtml(criatura.fraseImpacto)}</em></p>` : ''}
                 </div>
             </header>
-            <div class="bestiario-ficha-grid">
-                ${bloco('Identidade da criatura', `<p><strong>Habitat:</strong> ${escapeHtml(criatura.habitat || 'Sem registro.')}</p>`)}
-                ${bloco('Conceito', textoBloco(criatura.conceito))}
-                ${bloco('Descrição', textoBloco(criatura.descricao))}
-                ${bloco('Origem e inspiração', textoBloco(criatura.origemInspiracao))}
-                ${bloco('Bioma e habitat', textoBloco(`Bioma: ${criatura.bioma || ''}\nHabitat: ${criatura.habitat || ''}`))}
-                ${bloco('Comportamento', textoBloco(criatura.comportamento))}
-                ${bloco('Sinais de presença', listaBloco(criatura.sinaisPresenca))}
+            <div class="bestiario-ficha-grid bestiario-ficha-grid--compacta">
                 ${fichaAmeaca(criatura)}
-                ${bloco('Táticas de combate', textoBloco(criatura.taticasCombate))}
-                ${bloco('Uso em campanha', textoBloco(criatura.usoCampanha))}
-                ${bloco('Ganchos de aventura', listaBloco(criatura.ganchosAventura))}
-                ${bloco('Tesouro, recursos ou recompensas', textoBloco(criatura.tesouroRecompensas))}
-                ${bloco('Variações de ND', textoBloco(criatura.variacoesND))}
-                ${bloco('Comparação de equilíbrio', textoBloco(criatura.comparacaoEquilibrio))}
-                ${bloco('Registro de consistência', textoBloco(criatura.registroConsistencia))}
-                ${bloco('Notas de design', textoBloco(criatura.notasDesign))}
+                ${bloco('Traços / Habilidades especiais', listaBloco(criatura.habilidades))}
+                ${bloco('Resistências', `<p>${escapeHtml([
+                    (criatura.resistencias || []).join(', '),
+                    (criatura.vulnerabilidades || []).length ? `Vulnerabilidades: ${(criatura.vulnerabilidades || []).join(', ')}` : '',
+                    (criatura.imunidades || []).length ? `Imunidades: ${(criatura.imunidades || []).join(', ')}` : ''
+                ].filter(Boolean).join(' • ') || 'Nenhuma.')}</p>`)}
+                ${bloco('Notas do Mestre', textoBloco(criatura.notasMestre || criatura.notasDesign))}
             </div>
             <div class="bestiario-modal-actions">
                 <button type="button" data-modal-action="token" data-id="${escapeHtml(criatura.id)}">Preparar token</button>
@@ -170,35 +291,58 @@
         `;
     }
 
+    function imagemCriaturaHtml(criatura) {
+        if (!criatura.imagem) {
+            return `<div class="bestiario-ficha-token">${escapeHtml((criatura.nome || '?').charAt(0).toUpperCase())}</div>`;
+        }
+        return `<div class="bestiario-ficha-token"><img src="${escapeHtml(criatura.imagem)}" alt="${escapeHtml(criatura.nome || 'Criatura')}"></div>`;
+    }
+
     function bloco(titulo, conteudo) {
         return `<section class="bestiario-ficha-bloco"><h3>${escapeHtml(titulo)}</h3>${conteudo}</section>`;
     }
 
     function fichaAmeaca(criatura) {
+        const atributos = criatura.atributos || {};
+        const ataques = normalizarAtaques(criatura.ataques);
         return `
             <section class="bestiario-ficha-bloco bestiario-ameaca">
-                <h3>Ficha de ameaça</h3>
-                <div class="bestiario-ameaca-grid">
-                    <span>Defesa ${escapeHtml(criatura.defesa)}</span>
-                    <span>PV ${escapeHtml(criatura.pvMax)}</span>
-                    <span>Desloc. ${escapeHtml(criatura.deslocamento)}</span>
-                    <span>Inic. ${escapeHtml(criatura.iniciativa)}</span>
-                    <span>Percep. ${escapeHtml(criatura.percepcao)}</span>
-                    <span>Fort ${escapeHtml(criatura.fortitude)}</span>
-                    <span>Ref ${escapeHtml(criatura.reflexos)}</span>
-                    <span>Von ${escapeHtml(criatura.vontade)}</span>
+                <h3>Ficha de criatura</h3>
+                <div class="bestiario-atributos">
+                    ${atributoCard('For', atributos.forca)}
+                    ${atributoCard('Des', atributos.destreza)}
+                    ${atributoCard('Con', atributos.constituicao)}
+                    ${atributoCard('Int', atributos.inteligencia)}
+                    ${atributoCard('Sab', atributos.sabedoria)}
+                    ${atributoCard('Car', atributos.carisma)}
                 </div>
-                <p><strong>Sentidos:</strong> ${escapeHtml(criatura.sentidos || 'Sem registro.')}</p>
-                <p><strong>Ataques:</strong></p>${listaBloco(criatura.ataques)}
-                <p><strong>Atributos:</strong> For ${escapeHtml(criatura.atributos?.forca)}, Des ${escapeHtml(criatura.atributos?.destreza)}, Con ${escapeHtml(criatura.atributos?.constituicao)}, Int ${escapeHtml(criatura.atributos?.inteligencia)}, Sab ${escapeHtml(criatura.atributos?.sabedoria)}, Car ${escapeHtml(criatura.atributos?.carisma)}</p>
-                <p><strong>Perícias:</strong> ${escapeHtml((criatura.pericias || []).join(', ') || 'Sem registro.')}</p>
-                <p><strong>Habilidades:</strong></p>${listaBloco(criatura.habilidades)}
-                <p><strong>Vulnerabilidades:</strong> ${escapeHtml((criatura.vulnerabilidades || []).join(', ') || 'Nenhuma.')}</p>
-                <p><strong>Resistências:</strong> ${escapeHtml((criatura.resistencias || []).join(', ') || 'Nenhuma.')}</p>
-                <p><strong>Imunidades:</strong> ${escapeHtml((criatura.imunidades || []).join(', ') || 'Nenhuma.')}</p>
-                ${criatura.fichaCompleta ? `<pre>${escapeHtml(criatura.fichaCompleta)}</pre>` : ''}
+                <div class="bestiario-recursos">
+                    ${recursoCard('Pontos de Vida', criatura.pvMax)}
+                    ${recursoCard('Pontos de Mana', criatura.pmMax)}
+                    ${recursoCard('Defesa', criatura.defesa)}
+                    ${recursoCard('Deslocamento', criatura.deslocamento)}
+                </div>
+                <div class="bestiario-defesas">
+                    <span>Fort ${escapeHtml(criatura.fortitude || '0')}</span>
+                    <span>Ref ${escapeHtml(criatura.reflexos || '0')}</span>
+                    <span>Von ${escapeHtml(criatura.vontade || '0')}</span>
+                    <span>Percep. ${escapeHtml(criatura.percepcao || '0')}</span>
+                </div>
+                ${criatura.sentidos ? `<p><strong>Sentidos:</strong> ${escapeHtml(criatura.sentidos)}</p>` : ''}
+                <h4>Ataques</h4>
+                <div class="bestiario-ataques-grid">
+                    ${ataques.length ? ataques.map(ataqueResumoHtml).join('') : '<p>Sem ataques cadastrados.</p>'}
+                </div>
             </section>
         `;
+    }
+
+    function atributoCard(rotulo, valor) {
+        return `<div class="bestiario-atributo-card"><span>${escapeHtml(rotulo)}</span><strong>${escapeHtml(valor || '0')}</strong></div>`;
+    }
+
+    function recursoCard(rotulo, valor) {
+        return `<label class="bestiario-recurso-card"><span>${escapeHtml(rotulo)}</span><input value="${escapeHtml(valor ?? '')}" readonly></label>`;
     }
 
     function fecharModal() {
@@ -245,6 +389,7 @@
             papelTatico: campo('criaturaPapelTatico').value,
             imagem: campo('criaturaImagem').value.trim(),
             pvMax: Number(campo('criaturaPvMax').value || 0),
+            pmMax: Number(campo('criaturaPmMax').value || 0),
             defesa: Number(campo('criaturaDefesa').value || 0),
             deslocamento: campo('criaturaDeslocamento').value.trim(),
             iniciativa: campo('criaturaIniciativa').value.trim(),
@@ -253,7 +398,7 @@
             fortitude: campo('criaturaFortitude').value.trim(),
             reflexos: campo('criaturaReflexos').value.trim(),
             vontade: campo('criaturaVontade').value.trim(),
-            ataques: linhas(campo('criaturaAtaques').value),
+            ataques: lerAtaquesForm(),
             habilidades: linhas(campo('criaturaHabilidades').value),
             atributos: lerAtributos(campo('criaturaAtributos').value),
             pericias: linhas(campo('criaturaPericias').value),
@@ -273,7 +418,8 @@
             variacoesND: campo('criaturaVariacoesNd').value.trim(),
             comparacaoEquilibrio: campo('criaturaComparacaoEquilibrio').value.trim(),
             registroConsistencia: campo('criaturaRegistroConsistencia').value.trim(),
-            notasDesign: campo('criaturaNotasDesign').value.trim()
+            notasDesign: campo('criaturaNotasDesign').value.trim(),
+            notasMestre: campo('criaturaNotasMestre').value.trim()
         };
         criatura.token = montarToken(criatura);
         return criatura;
@@ -316,8 +462,9 @@
         campo('criaturaReflexos').value = criatura.reflexos || '';
         campo('criaturaVontade').value = criatura.vontade || '';
         campo('criaturaPvMax').value = criatura.pvMax ?? '';
+        campo('criaturaPmMax').value = criatura.pmMax ?? '';
         campo('criaturaDeslocamento').value = criatura.deslocamento || '';
-        campo('criaturaAtaques').value = arrayParaTexto(criatura.ataques);
+        renderAtaquesForm(criatura.ataques);
         campo('criaturaAtributos').value = escreverAtributos(criatura.atributos);
         campo('criaturaPericias').value = arrayParaTexto(criatura.pericias);
         campo('criaturaHabilidades').value = arrayParaTexto(criatura.habilidades);
@@ -326,6 +473,7 @@
         campo('criaturaImunidades').value = arrayParaTexto(criatura.imunidades);
         campo('criaturaTesouroMecanico').value = '';
         campo('criaturaFichaCompleta').value = criatura.fichaCompleta || '';
+        campo('criaturaNotasMestre').value = criatura.notasMestre || '';
         els.formTitulo.textContent = criatura.id ? 'Editar criatura' : 'Adicionar criatura';
         els.formPanel.open = true;
         els.formPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -334,6 +482,7 @@
     function limparForm() {
         els.form.reset();
         campo('criaturaId').value = '';
+        renderAtaquesForm();
         els.formTitulo.textContent = 'Adicionar criatura';
     }
 
@@ -346,9 +495,10 @@
             tamanho: criatura.tamanho,
             imagem: criatura.imagem,
             pvMax: criatura.pvMax,
+            pmMax: criatura.pmMax,
             defesa: criatura.defesa,
             deslocamento: criatura.deslocamento,
-            ataquesPrincipais: (criatura.ataques || []).slice(0, 3),
+            ataquesPrincipais: normalizarAtaques(criatura.ataques),
             habilidadesPrincipais: (criatura.habilidades || []).slice(0, 5).map((habilidade) => habilidade.split('.')[0]),
             bioma: criatura.bioma,
             papelTatico: criatura.papelTatico
@@ -358,7 +508,9 @@
     window.prepararTokenCriatura = function prepararTokenCriatura(criaturaId) {
         const criatura = criaturas.find((item) => item.id === criaturaId);
         if (!criatura) return null;
-        const token = criatura.token || montarToken(criatura);
+        const token = Object.assign({}, montarToken(criatura), criatura.token || {});
+        token.ataquesPrincipais = normalizarAtaques(criatura.ataques || token.ataquesPrincipais);
+        token.pmMax = criatura.pmMax ?? token.pmMax;
         localStorage.setItem(TOKEN_KEY, JSON.stringify(token));
         // Integração futura: aqui o token será enviado diretamente para a página Campo de Batalha.
         alert(`Token preparado: ${token.nome}. Abra o Campo de Batalha para posicioná-lo.`);
@@ -421,5 +573,10 @@
 
     els.cancelar.addEventListener('click', limparForm);
 
+    if (els.adicionarAtaque) {
+        els.adicionarAtaque.addEventListener('click', () => adicionarAtaqueForm());
+    }
+
+    renderAtaquesForm();
     renderizar();
 })();

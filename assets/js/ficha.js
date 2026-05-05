@@ -3769,16 +3769,20 @@ function renderizarListaFichasSalvas() {
                 </small>
             </span>
             <span class="sheet-list-token">
-                ${ficha.personagem_imagem ? `<img src="${escapeHtml(ficha.personagem_imagem)}" alt="">` : "<span>?</span>"}
+                ${getSavedSheetTokenSrc(ficha) ? `<img src="${escapeHtml(getSavedSheetTokenSrc(ficha))}" alt="">` : "<span>?</span>"}
             </span>
         `;
         const img = item.querySelector("img");
         if (img) {
-            applySavedSheetTokenAdjustment(img, ficha.personagem_imagem_ajuste);
+            applySavedSheetTokenAdjustment(img, ficha);
         }
         item.addEventListener("click", () => carregarFichaPorId(ficha.id));
         lista.appendChild(item);
     });
+}
+
+function getSavedSheetTokenSrc(ficha) {
+    return ficha?.personagem_token_imagem || ficha?.personagem_imagem || "";
 }
 
 function formatarNomeFichaLista(valor) {
@@ -3789,8 +3793,10 @@ function formatarNomeFichaLista(valor) {
     return texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : "";
 }
 
-function applySavedSheetTokenAdjustment(img, value) {
-    const ajuste = readCharacterImageAdjustmentFromValue(value).token;
+function applySavedSheetTokenAdjustment(img, ficha) {
+    const ajuste = ficha?.personagem_token_imagem
+        ? readTokenImageAdjustmentFromValue(ficha.personagem_token_imagem_ajuste)
+        : readCharacterImageAdjustmentFromValue(ficha?.personagem_imagem_ajuste).token;
     img.style.setProperty("--saved-token-scale", String(ajuste.scale));
     img.style.setProperty("--saved-token-x", `${ajuste.x}%`);
     img.style.setProperty("--saved-token-y", `${ajuste.y}%`);
