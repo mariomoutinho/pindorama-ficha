@@ -96,6 +96,8 @@
         confirmClose: document.getElementById('cbConfirmClose'),
         confirmCancel: document.getElementById('cbConfirmCancel'),
         confirmOk: document.getElementById('cbConfirmOk'),
+        confirmTargetSingle: document.getElementById('cbConfirmTargetSingle'),
+        confirmTargetsList: document.getElementById('cbConfirmTargetsList'),
         result: document.getElementById('cbResult'),
         resultBody: document.getElementById('cbResultBody'),
         resultClose: document.getElementById('cbResultClose'),
@@ -837,6 +839,18 @@
             pmAtual: parseResource(ficha.pm_atuais ?? ficha.pmAtual ?? ficha.pmMax ?? ficha.pm_total),
             pmMax: parseResource(ficha.pm_total ?? ficha.pmMax),
             defesa: ficha.defesa || null,
+            // Atributos para fallback de saves (Reflexos = Des, Fortitude = Con, Vontade = Sab)
+            forca: ficha.forca,
+            destreza: ficha.destreza,
+            constituicao: ficha.constituicao,
+            inteligencia: ficha.inteligencia,
+            sabedoria: ficha.sabedoria,
+            carisma: ficha.carisma,
+            // Saves explícitos (vêm do bestiário ou de uma ficha que tenha bônus customizado)
+            fortitude: ficha.fortitude ?? ficha.fortitudeBonus ?? null,
+            reflexos: ficha.reflexos ?? ficha.reflexo ?? ficha.reflexBonus ?? null,
+            vontade: ficha.vontade ?? ficha.will ?? ficha.vontadeBonus ?? null,
+            nivel: parseResource(ficha.nivel),
             bioma: ficha.bioma || null,
             papelTatico: ficha.papelTatico || null,
             ataquesPrincipais: ficha.ataquesPrincipais || [],
@@ -909,6 +923,18 @@
             token.ataquesPrincipais = fresh.ataquesPrincipais || fresh.ataques || [];
             token.habilidadesPrincipais = fresh.habilidadesPrincipais || [];
             token.actions = buildActionsFromBestiaryToken(fresh);
+            // Saves explícitos do bestiário (Pindorama)
+            token.fortitude = criatura.fortitude ?? null;
+            token.reflexos = criatura.reflexos ?? null;
+            token.vontade = criatura.vontade ?? null;
+            // Atributos como fallback (para criaturas que não têm save explícito)
+            const atributosCriatura = parseAtributosCriatura(criatura.atributos);
+            token.forca = atributosCriatura.forca ?? token.forca;
+            token.destreza = atributosCriatura.destreza ?? token.destreza;
+            token.constituicao = atributosCriatura.constituicao ?? token.constituicao;
+            token.inteligencia = atributosCriatura.inteligencia ?? token.inteligencia;
+            token.sabedoria = atributosCriatura.sabedoria ?? token.sabedoria;
+            token.carisma = atributosCriatura.carisma ?? token.carisma;
             const novaImg = fresh.imagem ? resolveImage(fresh.imagem) : null;
             if (novaImg) {
                 token.tokenImage = novaImg;
@@ -948,6 +974,15 @@
                     ? parseTokenAdjustment(ficha.personagem_token_imagem_ajuste)
                     : parseImageAdjustment(ficha.personagem_imagem_ajuste);
                 token.name = ficha.personagem || token.name;
+                // Atributos (para fallback de save)
+                token.forca = ficha.forca;
+                token.destreza = ficha.destreza;
+                token.constituicao = ficha.constituicao;
+                token.inteligencia = ficha.inteligencia;
+                token.sabedoria = ficha.sabedoria;
+                token.carisma = ficha.carisma;
+                token.nivel = parseResource(ficha.nivel);
+                if (ficha.defesa_total !== undefined) token.defesa = ficha.defesa_total;
                 synced++;
             } catch (_) {
                 // Mantém o token como está se a ficha não puder ser sincronizada.
@@ -2072,9 +2107,90 @@
             });
             return;
         }
+        openAreaAttackConfirmation(attacker, item, targets);
+    }
 
-        // Para áreas: rola UMA vez o dano e aplica em todos os alvos.
-        // Cada alvo faz o próprio teste de salvação se aplicável.
+    function openAreaAttackConfirmation(attacker, item, targets) {
+        if (!els.confirm) return;
+        pendingAttack = { attacker, action: item, areaTargets: targets, isArea: true };
+
+        const actionName = getActionDisplayName(item);
+        const attackerName = attacker.name || 'Atacante';
+        const saveTipo = String(item.saveTipo || '').toLowerCase();
+        const saveCD = Number(item.saveCD || 0) || null;
+        const saveLabel = saveTipo
+            ? `Cada alvo faz teste de ${rotuloSaveTipo(saveTipo)} CD ${saveCD || '?'} (sucesso → metade do dano).`
+            : '';
+
+        els.confirmText.innerHTML =
+            `<strong>${escapeHtml(attackerName)}</strong> vai usar <strong>${escapeHtml(actionName)}</strong> em área, ` +
+            `atingindo <strong>${escapeHtml(targets.length)}</strong> alvo(s). ` +
+            (saveLabel ? `<br><em>${escapeHtml(saveLabel)}</em>` : '');
+
+        // Esconde o slot de alvo único, mostra a lista de alvos
+        if (els.confirmTargetSingle) els.confirmTargetSingle.hidden = true;
+        if (els.confirmTargetsList) {
+            els.confirmTargetsList.hidden = false;
+            els.confirmTargetsList.innerHTML = '';
+            for (const target of targets) {
+                const row = document.createElement('div');
+                row.className = 'cb-confirm-target cb-confirm-target--row';
+
+                const thumb = document.createElement('div');
+                thumb.className = 'cb-confirm-target-thumb';
+                const targetSrc = resolveTokenImageSrc(target);
+                if (targetSrc) {
+                    const img = document.createElement('img');
+                    img.src = targetSrc;
+                    img.alt = target.name || 'Alvo';
+                    img.draggable = false;
+                    applyTokenImageAdjustment(img, target.tokenImageAdjust ?? target.imageAdjust);
+                    thumb.appendChild(img);
+                } else {
+                    thumb.textContent = getTokenInitials(target.name);
+                }
+                row.appendChild(thumb);
+
+                const info = document.createElement('div');
+                info.className = 'cb-confirm-target-info';
+                const nameEl = document.createElement('div');
+                nameEl.className = 'cb-confirm-target-name';
+                nameEl.textContent = target.name || 'Alvo';
+                info.appendChild(nameEl);
+
+                const metaEl = document.createElement('div');
+                metaEl.className = 'cb-confirm-target-meta';
+                const metaParts = [];
+                const pvMax = numberOrNull(target.pvMax);
+                if (pvMax !== null && pvMax > 0) {
+                    metaParts.push(`PV ${clampResource(target.pvAtual, target.pvMax)}/${pvMax}`);
+                }
+                const defesa = target.defesa ?? null;
+                if (defesa !== null && defesa !== '') metaParts.push(`Defesa ${defesa}`);
+                if (saveTipo) {
+                    const saveBonus = parseSaveBonus(target, saveTipo);
+                    metaParts.push(`${rotuloSaveTipo(saveTipo)} ${formatSignedBonus(saveBonus)}`);
+                }
+                metaEl.textContent = metaParts.join(' • ');
+                info.appendChild(metaEl);
+
+                row.appendChild(info);
+                els.confirmTargetsList.appendChild(row);
+            }
+        }
+
+        els.confirm.hidden = false;
+    }
+
+    function rotuloSaveTipo(tipo) {
+        return ({ fortitude: 'Fortitude', reflexos: 'Reflexos', vontade: 'Vontade' })[String(tipo || '').toLowerCase()] || '';
+    }
+
+    function confirmPendingAreaAttack() {
+        if (!pendingAttack || !pendingAttack.isArea) return false;
+        const { attacker, action: item, areaTargets } = pendingAttack;
+        closeAttackConfirmation();
+
         const damageFormula = item.danoFormula || parseDamageFormula(item.dano || item.detalhe || item.nome || '') || '1d6';
         const damage = rollDamage(damageFormula);
         const saveTipo = String(item.saveTipo || '').toLowerCase();
@@ -2083,7 +2199,7 @@
         const results = [];
         let totalDamage = 0;
         let index = 1;
-        for (const target of targets) {
+        for (const target of areaTargets) {
             let saveResult = null;
             if (saveTipo && saveCD) {
                 saveResult = rollTargetSave(target, saveTipo, saveCD);
@@ -2125,6 +2241,7 @@
             totalDamage,
             message: `${results.length} alvo(s) na área de efeito`
         });
+        return true;
     }
 
     function executeMeleeAttack(attacker, item) {
@@ -2248,15 +2365,64 @@
         };
     }
 
+    function parseAtributosCriatura(valor) {
+        // Formato típico do bestiário: "forca: +2\ndestreza: +0\n..." ou objeto.
+        const out = {};
+        if (!valor) return out;
+        if (typeof valor === 'object' && !Array.isArray(valor)) {
+            for (const [k, v] of Object.entries(valor)) {
+                const num = Number(String(v).match(/-?\d+/)?.[0]);
+                if (Number.isFinite(num)) out[normalizeAtributo(k)] = num;
+            }
+            return out;
+        }
+        const linhas = Array.isArray(valor) ? valor : String(valor).split(/\n|;/);
+        for (const linha of linhas) {
+            const m = String(linha).match(/(forca|força|destreza|constituicao|constituição|inteligencia|inteligência|sabedoria|carisma)\s*[:\-=]?\s*([+-]?\d+)/i);
+            if (m) {
+                const num = Number(m[2]);
+                if (Number.isFinite(num)) out[normalizeAtributo(m[1])] = num;
+            }
+        }
+        return out;
+    }
+
+    function normalizeAtributo(nome) {
+        const map = {
+            'forca': 'forca', 'força': 'forca',
+            'destreza': 'destreza',
+            'constituicao': 'constituicao', 'constituição': 'constituicao',
+            'inteligencia': 'inteligencia', 'inteligência': 'inteligencia',
+            'sabedoria': 'sabedoria',
+            'carisma': 'carisma'
+        };
+        return map[String(nome).toLowerCase()] || String(nome).toLowerCase();
+    }
+
     function parseSaveBonus(target, tipo) {
         if (!target) return 0;
-        const candidatos = {
+        // Save explícito tem prioridade. Fallback: atributo correspondente.
+        // Pindorama RPG: Fortitude usa Con, Reflexos usa Des, Vontade usa Sab.
+        const explicitos = {
             fortitude: ['fortitude', 'fortitudeBonus', 'fort', 'savesFortitude'],
             reflexos: ['reflexos', 'reflexo', 'reflexBonus', 'savesReflexos'],
             vontade: ['vontade', 'will', 'vontadeBonus', 'savesVontade']
         }[tipo] || [];
-        for (const chave of candidatos) {
+        for (const chave of explicitos) {
             const val = target[chave];
+            if (val !== undefined && val !== null && val !== '') {
+                const num = Number(String(val).match(/-?\d+/)?.[0]);
+                if (Number.isFinite(num)) return num;
+            }
+        }
+        // Fallback: atributo
+        const fallbackAtributo = ({
+            fortitude: 'constituicao',
+            reflexos: 'destreza',
+            vontade: 'sabedoria'
+        })[tipo];
+        if (fallbackAtributo) {
+            const val = target[fallbackAtributo];
             if (val !== undefined && val !== null && val !== '') {
                 const num = Number(String(val).match(/-?\d+/)?.[0]);
                 if (Number.isFinite(num)) return num;
@@ -2570,10 +2736,20 @@
         if (!els.confirm) return;
         els.confirm.hidden = true;
         pendingAttack = null;
+        // Restaura UI single-target para o próximo uso
+        if (els.confirmTargetSingle) els.confirmTargetSingle.hidden = false;
+        if (els.confirmTargetsList) {
+            els.confirmTargetsList.hidden = true;
+            els.confirmTargetsList.innerHTML = '';
+        }
     }
 
     function confirmPendingAttack() {
         if (!pendingAttack) return;
+        if (pendingAttack.isArea) {
+            confirmPendingAreaAttack();
+            return;
+        }
         const { attacker, target, action, attackIndex, totalAttacks } = pendingAttack;
         closeAttackConfirmation();
 

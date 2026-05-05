@@ -7,7 +7,7 @@
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260503g" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
-    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260505e" />
+    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260505f" />
 </head>
 <body class="cb-body">
     <script src="assets/js/transitions.js?v=20260503d"></script>
@@ -135,13 +135,14 @@
                 </header>
                 <div class="cb-confirm-body">
                     <p id="cbConfirmText">Direcionar esta ação ao alvo?</p>
-                    <div class="cb-confirm-target">
+                    <div class="cb-confirm-target" id="cbConfirmTargetSingle">
                         <div class="cb-confirm-target-thumb" id="cbConfirmTargetThumb"></div>
                         <div class="cb-confirm-target-info">
                             <div class="cb-confirm-target-name" id="cbConfirmTargetName">Alvo</div>
                             <div class="cb-confirm-target-meta" id="cbConfirmTargetMeta"></div>
                         </div>
                     </div>
+                    <div class="cb-confirm-targets" id="cbConfirmTargetsList" hidden></div>
                 </div>
                 <footer class="cb-modal-footer">
                     <button type="button" id="cbConfirmCancel">Cancelar</button>
@@ -165,6 +166,6 @@
 
     </main>
 
-    <script src="assets/js/campo-batalha.js?v=20260505d"></script>
+    <script src="assets/js/campo-batalha.js?v=20260505f"></script>
 </body>
 </html>
