@@ -333,6 +333,353 @@
     opacity: 1;
 }
 
+/* ---------- Páginas (cenas) ---------- */
+
+.cb-pages-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 2px solid var(--line);
+    border-radius: 10px;
+    flex: 0 0 auto;
+    overflow-x: auto;
+}
+
+.cb-pages-tabs {
+    display: flex;
+    gap: 4px;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    min-width: 0;
+}
+
+.cb-page-tab {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px 4px 12px;
+    border: 2px solid var(--purple);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--purple-dark);
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    flex-shrink: 0;
+    max-width: 200px;
+}
+
+.cb-page-tab:hover {
+    background: rgba(247, 240, 250, 1);
+}
+
+.cb-page-tab.is-active {
+    background: var(--purple);
+    color: #fff;
+    border-color: var(--purple-dark);
+}
+
+.cb-page-tab-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+}
+
+.cb-page-tab-close {
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 1.1em;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+    opacity: 0.6;
+}
+
+.cb-page-tab-close:hover {
+    opacity: 1;
+}
+
+.cb-pages-add {
+    border: 2px dashed var(--purple);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--purple-dark);
+    font-weight: 900;
+    font-size: 1.1rem;
+    padding: 2px 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.cb-pages-add:hover {
+    background: rgba(247, 240, 250, 1);
+}
+
+/* ---------- Cenário (imagens de fundo / decoração) ---------- */
+
+.cb-scenery-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.cb-scenery {
+    position: absolute;
+    pointer-events: auto;
+    cursor: grab;
+    transform-origin: center center;
+}
+
+.cb-scenery.is-locked {
+    cursor: default;
+    pointer-events: none;
+}
+
+.cb-scenery.is-hidden {
+    display: none;
+}
+
+.cb-scenery.is-dragging {
+    cursor: grabbing;
+}
+
+.cb-scenery img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+    pointer-events: none;
+    user-select: none;
+    background: transparent;
+}
+
+.cb-scenery.is-selected {
+    outline: 2px dashed var(--purple-dark);
+    outline-offset: 2px;
+}
+
+.cb-scenery-handle {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--purple);
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(43, 18, 50, 0.5);
+    cursor: pointer;
+    z-index: 2;
+}
+
+.cb-scenery-handle--resize {
+    bottom: -10px;
+    right: -10px;
+    cursor: nwse-resize;
+}
+
+.cb-scenery-handle--rotate {
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: grab;
+    background: var(--pink-dark, #b34a78);
+}
+
+/* ---------- Painel de camadas ---------- */
+
+.cb-layers-panel {
+    position: fixed;
+    top: 80px;
+    right: 16px;
+    width: 280px;
+    max-height: calc(100vh - 110px);
+    background: rgba(255, 253, 253, 0.98);
+    border: 3px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 12px 36px rgba(43, 18, 50, 0.4);
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+    overflow: hidden;
+}
+
+.cb-layers-panel[hidden] {
+    display: none;
+}
+
+.cb-layers-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 2px solid rgba(118, 84, 124, 0.2);
+}
+
+.cb-layers-header h2 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--purple-dark);
+}
+
+.cb-layers-header button {
+    border: none;
+    background: transparent;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--purple-dark);
+    line-height: 1;
+}
+
+.cb-layers-tip {
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    background: rgba(247, 240, 250, 0.6);
+    border-bottom: 1px solid rgba(118, 84, 124, 0.15);
+}
+
+.cb-layers-list {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.cb-layer-item {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 6px;
+    align-items: center;
+    padding: 6px;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    margin-bottom: 4px;
+}
+
+.cb-layer-item:hover {
+    background: rgba(247, 240, 250, 0.6);
+}
+
+.cb-layer-item.is-selected {
+    border-color: var(--purple);
+    background: rgba(247, 240, 250, 0.95);
+}
+
+.cb-layer-thumb {
+    width: 36px;
+    height: 36px;
+    border: 1.5px solid var(--purple-dark);
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+    display: grid;
+    place-items: center;
+    color: var(--purple-dark);
+    font-weight: 800;
+    font-size: 0.8rem;
+}
+
+.cb-layer-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #fff;
+}
+
+.cb-layer-name {
+    font-weight: 700;
+    color: var(--purple-dark);
+    font-size: 0.88rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.cb-layer-meta {
+    font-size: 0.72rem;
+    color: var(--muted);
+}
+
+.cb-layer-actions {
+    display: flex;
+    gap: 2px;
+}
+
+.cb-layer-actions button {
+    width: 26px;
+    height: 26px;
+    border: 1.5px solid rgba(118, 84, 124, 0.4);
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 5px;
+    cursor: pointer;
+    color: var(--purple-dark);
+    font-size: 0.85rem;
+    display: grid;
+    place-items: center;
+    padding: 0;
+}
+
+.cb-layer-actions button:hover {
+    background: var(--purple);
+    color: #fff;
+}
+
+.cb-layer-actions button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.cb-layer-empty {
+    padding: 18px;
+    text-align: center;
+    color: var(--muted);
+    font-style: italic;
+}
+
+/* ---------- Modal cenário ---------- */
+
+.cb-scenery-body {
+    padding: 16px 20px;
+    display: grid;
+    gap: 10px;
+}
+
+.cb-scenery-field {
+    display: grid;
+    gap: 4px;
+    color: var(--purple-dark);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.cb-scenery-field input {
+    border: 2px solid rgba(118, 84, 124, 0.32);
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.95);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--purple-dark);
+}
+
+.cb-scenery-or {
+    text-align: center;
+    color: var(--muted);
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
 /* ---------- Tokens ---------- */
 
 .cb-tokens-layer {

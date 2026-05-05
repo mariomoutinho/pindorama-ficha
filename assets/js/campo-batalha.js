@@ -37,7 +37,11 @@
         showNumbers: false,
         viewport: { x: 0, y: 0, scale: 1 },
         tokens: [],                // { id, fichaId|null, name, tokenImage, tokenImageAdjust, fotoImage, col, row, sizeCells, rotation }
+        scenery: [],               // { id, name, src, x, y, width, height, rotation, zIndex, hidden, locked }
         selectedId: null,
+        selectedSceneryId: null,
+        pages: [],                 // [{ id, name, cols, rows, viewport, tokens, scenery, showNumbers }]
+        activePageId: null,
         fichas: [],                // cache da lista de fichas
         fichasLoaded: false,
         bestiario: [],             // cache da lista de criaturas do bestiário
@@ -73,6 +77,21 @@
         adjustY: document.getElementById('cbAdjustY'),
         adjustReset: document.getElementById('cbAdjustReset'),
         adjustUseBestiario: document.getElementById('cbAdjustUseBestiario'),
+        sceneryLayer: document.getElementById('cbSceneryLayer'),
+        addScenery: document.getElementById('cbAddScenery'),
+        toggleLayers: document.getElementById('cbToggleLayers'),
+        pagesTabs: document.getElementById('cbPagesTabs'),
+        addPage: document.getElementById('cbAddPage'),
+        layersPanel: document.getElementById('cbLayersPanel'),
+        layersClose: document.getElementById('cbLayersClose'),
+        layersList: document.getElementById('cbLayersList'),
+        sceneryModal: document.getElementById('cbSceneryModal'),
+        sceneryClose: document.getElementById('cbSceneryClose'),
+        sceneryName: document.getElementById('cbSceneryName'),
+        sceneryUrl: document.getElementById('cbSceneryUrl'),
+        sceneryFile: document.getElementById('cbSceneryFile'),
+        sceneryCancel: document.getElementById('cbSceneryCancel'),
+        sceneryConfirm: document.getElementById('cbSceneryConfirm'),
         zoomIn: document.getElementById('cbZoomIn'),
         zoomOut: document.getElementById('cbZoomOut'),
         zoomReset: document.getElementById('cbZoomReset'),
@@ -139,12 +158,10 @@
 
     function saveState() {
         try {
+            syncLiveToActivePage();
             const snap = {
-                cols: state.cols,
-                rows: state.rows,
-                showNumbers: state.showNumbers,
-                viewport: state.viewport,
-                tokens: state.tokens
+                pages: state.pages,
+                activePageId: state.activePageId
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(snap));
         } catch (e) {
@@ -155,22 +172,111 @@
     function loadState() {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return;
+            if (!raw) {
+                ensureInitialPage();
+                return;
+            }
             const snap = JSON.parse(raw);
-            if (snap.cols) state.cols = snap.cols;
-            if (snap.rows) state.rows = snap.rows;
-            if (typeof snap.showNumbers === 'boolean') state.showNumbers = snap.showNumbers;
-            if (snap.viewport) state.viewport = snap.viewport;
-            if (Array.isArray(snap.tokens)) {
-                const before = JSON.stringify(snap.tokens);
-                state.tokens = snap.tokens.map(migrateLegacyTokenFields);
-                if (before !== JSON.stringify(state.tokens)) {
-                    saveState();
-                }
+            if (Array.isArray(snap.pages) && snap.pages.length) {
+                state.pages = snap.pages.map(normalizePage);
+                state.activePageId = snap.activePageId && state.pages.find(p => p.id === snap.activePageId)
+                    ? snap.activePageId
+                    : state.pages[0].id;
+                const active = state.pages.find(p => p.id === state.activePageId) || state.pages[0];
+                loadPageIntoLive(active);
+            } else {
+                // Snapshot legado de página única
+                const legacy = normalizePage({
+                    id: 'page_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36),
+                    name: 'Cena 1',
+                    cols: snap.cols || 20,
+                    rows: snap.rows || 15,
+                    viewport: snap.viewport || { x: 0, y: 0, scale: 1 },
+                    tokens: Array.isArray(snap.tokens) ? snap.tokens.map(migrateLegacyTokenFields) : [],
+                    scenery: [],
+                    showNumbers: !!snap.showNumbers
+                });
+                state.pages = [legacy];
+                state.activePageId = legacy.id;
+                loadPageIntoLive(legacy);
+                saveState();
             }
         } catch (e) {
-            // estado corrompido — recomeçar
+            ensureInitialPage();
         }
+    }
+
+    function ensureInitialPage() {
+        const page = createDefaultPage('Cena 1');
+        state.pages = [page];
+        state.activePageId = page.id;
+        loadPageIntoLive(page);
+    }
+
+    function createDefaultPage(name) {
+        return normalizePage({
+            id: 'page_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36),
+            name: name || 'Nova cena',
+            cols: 20,
+            rows: 15,
+            viewport: { x: 0, y: 0, scale: 1 },
+            tokens: [],
+            scenery: [],
+            showNumbers: false
+        });
+    }
+
+    function normalizePage(page) {
+        return {
+            id: page.id || ('page_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36)),
+            name: page.name || 'Cena',
+            cols: Number(page.cols) || 20,
+            rows: Number(page.rows) || 15,
+            viewport: page.viewport && typeof page.viewport === 'object'
+                ? { x: Number(page.viewport.x) || 0, y: Number(page.viewport.y) || 0, scale: Number(page.viewport.scale) || 1 }
+                : { x: 0, y: 0, scale: 1 },
+            tokens: Array.isArray(page.tokens) ? page.tokens.map(migrateLegacyTokenFields) : [],
+            scenery: Array.isArray(page.scenery) ? page.scenery.map(normalizeSceneryItem) : [],
+            showNumbers: !!page.showNumbers
+        };
+    }
+
+    function normalizeSceneryItem(item) {
+        return {
+            id: item.id || ('scn_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36)),
+            name: item.name || 'Cenário',
+            src: item.src || '',
+            x: Number(item.x) || 0,
+            y: Number(item.y) || 0,
+            width: Number(item.width) || 200,
+            height: Number(item.height) || 200,
+            rotation: Number(item.rotation) || 0,
+            zIndex: Number.isFinite(item.zIndex) ? item.zIndex : 0,
+            hidden: !!item.hidden,
+            locked: !!item.locked
+        };
+    }
+
+    function syncLiveToActivePage() {
+        const page = state.pages.find(p => p.id === state.activePageId);
+        if (!page) return;
+        page.cols = state.cols;
+        page.rows = state.rows;
+        page.viewport = { ...state.viewport };
+        page.tokens = state.tokens;
+        page.scenery = state.scenery;
+        page.showNumbers = state.showNumbers;
+    }
+
+    function loadPageIntoLive(page) {
+        state.cols = page.cols;
+        state.rows = page.rows;
+        state.viewport = { ...page.viewport };
+        state.tokens = page.tokens;
+        state.scenery = page.scenery;
+        state.showNumbers = page.showNumbers;
+        state.selectedId = null;
+        state.selectedSceneryId = null;
     }
 
     function migrateLegacyTokenFields(token) {
@@ -214,6 +320,10 @@
         els.board.style.height = (state.rows * CELL_SIZE) + 'px';
         els.tokensLayer.style.width = els.board.style.width;
         els.tokensLayer.style.height = els.board.style.height;
+        if (els.sceneryLayer) {
+            els.sceneryLayer.style.width = els.board.style.width;
+            els.sceneryLayer.style.height = els.board.style.height;
+        }
 
         els.board.classList.toggle('show-numbers', state.showNumbers);
         els.board.innerHTML = '';
@@ -460,6 +570,31 @@
     let interaction = null;     // descreve a interação ativa
 
     function onStagePointerDown(ev) {
+        // Cenário (imagens livres) — verifica antes dos tokens, com prioridade nos handles
+        const sceneryHandle = ev.target.closest('.cb-scenery-handle');
+        const sceneryEl = ev.target.closest('.cb-scenery');
+        if (sceneryHandle && sceneryEl) {
+            const item = state.scenery.find(s => s.id === sceneryEl.dataset.sceneryId);
+            if (item && !item.locked) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                selectScenery(item.id);
+                if (sceneryHandle.dataset.handle === 'resize') startSceneryResize(ev, item);
+                else if (sceneryHandle.dataset.handle === 'rotate') startSceneryRotate(ev, item);
+                return;
+            }
+        }
+        if (sceneryEl && !ev.target.closest('.cb-token')) {
+            const item = state.scenery.find(s => s.id === sceneryEl.dataset.sceneryId);
+            if (item && !item.locked) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                selectScenery(item.id);
+                startSceneryDrag(ev, item);
+                return;
+            }
+        }
+
         // Verificamos se o alvo é um token, handle ou stage vazio
         const tokenEl = ev.target.closest('.cb-token');
         const handle = ev.target.closest('.cb-token-handle');
@@ -549,6 +684,7 @@
             try { els.stage.setPointerCapture(ev.pointerId); } catch (_) {}
             // Desselecionar se clique vazio
             selectToken(null);
+            if (state.selectedSceneryId) selectScenery(null);
         } else if (pointers.size === 2) {
             const [a, b] = [...pointers.values()];
             interaction = {
@@ -856,14 +992,538 @@
     }
 
     function clearAllTokens() {
-        if (!state.tokens.length) return;
-        if (!confirm('Remover todos os tokens do campo?')) return;
+        if (!state.tokens.length && !state.scenery.length) return;
+        if (!confirm('Remover todos os tokens e cenários da página atual?')) return;
         state.tokens = [];
+        state.scenery = [];
         state.selectedId = null;
+        state.selectedSceneryId = null;
         clearReachPreview(false);
         renderBoard();
         renderTokens();
+        renderScenery();
+        renderLayersPanel();
         saveState();
+    }
+
+    // ----------------------------------------------------------------
+    // Páginas (cenas)
+    // ----------------------------------------------------------------
+
+    function renderPagesBar() {
+        if (!els.pagesTabs) return;
+        els.pagesTabs.innerHTML = '';
+        const frag = document.createDocumentFragment();
+        for (const page of state.pages) {
+            const tab = document.createElement('div');
+            tab.className = 'cb-page-tab' + (page.id === state.activePageId ? ' is-active' : '');
+            tab.dataset.pageId = page.id;
+            tab.title = 'Clique para abrir, duplo clique para renomear';
+
+            const nameEl = document.createElement('span');
+            nameEl.className = 'cb-page-tab-name';
+            nameEl.textContent = page.name;
+            tab.appendChild(nameEl);
+
+            if (state.pages.length > 1) {
+                const closeBtn = document.createElement('button');
+                closeBtn.type = 'button';
+                closeBtn.className = 'cb-page-tab-close';
+                closeBtn.textContent = '×';
+                closeBtn.title = 'Remover página';
+                closeBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    removePage(page.id);
+                });
+                tab.appendChild(closeBtn);
+            }
+
+            tab.addEventListener('click', () => switchPage(page.id));
+            tab.addEventListener('dblclick', () => {
+                const next = prompt('Nome da página:', page.name);
+                if (next === null) return;
+                const trimmed = next.trim();
+                if (!trimmed) return;
+                page.name = trimmed;
+                renderPagesBar();
+                saveState();
+            });
+
+            frag.appendChild(tab);
+        }
+        els.pagesTabs.appendChild(frag);
+    }
+
+    function switchPage(pageId) {
+        if (pageId === state.activePageId) return;
+        const page = state.pages.find(p => p.id === pageId);
+        if (!page) return;
+        syncLiveToActivePage();
+        state.activePageId = pageId;
+        loadPageIntoLive(page);
+        clearReachPreview(false);
+        renderBoard();
+        renderTokens();
+        renderScenery();
+        applyViewport();
+        els.cols.value = state.cols;
+        els.rows.value = state.rows;
+        els.toggleNumbers.checked = state.showNumbers;
+        updateActionButtons();
+        renderPagesBar();
+        renderLayersPanel();
+        saveState();
+    }
+
+    function addPage() {
+        const name = prompt('Nome da nova página:', `Cena ${state.pages.length + 1}`);
+        if (name === null) return;
+        const trimmed = name.trim() || `Cena ${state.pages.length + 1}`;
+        const page = createDefaultPage(trimmed);
+        syncLiveToActivePage();
+        state.pages.push(page);
+        state.activePageId = page.id;
+        loadPageIntoLive(page);
+        renderBoard();
+        renderTokens();
+        renderScenery();
+        centerBoard();
+        els.cols.value = state.cols;
+        els.rows.value = state.rows;
+        els.toggleNumbers.checked = state.showNumbers;
+        updateActionButtons();
+        renderPagesBar();
+        renderLayersPanel();
+        saveState();
+    }
+
+    function removePage(pageId) {
+        if (state.pages.length <= 1) {
+            alert('Não é possível remover a última página.');
+            return;
+        }
+        const idx = state.pages.findIndex(p => p.id === pageId);
+        if (idx < 0) return;
+        const page = state.pages[idx];
+        if (!confirm(`Remover a página "${page.name}" e tudo que está nela?`)) return;
+        state.pages.splice(idx, 1);
+        if (state.activePageId === pageId) {
+            const newActive = state.pages[Math.max(0, idx - 1)];
+            state.activePageId = newActive.id;
+            loadPageIntoLive(newActive);
+            renderBoard();
+            renderTokens();
+            renderScenery();
+            applyViewport();
+            els.cols.value = state.cols;
+            els.rows.value = state.rows;
+            els.toggleNumbers.checked = state.showNumbers;
+        }
+        renderPagesBar();
+        renderLayersPanel();
+        saveState();
+    }
+
+    // ----------------------------------------------------------------
+    // Cenário (imagens livres)
+    // ----------------------------------------------------------------
+
+    function renderScenery() {
+        if (!els.sceneryLayer) return;
+        els.sceneryLayer.innerHTML = '';
+        const sorted = [...state.scenery].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+        const frag = document.createDocumentFragment();
+        for (const item of sorted) {
+            if (item.hidden) continue;
+            frag.appendChild(buildSceneryElement(item));
+        }
+        els.sceneryLayer.appendChild(frag);
+    }
+
+    function buildSceneryElement(item) {
+        const el = document.createElement('div');
+        el.className = 'cb-scenery';
+        el.dataset.sceneryId = item.id;
+        if (item.locked) el.classList.add('is-locked');
+        if (item.id === state.selectedSceneryId) el.classList.add('is-selected');
+        el.style.left = item.x + 'px';
+        el.style.top = item.y + 'px';
+        el.style.width = item.width + 'px';
+        el.style.height = item.height + 'px';
+        el.style.transform = `rotate(${item.rotation || 0}deg)`;
+        el.style.zIndex = String(item.zIndex || 0);
+
+        const img = document.createElement('img');
+        img.src = item.src;
+        img.alt = item.name || 'Cenário';
+        img.draggable = false;
+        el.appendChild(img);
+
+        if (item.id === state.selectedSceneryId && !item.locked) {
+            const resize = document.createElement('div');
+            resize.className = 'cb-scenery-handle cb-scenery-handle--resize';
+            resize.dataset.handle = 'resize';
+            el.appendChild(resize);
+
+            const rotate = document.createElement('div');
+            rotate.className = 'cb-scenery-handle cb-scenery-handle--rotate';
+            rotate.dataset.handle = 'rotate';
+            el.appendChild(rotate);
+        }
+
+        return el;
+    }
+
+    function selectScenery(id) {
+        if (state.selectedSceneryId === id) return;
+        state.selectedSceneryId = id;
+        if (id) {
+            state.selectedId = null;
+            updateSelectionVisuals();
+        }
+        renderScenery();
+        renderLayersPanel();
+    }
+
+    function openSceneryModal() {
+        if (!els.sceneryModal) return;
+        els.sceneryName.value = '';
+        els.sceneryUrl.value = '';
+        if (els.sceneryFile) els.sceneryFile.value = '';
+        els.sceneryModal.hidden = false;
+        setTimeout(() => els.sceneryName?.focus(), 50);
+    }
+
+    function closeSceneryModal() {
+        if (els.sceneryModal) els.sceneryModal.hidden = true;
+    }
+
+    function confirmAddScenery() {
+        const name = (els.sceneryName.value || 'Cenário').trim() || 'Cenário';
+        const url = (els.sceneryUrl.value || '').trim();
+        const file = els.sceneryFile?.files?.[0] || null;
+        if (file) {
+            const reader = new FileReader();
+            reader.addEventListener('load', () => {
+                addSceneryItem(name, String(reader.result || ''));
+                closeSceneryModal();
+            });
+            reader.readAsDataURL(file);
+            return;
+        }
+        if (!url) {
+            alert('Informe uma URL/caminho ou carregue uma imagem.');
+            return;
+        }
+        addSceneryItem(name, url);
+        closeSceneryModal();
+    }
+
+    function addSceneryItem(name, src) {
+        const baseW = Math.min(state.cols * CELL_SIZE, 6 * CELL_SIZE);
+        const item = normalizeSceneryItem({
+            id: 'scn_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36),
+            name,
+            src,
+            x: Math.max(0, (state.cols * CELL_SIZE - baseW) / 2),
+            y: Math.max(0, (state.rows * CELL_SIZE - baseW) / 2),
+            width: baseW,
+            height: baseW,
+            rotation: 0,
+            zIndex: nextSceneryZIndex(),
+            hidden: false,
+            locked: false
+        });
+        state.scenery.push(item);
+        state.selectedSceneryId = item.id;
+        renderScenery();
+        renderLayersPanel();
+        saveState();
+
+        // Ajusta para a proporção real da imagem após carregar
+        const probe = new Image();
+        probe.onload = () => {
+            if (!probe.naturalWidth || !probe.naturalHeight) return;
+            const ratio = probe.naturalHeight / probe.naturalWidth;
+            const found = state.scenery.find(s => s.id === item.id);
+            if (!found) return;
+            found.height = Math.round(found.width * ratio);
+            renderScenery();
+            renderLayersPanel();
+            saveState();
+        };
+        probe.src = src;
+    }
+
+    function nextSceneryZIndex() {
+        if (!state.scenery.length) return 1;
+        return Math.max(...state.scenery.map(s => s.zIndex || 0)) + 1;
+    }
+
+    function removeSelectedScenery() {
+        if (!state.selectedSceneryId) return;
+        const idx = state.scenery.findIndex(s => s.id === state.selectedSceneryId);
+        if (idx < 0) return;
+        state.scenery.splice(idx, 1);
+        state.selectedSceneryId = null;
+        renderScenery();
+        renderLayersPanel();
+        saveState();
+    }
+
+    function moveSceneryLayer(id, delta) {
+        // delta: +1 = para frente (topo), -1 = para trás (fundo)
+        const sorted = [...state.scenery].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+        const idx = sorted.findIndex(s => s.id === id);
+        if (idx < 0) return;
+        const target = idx + delta;
+        if (target < 0 || target >= sorted.length) return;
+        const a = sorted[idx];
+        const b = sorted[target];
+        const tmp = a.zIndex || 0;
+        a.zIndex = b.zIndex || 0;
+        b.zIndex = tmp;
+        renderScenery();
+        renderLayersPanel();
+        saveState();
+    }
+
+    function toggleSceneryHidden(id) {
+        const item = state.scenery.find(s => s.id === id);
+        if (!item) return;
+        item.hidden = !item.hidden;
+        if (item.hidden && state.selectedSceneryId === id) state.selectedSceneryId = null;
+        renderScenery();
+        renderLayersPanel();
+        saveState();
+    }
+
+    function toggleSceneryLocked(id) {
+        const item = state.scenery.find(s => s.id === id);
+        if (!item) return;
+        item.locked = !item.locked;
+        renderScenery();
+        renderLayersPanel();
+        saveState();
+    }
+
+    function renameScenery(id) {
+        const item = state.scenery.find(s => s.id === id);
+        if (!item) return;
+        const name = prompt('Nome do cenário:', item.name);
+        if (name === null) return;
+        item.name = name.trim() || 'Cenário';
+        renderLayersPanel();
+        saveState();
+    }
+
+    function startSceneryDrag(ev, item) {
+        if (item.locked) return;
+        const startX = ev.clientX;
+        const startY = ev.clientY;
+        const origX = item.x;
+        const origY = item.y;
+        const scale = state.viewport.scale || 1;
+        const el = els.sceneryLayer.querySelector(`[data-scenery-id="${item.id}"]`);
+        if (el) el.classList.add('is-dragging');
+
+        function onMove(e) {
+            const dx = (e.clientX - startX) / scale;
+            const dy = (e.clientY - startY) / scale;
+            item.x = origX + dx;
+            item.y = origY + dy;
+            if (el) {
+                el.style.left = item.x + 'px';
+                el.style.top = item.y + 'px';
+            }
+        }
+        function onUp() {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+            if (el) el.classList.remove('is-dragging');
+            saveState();
+        }
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+    }
+
+    function startSceneryResize(ev, item) {
+        if (item.locked) return;
+        const startX = ev.clientX;
+        const startY = ev.clientY;
+        const origW = item.width;
+        const origH = item.height;
+        const ratio = origW > 0 ? origH / origW : 1;
+        const scale = state.viewport.scale || 1;
+        const el = els.sceneryLayer.querySelector(`[data-scenery-id="${item.id}"]`);
+
+        function onMove(e) {
+            const dx = (e.clientX - startX) / scale;
+            const newW = Math.max(20, origW + dx);
+            const newH = Math.max(20, e.shiftKey ? origH + (e.clientY - startY) / scale : newW * ratio);
+            item.width = newW;
+            item.height = newH;
+            if (el) {
+                el.style.width = newW + 'px';
+                el.style.height = newH + 'px';
+            }
+        }
+        function onUp() {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+            saveState();
+            renderLayersPanel();
+        }
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+    }
+
+    function startSceneryRotate(ev, item) {
+        if (item.locked) return;
+        const el = els.sceneryLayer.querySelector(`[data-scenery-id="${item.id}"]`);
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const startAngle = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
+        const origRot = item.rotation || 0;
+
+        function onMove(e) {
+            const angle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+            item.rotation = origRot + (angle - startAngle);
+            if (el) el.style.transform = `rotate(${item.rotation}deg)`;
+        }
+        function onUp() {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+            saveState();
+        }
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+    }
+
+    // ----------------------------------------------------------------
+    // Painel de camadas
+    // ----------------------------------------------------------------
+
+    function toggleLayersPanel() {
+        if (!els.layersPanel) return;
+        if (els.layersPanel.hidden) {
+            els.layersPanel.hidden = false;
+            renderLayersPanel();
+        } else {
+            els.layersPanel.hidden = true;
+        }
+    }
+
+    function renderLayersPanel() {
+        if (!els.layersList || els.layersPanel.hidden) return;
+        els.layersList.innerHTML = '';
+        const sorted = [...state.scenery].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
+        if (!sorted.length) {
+            const empty = document.createElement('li');
+            empty.className = 'cb-layer-empty';
+            empty.textContent = 'Nenhum cenário nesta página. Use "+ Cenário" para adicionar.';
+            els.layersList.appendChild(empty);
+            return;
+        }
+        const frag = document.createDocumentFragment();
+        sorted.forEach((item, idx) => {
+            const li = document.createElement('li');
+            li.className = 'cb-layer-item' + (item.id === state.selectedSceneryId ? ' is-selected' : '');
+            li.dataset.sceneryId = item.id;
+
+            const thumb = document.createElement('div');
+            thumb.className = 'cb-layer-thumb';
+            if (item.src) {
+                const img = document.createElement('img');
+                img.src = item.src;
+                img.alt = '';
+                img.onerror = () => {
+                    img.remove();
+                    thumb.textContent = (item.name || '?').charAt(0).toUpperCase();
+                };
+                thumb.appendChild(img);
+            } else {
+                thumb.textContent = (item.name || '?').charAt(0).toUpperCase();
+            }
+            li.appendChild(thumb);
+
+            const info = document.createElement('div');
+            const nm = document.createElement('div');
+            nm.className = 'cb-layer-name';
+            nm.textContent = item.name || 'Cenário';
+            info.appendChild(nm);
+            const meta = document.createElement('div');
+            meta.className = 'cb-layer-meta';
+            meta.textContent = `${Math.round(item.width)}×${Math.round(item.height)} • z=${item.zIndex || 0}`;
+            info.appendChild(meta);
+            li.appendChild(info);
+
+            const actions = document.createElement('div');
+            actions.className = 'cb-layer-actions';
+
+            const upBtn = document.createElement('button');
+            upBtn.type = 'button';
+            upBtn.title = 'Trazer para frente';
+            upBtn.textContent = '↑';
+            upBtn.disabled = idx === 0;
+            upBtn.addEventListener('click', (e) => { e.stopPropagation(); moveSceneryLayer(item.id, +1); });
+            actions.appendChild(upBtn);
+
+            const downBtn = document.createElement('button');
+            downBtn.type = 'button';
+            downBtn.title = 'Enviar para trás';
+            downBtn.textContent = '↓';
+            downBtn.disabled = idx === sorted.length - 1;
+            downBtn.addEventListener('click', (e) => { e.stopPropagation(); moveSceneryLayer(item.id, -1); });
+            actions.appendChild(downBtn);
+
+            const visBtn = document.createElement('button');
+            visBtn.type = 'button';
+            visBtn.title = item.hidden ? 'Mostrar' : 'Ocultar';
+            visBtn.textContent = item.hidden ? '◌' : '●';
+            visBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSceneryHidden(item.id); });
+            actions.appendChild(visBtn);
+
+            const lockBtn = document.createElement('button');
+            lockBtn.type = 'button';
+            lockBtn.title = item.locked ? 'Destravar' : 'Travar';
+            lockBtn.textContent = item.locked ? '🔒' : '🔓';
+            lockBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSceneryLocked(item.id); });
+            actions.appendChild(lockBtn);
+
+            const renBtn = document.createElement('button');
+            renBtn.type = 'button';
+            renBtn.title = 'Renomear';
+            renBtn.textContent = '✎';
+            renBtn.addEventListener('click', (e) => { e.stopPropagation(); renameScenery(item.id); });
+            actions.appendChild(renBtn);
+
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.title = 'Remover';
+            delBtn.textContent = '×';
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!confirm(`Remover "${item.name}"?`)) return;
+                state.selectedSceneryId = item.id;
+                removeSelectedScenery();
+            });
+            actions.appendChild(delBtn);
+
+            li.appendChild(actions);
+
+            li.addEventListener('click', () => selectScenery(item.id));
+            frag.appendChild(li);
+        });
+        els.layersList.appendChild(frag);
     }
 
     // ----------------------------------------------------------------
@@ -3549,6 +4209,20 @@
         if (els.adjustToken) els.adjustToken.addEventListener('click', openAdjustModalForSelected);
         els.clearAll.addEventListener('click', clearAllTokens);
 
+        if (els.addScenery) els.addScenery.addEventListener('click', openSceneryModal);
+        if (els.toggleLayers) els.toggleLayers.addEventListener('click', toggleLayersPanel);
+        if (els.layersClose) els.layersClose.addEventListener('click', toggleLayersPanel);
+        if (els.addPage) els.addPage.addEventListener('click', addPage);
+
+        if (els.sceneryClose) els.sceneryClose.addEventListener('click', closeSceneryModal);
+        if (els.sceneryCancel) els.sceneryCancel.addEventListener('click', closeSceneryModal);
+        if (els.sceneryConfirm) els.sceneryConfirm.addEventListener('click', confirmAddScenery);
+        if (els.sceneryModal) {
+            els.sceneryModal.addEventListener('click', (event) => {
+                if (event.target === els.sceneryModal) closeSceneryModal();
+            });
+        }
+
         if (els.adjustClose) els.adjustClose.addEventListener('click', closeAdjustModal);
         if (els.adjustModal) {
             els.adjustModal.addEventListener('click', (event) => {
@@ -3601,15 +4275,20 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (state.selectedId && document.activeElement === document.body) {
+                if (document.activeElement !== document.body) return;
+                if (state.selectedSceneryId) {
+                    removeSelectedScenery();
+                } else if (state.selectedId) {
                     removeSelectedToken();
                 }
             } else if (e.key === 'Escape') {
-                if (els.adjustModal && !els.adjustModal.hidden) closeAdjustModal();
+                if (els.sceneryModal && !els.sceneryModal.hidden) closeSceneryModal();
+                else if (els.adjustModal && !els.adjustModal.hidden) closeAdjustModal();
                 else if (els.confirm && !els.confirm.hidden) closeAttackConfirmation();
                 else if (state.reachPreview) clearReachPreview(true);
                 else if (!els.actionPanel.hidden) closeTokenActionPanel();
                 else if (!els.modal.hidden) closeModal();
+                else if (state.selectedSceneryId) selectScenery(null);
                 else selectToken(null);
             }
         });
@@ -3634,7 +4313,9 @@
         els.cols.value = state.cols;
         els.rows.value = state.rows;
         els.toggleNumbers.checked = state.showNumbers;
+        renderPagesBar();
         renderBoard();
+        renderScenery();
         renderTokens();
         consumePendingBestiaryToken();
         syncFichaTokensFromServer();

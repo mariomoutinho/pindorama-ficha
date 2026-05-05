@@ -7,7 +7,7 @@
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260503g" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
-    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260505p" />
+    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260505q" />
 </head>
 <body class="cb-body">
     <script src="assets/js/transitions.js?v=20260503d"></script>
@@ -39,6 +39,8 @@
                 <button type="button" id="cbRemoveToken" disabled>Remover seleção</button>
                 <button type="button" id="cbRotateToken" disabled>Girar 90°</button>
                 <button type="button" id="cbAdjustToken" disabled>Ajustar token</button>
+                <button type="button" id="cbAddScenery">+ Cenário</button>
+                <button type="button" id="cbToggleLayers">Camadas</button>
                 <button type="button" id="cbClearAll">Limpar campo</button>
             </div>
 
@@ -69,9 +71,15 @@
             </div>
         </section>
 
+        <section class="cb-pages-bar" aria-label="Páginas do campo">
+            <div class="cb-pages-tabs" id="cbPagesTabs"></div>
+            <button type="button" id="cbAddPage" class="cb-pages-add" title="Nova página">+</button>
+        </section>
+
         <section class="cb-stage" id="cbStage">
             <div class="cb-viewport" id="cbViewport">
                 <div class="cb-board" id="cbBoard"></div>
+                <div class="cb-scenery-layer" id="cbSceneryLayer"></div>
                 <div class="cb-tokens-layer" id="cbTokensLayer"></div>
             </div>
             <div class="cb-help" id="cbHelp">
@@ -82,6 +90,43 @@
                 <span>Toque/clique no token para selecionar</span>
             </div>
         </section>
+
+        <aside class="cb-layers-panel" id="cbLayersPanel" hidden>
+            <header class="cb-layers-header">
+                <h2>Camadas</h2>
+                <button type="button" id="cbLayersClose" aria-label="Fechar camadas">×</button>
+            </header>
+            <div class="cb-layers-tip">Topo = na frente. Arraste itens com ↑ ↓ para reorganizar.</div>
+            <ul class="cb-layers-list" id="cbLayersList"></ul>
+        </aside>
+
+        <div class="cb-modal-backdrop" id="cbSceneryModal" hidden>
+            <div class="cb-modal" role="dialog" aria-modal="true" aria-labelledby="cbSceneryTitle">
+                <header class="cb-modal-header">
+                    <h2 id="cbSceneryTitle">Adicionar cenário</h2>
+                    <button type="button" id="cbSceneryClose" aria-label="Fechar">×</button>
+                </header>
+                <div class="cb-scenery-body">
+                    <label class="cb-scenery-field">
+                        Nome
+                        <input id="cbSceneryName" type="text" placeholder="ex.: Tapete, Pedra, Mesa" />
+                    </label>
+                    <label class="cb-scenery-field">
+                        URL ou caminho da imagem
+                        <input id="cbSceneryUrl" type="text" placeholder="https://... ou assets/img/..." />
+                    </label>
+                    <div class="cb-scenery-or">ou</div>
+                    <label class="cb-scenery-field">
+                        Carregar do dispositivo
+                        <input id="cbSceneryFile" type="file" accept="image/*" />
+                    </label>
+                </div>
+                <footer class="cb-modal-footer">
+                    <button type="button" id="cbSceneryCancel">Cancelar</button>
+                    <button type="button" id="cbSceneryConfirm" class="cb-primary">Adicionar</button>
+                </footer>
+            </div>
+        </div>
 
         <div class="cb-modal-backdrop" id="cbModal" hidden>
             <div class="cb-modal" role="dialog" aria-modal="true" aria-labelledby="cbModalTitle">
@@ -193,6 +238,6 @@
 
     </main>
 
-    <script src="assets/js/campo-batalha.js?v=20260505s"></script>
+    <script src="assets/js/campo-batalha.js?v=20260505t"></script>
 </body>
 </html>
