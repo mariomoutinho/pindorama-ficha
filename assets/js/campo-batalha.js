@@ -2661,16 +2661,17 @@
             return;
         }
 
-        // Cone cardeal: triângulo isóceles preenchido. A cada passo, a fileira
-        // perpendicular tem `step` células (1, 2, 3, ..., N). Total: N(N+1)/2.
+        // Cone cardeal: padrão Pindorama 1, 3, 3, 5, 5, 7, 7, 9, ...
+        // Largura (ímpar) por passo k: width = 2 * floor(k/2) + 1
+        // Para 6m (N=4): 1+3+3+5 = 12 células.
+        // Distribuição simétrica em torno do eixo (offset -h..+h, h=(width-1)/2).
         const perp = { dx: -v.dy, dy: v.dx };
         for (let step = 1; step <= len; step++) {
             const ax = cx + v.dx * (size / 2 + step - 0.5);
             const ay = cy + v.dy * (size / 2 + step - 0.5);
-            // Distribui simetricamente para ímpar; assimétrica (sobra à direita) para par
-            const halfL = Math.floor((step - 1) / 2);
-            const halfR = Math.ceil((step - 1) / 2);
-            for (let s = -halfL; s <= halfR; s++) {
+            const width = 2 * Math.floor(step / 2) + 1;
+            const half = (width - 1) / 2;
+            for (let s = -half; s <= half; s++) {
                 const c = Math.round(ax + perp.dx * s);
                 const r = Math.round(ay + perp.dy * s);
                 if (c < 0 || c >= state.cols || r < 0 || r >= state.rows) continue;
