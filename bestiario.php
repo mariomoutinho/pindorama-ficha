@@ -189,6 +189,6 @@ function bestiarioOptions(array $valores): string
     <script>
         window.BESTIARIO_BASE = <?= json_encode($dadosBestiario, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     </script>
-    <script src="assets/js/bestiario.js?v=20260505a"></script>
+    <script src="assets/js/bestiario.js?v=20260505c"></script>
 </body>
 </html>

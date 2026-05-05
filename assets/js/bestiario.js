@@ -89,25 +89,66 @@
             if (typeof item === 'string') {
                 const texto = item.trim();
                 if (!texto) return null;
+                const tipoBonus = inferirTipoBonus(texto);
                 return {
                     nome: texto.split(/[,(|-]/)[0].trim() || 'Ataque',
                     alcance: inferirAlcanceAtaque(texto),
                     dano: extrairDano(texto),
                     tipoDano: extrairTipoDano(texto),
-                    bonusAtaque: extrairBonusAtaque(texto),
+                    tipoBonus,
+                    bonusAtaque: tipoBonus === 'rolagem' ? extrairBonusAtaque(texto) : '',
+                    saveTipo: extrairSaveTipo(texto),
+                    saveCD: extrairSaveCD(texto),
                     descricao: texto
                 };
             }
             if (!item || typeof item !== 'object') return null;
+            const tipoBonus = normalizarTipoBonus(item.tipoBonus ?? item.tipo_bonus ?? (item.acertoAutomatico ? 'automatico' : 'rolagem'));
             return {
                 nome: String(item.nome || item.name || 'Ataque'),
                 alcance: normalizarAlcanceAtaque(item.alcance || ''),
                 dano: String(item.dano || item.danoFormula || ''),
                 tipoDano: String(item.tipoDano || item.tipo_dano || item.tipo || ''),
-                bonusAtaque: String(item.bonusAtaque ?? item.bonus_ataque ?? item.bonus ?? ''),
+                tipoBonus,
+                bonusAtaque: tipoBonus === 'rolagem' ? String(item.bonusAtaque ?? item.bonus_ataque ?? item.bonus ?? '') : '',
+                saveTipo: normalizarSaveTipo(item.saveTipo ?? item.save_tipo ?? ''),
+                saveCD: String(item.saveCD ?? item.save_cd ?? item.cd ?? ''),
                 descricao: String(item.descricao || item.detalhe || '')
             };
         }).filter(Boolean);
+    }
+
+    function normalizarTipoBonus(valor) {
+        const chave = normalizar(valor);
+        if (chave.includes('automa') || chave === 'auto') return 'automatico';
+        return 'rolagem';
+    }
+
+    function inferirTipoBonus(texto) {
+        const chave = normalizar(texto);
+        if (chave.includes('acerto automatico') || chave.includes('automaticamente') || chave.includes('sem rolagem')) return 'automatico';
+        return 'rolagem';
+    }
+
+    function normalizarSaveTipo(valor) {
+        const chave = normalizar(valor);
+        if (chave.startsWith('fort')) return 'fortitude';
+        if (chave.startsWith('ref')) return 'reflexos';
+        if (chave.startsWith('von') || chave.startsWith('wil')) return 'vontade';
+        return '';
+    }
+
+    function extrairSaveTipo(texto) {
+        const chave = normalizar(texto);
+        if (chave.includes('fortitude') || /\bfort\s*cd/.test(chave)) return 'fortitude';
+        if (chave.includes('reflexo') || /\bref\s*cd/.test(chave)) return 'reflexos';
+        if (chave.includes('vontade') || /\bvon\s*cd/.test(chave)) return 'vontade';
+        return '';
+    }
+
+    function extrairSaveCD(texto) {
+        const match = String(texto || '').match(/cd\s*(\d+)/i);
+        return match ? match[1] : '';
     }
 
     function normalizarAlcanceAtaque(valor) {
@@ -141,6 +182,14 @@
         return ALCANCES_ATAQUE.find((item) => item.value === alcance)?.label || 'Corpo a corpo - 1 quadrado / 1,5m';
     }
 
+    function rotuloSaveTipo(valor) {
+        const chave = normalizarSaveTipo(valor);
+        if (chave === 'fortitude') return 'Fortitude';
+        if (chave === 'reflexos') return 'Reflexos';
+        if (chave === 'vontade') return 'Vontade';
+        return '';
+    }
+
     function renderAtaquesForm(ataques = []) {
         if (!els.ataquesContainer) return;
         els.ataquesContainer.innerHTML = '';
@@ -151,8 +200,11 @@
 
     function adicionarAtaqueForm(ataque = {}) {
         if (!els.ataquesContainer) return;
+        const tipoBonusAtual = normalizarTipoBonus(ataque.tipoBonus || (ataque.acertoAutomatico ? 'automatico' : 'rolagem'));
+        const saveTipoAtual = normalizarSaveTipo(ataque.saveTipo);
         const row = document.createElement('article');
         row.className = 'criatura-ataque-row';
+        row.dataset.tipoBonus = tipoBonusAtual;
         row.innerHTML = `
             <label>Nome <input data-criatura-ataque="nome" placeholder="Ataque" value="${escapeHtml(ataque.nome || 'Ataque')}" /></label>
             <label>Alcance
@@ -162,11 +214,56 @@
             </label>
             <label>Dano <input data-criatura-ataque="dano" placeholder="2d6+3" value="${escapeHtml(ataque.dano || '')}" /></label>
             <label>Tipo de dano <input data-criatura-ataque="tipoDano" placeholder="cortante" value="${escapeHtml(ataque.tipoDano || '')}" /></label>
-            <label>Bônus <input data-criatura-ataque="bonusAtaque" type="number" step="1" placeholder="0" value="${escapeHtml(ataque.bonusAtaque ?? '')}" /></label>
+            <label>Bônus
+                <select data-criatura-ataque="tipoBonus">
+                    <option value="rolagem"${tipoBonusAtual === 'rolagem' ? ' selected' : ''}>Rolagem (1d20 + bônus)</option>
+                    <option value="automatico"${tipoBonusAtual === 'automatico' ? ' selected' : ''}>Acerto automático</option>
+                </select>
+            </label>
+            <label data-criatura-ataque-bonus-rolagem ${tipoBonusAtual === 'automatico' ? 'hidden' : ''}>
+                Bônus de ataque <input data-criatura-ataque="bonusAtaque" type="number" step="1" placeholder="0" value="${escapeHtml(ataque.bonusAtaque ?? '')}" />
+            </label>
+            <label data-criatura-ataque-save-tipo>
+                Teste do alvo
+                <select data-criatura-ataque="saveTipo">
+                    <option value=""${saveTipoAtual === '' ? ' selected' : ''}>Sem teste</option>
+                    <option value="fortitude"${saveTipoAtual === 'fortitude' ? ' selected' : ''}>Fortitude</option>
+                    <option value="reflexos"${saveTipoAtual === 'reflexos' ? ' selected' : ''}>Reflexos</option>
+                    <option value="vontade"${saveTipoAtual === 'vontade' ? ' selected' : ''}>Vontade</option>
+                </select>
+            </label>
+            <label data-criatura-ataque-save-cd ${saveTipoAtual === '' ? 'hidden' : ''}>
+                CD do teste <input data-criatura-ataque="saveCD" type="number" step="1" min="0" placeholder="15" value="${escapeHtml(ataque.saveCD ?? '')}" />
+            </label>
             <label class="criatura-ataque-desc">Descrição <textarea data-criatura-ataque="descricao" placeholder="Efeitos especiais do ataque">${escapeHtml(ataque.descricao || '')}</textarea></label>
             <button type="button" class="criatura-remover-ataque" data-attack-remove>Remover</button>
         `;
         row.querySelector('[data-criatura-ataque="alcance"]').value = normalizarAlcanceAtaque(ataque.alcance);
+
+        const tipoBonusSelect = row.querySelector('[data-criatura-ataque="tipoBonus"]');
+        const bonusWrap = row.querySelector('[data-criatura-ataque-bonus-rolagem]');
+        tipoBonusSelect.addEventListener('change', () => {
+            const novo = tipoBonusSelect.value;
+            row.dataset.tipoBonus = novo;
+            if (novo === 'automatico') {
+                bonusWrap.setAttribute('hidden', '');
+                row.querySelector('[data-criatura-ataque="bonusAtaque"]').value = '';
+            } else {
+                bonusWrap.removeAttribute('hidden');
+            }
+        });
+
+        const saveTipoSelect = row.querySelector('[data-criatura-ataque="saveTipo"]');
+        const saveCDWrap = row.querySelector('[data-criatura-ataque-save-cd]');
+        saveTipoSelect.addEventListener('change', () => {
+            if (saveTipoSelect.value === '') {
+                saveCDWrap.setAttribute('hidden', '');
+                row.querySelector('[data-criatura-ataque="saveCD"]').value = '';
+            } else {
+                saveCDWrap.removeAttribute('hidden');
+            }
+        });
+
         row.querySelector('[data-attack-remove]').addEventListener('click', () => {
             row.remove();
             if (!els.ataquesContainer.querySelector('.criatura-ataque-row')) {
@@ -184,15 +281,26 @@
                 ataque[campo.dataset.criaturaAtaque] = campo.value.trim();
             });
             ataque.alcance = normalizarAlcanceAtaque(ataque.alcance);
+            ataque.tipoBonus = normalizarTipoBonus(ataque.tipoBonus);
+            ataque.saveTipo = normalizarSaveTipo(ataque.saveTipo);
+            if (ataque.tipoBonus === 'automatico') ataque.bonusAtaque = '';
+            if (!ataque.saveTipo) ataque.saveCD = '';
             return ataque;
         }).filter((ataque) => Object.values(ataque).some((valor) => String(valor || '').trim() !== ''));
     }
 
     function ataqueResumoHtml(ataque) {
+        const tipoBonus = normalizarTipoBonus(ataque.tipoBonus);
+        const saveLabel = ataque.saveTipo
+            ? `${rotuloSaveTipo(ataque.saveTipo)} CD ${ataque.saveCD || '?'} (sucesso reduz dano à metade)`
+            : '';
         const partes = [
             ataque.dano && `Dano ${ataque.dano}`,
             ataque.tipoDano,
-            ataque.bonusAtaque !== '' && ataque.bonusAtaque !== undefined && `Ataque ${Number(ataque.bonusAtaque) >= 0 ? '+' : ''}${ataque.bonusAtaque}`,
+            tipoBonus === 'automatico'
+                ? 'Acerto automático'
+                : (ataque.bonusAtaque !== '' && ataque.bonusAtaque !== undefined && `Ataque ${Number(ataque.bonusAtaque) >= 0 ? '+' : ''}${ataque.bonusAtaque}`),
+            saveLabel,
             rotuloAlcance(ataque.alcance)
         ].filter(Boolean);
         return `

@@ -1167,6 +1167,10 @@
             const quantidadeAtaques = parseAttackCount({}, trimmed);
             const bonusAtaque = parseAttackBonus({ nome: trimmed });
             const danoFormula = parseDamageFormula(trimmed);
+            const lower = trimmed.toLowerCase();
+            const tipoBonus = (lower.includes('automaticamente') || lower.includes('acerto automatico') || lower.includes('sem rolagem')) ? 'automatico' : 'rolagem';
+            const saveTipo = inferSaveTipoFromText(trimmed);
+            const saveCD = inferSaveCDFromText(trimmed);
             return {
                 nome: trimmed,
                 tipo: fallbackType,
@@ -1174,6 +1178,9 @@
                 quantidadeAtaques,
                 bonusAtaque,
                 danoFormula,
+                tipoBonus,
+                saveTipo,
+                saveCD,
                 detalhe: alcance ? `Alcance: ${alcance}` : ''
             };
         }
@@ -1184,9 +1191,14 @@
         const quantidadeAtaques = parseAttackCount(item, nome);
         const bonusAtaque = parseAttackBonus(item);
         const danoFormula = item.danoFormula || parseDamageFormula(item.dano || item.descricao || '');
+        const tipoBonus = (String(item.tipoBonus || '').toLowerCase() === 'automatico' || item.acertoAutomatico === true)
+            ? 'automatico'
+            : 'rolagem';
+        const saveTipo = String(item.saveTipo || '').toLowerCase() || inferSaveTipoFromText(item.descricao || '');
+        const saveCD = String(item.saveCD || item.cd || '') || inferSaveCDFromText(item.descricao || '');
         const partes = [];
         [
-            ['Teste', item.teste || item.ataque || item.bonus],
+            ['Teste', tipoBonus === 'automatico' ? 'Acerto automático' : (item.teste || item.ataque || item.bonus)],
             ['Dano', item.dano],
             ['Tipo de dano', item.tipoDano || item.tipo_dano],
             ['Crítico', item.critico],
@@ -1194,6 +1206,7 @@
             ['Qtd.', item.quantidade],
             ['Espaços', item.espacos],
             ['Tipo', item.tipo],
+            ['Salvação', saveTipo ? `${saveTipo} CD ${saveCD || '?'}` : ''],
             ['Descrição', item.descricao]
         ].forEach(([label, value]) => {
             if (value !== undefined && value !== null && String(value).trim() !== '') {
@@ -1208,10 +1221,26 @@
             quantidadeAtaques,
             bonusAtaque,
             danoFormula,
+            tipoBonus,
+            saveTipo,
+            saveCD,
             dano: item.dano || danoFormula,
             tipoDano: item.tipoDano || item.tipo_dano || '',
             detalhe: partes.join(' | ')
         };
+    }
+
+    function inferSaveTipoFromText(texto) {
+        const lower = String(texto || '').toLowerCase();
+        if (lower.includes('fortitude')) return 'fortitude';
+        if (lower.includes('reflexo')) return 'reflexos';
+        if (lower.includes('vontade')) return 'vontade';
+        return '';
+    }
+
+    function inferSaveCDFromText(texto) {
+        const m = String(texto || '').match(/cd\s*(\d+)/i);
+        return m ? m[1] : '';
     }
 
     function inferActionReach(text) {
@@ -1878,14 +1907,22 @@
         wrap.className = 'cb-attack-fields';
 
         const quantidade = item.quantidadeAtaques || parseAttackCount(item, item.nome) || 1;
+        const tipoBonus = String(item.tipoBonus || '').toLowerCase();
+        const acertoAutomatico = tipoBonus === 'automatico' || item.acertoAutomatico === true;
         const bonus = item.bonusAtaque ?? parseAttackBonus(item);
         const dano = item.dano || item.danoFormula || parseDamageFormula(`${item.detalhe || ''} ${item.nome || ''}`) || '1d8+4';
+
         const fields = [
             ['Alcance', item.alcance || 'corpo a corpo'],
             ['Quantidade', quantidade === 1 ? '1 ataque' : `${quantidade} ataques`],
-            ['Teste', formatSignedBonus(bonus)],
+            ['Teste', acertoAutomatico ? 'Acerto automático' : formatSignedBonus(bonus)],
             ['Dano', formatDamageLabel(dano, item.tipoDano)]
         ];
+
+        if (item.saveTipo) {
+            const saveLabel = ({ fortitude: 'Fortitude', reflexos: 'Reflexos', vontade: 'Vontade' })[String(item.saveTipo).toLowerCase()] || item.saveTipo;
+            fields.push(['Salvação', `${saveLabel} CD ${item.saveCD || '?'} (sucesso → metade do dano)`]);
+        }
 
         for (const [label, value] of fields) {
             const row = document.createElement('div');
@@ -2051,6 +2088,40 @@
         const attackBonus = parseAttackBonus(item);
         const defense = parseDefense(target);
         const damageFormula = item.danoFormula || parseDamageFormula(item.dano || item.detalhe || item.nome || '') || '1d8';
+        const tipoBonus = String(item.tipoBonus || '').toLowerCase();
+        const acertoAutomatico = tipoBonus === 'automatico' || item.acertoAutomatico === true;
+
+        // Caminho 1: acerto automático (não rola d20). Pode haver teste de save do alvo.
+        if (acertoAutomatico) {
+            const damage = rollDamage(damageFormula);
+            const saveTipo = String(item.saveTipo || '').toLowerCase();
+            const saveCD = Number(item.saveCD || 0) || null;
+            let saveResult = null;
+            if (saveTipo && saveCD) {
+                saveResult = rollTargetSave(target, saveTipo, saveCD);
+            }
+            const finalDamage = saveResult && saveResult.success
+                ? Math.floor(damage.total / 2)
+                : damage.total;
+            applyDamageToToken(target, finalDamage);
+            return {
+                index,
+                targetName: target.name || 'Alvo',
+                d20: null,
+                total: null,
+                attackBonus: 0,
+                defense,
+                hit: true,
+                acertoAutomatico: true,
+                damage,
+                damageTotal: finalDamage,
+                damageFull: damage.total,
+                save: saveResult,
+                pvAtual: clampResource(target.pvAtual, target.pvMax),
+                pvMax: target.pvMax || 0
+            };
+        }
+
         const d20 = rollDie(20);
         const total = d20 + attackBonus;
 
@@ -2084,6 +2155,37 @@
             damageTotal: 0,
             pvAtual: clampResource(target.pvAtual, target.pvMax),
             pvMax: target.pvMax || 0
+        };
+    }
+
+    function parseSaveBonus(target, tipo) {
+        if (!target) return 0;
+        const candidatos = {
+            fortitude: ['fortitude', 'fortitudeBonus', 'fort', 'savesFortitude'],
+            reflexos: ['reflexos', 'reflexo', 'reflexBonus', 'savesReflexos'],
+            vontade: ['vontade', 'will', 'vontadeBonus', 'savesVontade']
+        }[tipo] || [];
+        for (const chave of candidatos) {
+            const val = target[chave];
+            if (val !== undefined && val !== null && val !== '') {
+                const num = Number(String(val).match(/-?\d+/)?.[0]);
+                if (Number.isFinite(num)) return num;
+            }
+        }
+        return 0;
+    }
+
+    function rollTargetSave(target, tipo, cd) {
+        const bonus = parseSaveBonus(target, tipo);
+        const d20 = rollDie(20);
+        const total = d20 + bonus;
+        return {
+            tipo,
+            cd,
+            d20,
+            bonus,
+            total,
+            success: total >= cd
         };
     }
 
@@ -2333,7 +2435,11 @@
 
                 const die = document.createElement('div');
                 die.className = 'cb-result-die';
-                die.innerHTML = `<span>d20</span><strong>${result.d20}</strong>`;
+                if (result.acertoAutomatico) {
+                    die.innerHTML = `<span>auto</span><strong>★</strong>`;
+                } else {
+                    die.innerHTML = `<span>d20</span><strong>${result.d20}</strong>`;
+                }
                 row.appendChild(die);
 
                 const info = document.createElement('div');
@@ -2344,13 +2450,30 @@
                 info.appendChild(heading);
 
                 const test = document.createElement('p');
-                test.textContent = `${result.d20} ${formatSignedBonus(result.attackBonus)} = ${result.total} contra Defesa ${result.defense}`;
+                if (result.acertoAutomatico) {
+                    test.textContent = `Acerto automático contra ${result.targetName || 'alvo'}`;
+                } else {
+                    test.textContent = `${result.d20} ${formatSignedBonus(result.attackBonus)} = ${result.total} contra Defesa ${result.defense}`;
+                }
                 info.appendChild(test);
+
+                if (result.save) {
+                    const saveLabel = ({ fortitude: 'Fortitude', reflexos: 'Reflexos', vontade: 'Vontade' })[result.save.tipo] || result.save.tipo;
+                    const saveLine = document.createElement('p');
+                    saveLine.className = 'cb-result-save';
+                    saveLine.textContent = `Teste de ${saveLabel} do alvo: ${result.save.d20} ${formatSignedBonus(result.save.bonus)} = ${result.save.total} vs CD ${result.save.cd} → ${result.save.success ? 'sucesso (dano à metade)' : 'falha (dano completo)'}`;
+                    info.appendChild(saveLine);
+                }
 
                 const outcome = document.createElement('strong');
                 outcome.className = 'cb-result-outcome';
                 if (result.hit) {
-                    outcome.textContent = `Acertou: ${result.damage.rollsText}${formatSignedBonus(result.damage.modifier)} = ${result.damage.total} perfuração`;
+                    const tipoDanoLabel = result.damage?.tipoDano || 'dano';
+                    if (result.acertoAutomatico && result.save && result.save.success) {
+                        outcome.textContent = `Acertou: ${result.damage.rollsText}${formatSignedBonus(result.damage.modifier)} = ${result.damageFull} → reduzido a ${result.damageTotal} ${tipoDanoLabel}`;
+                    } else {
+                        outcome.textContent = `Acertou: ${result.damage.rollsText}${formatSignedBonus(result.damage.modifier)} = ${result.damageTotal} ${tipoDanoLabel}`;
+                    }
                 } else {
                     outcome.textContent = 'Errou';
                 }
