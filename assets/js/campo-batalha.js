@@ -404,6 +404,27 @@
         return { x: localX / state.viewport.scale, y: localY / state.viewport.scale };
     }
 
+    function screenToCell(sx, sy) {
+        const v = screenToViewport(sx, sy);
+        const col = Math.floor(v.x / CELL_SIZE);
+        const row = Math.floor(v.y / CELL_SIZE);
+        return {
+            col: clamp(col, 0, state.cols - 1),
+            row: clamp(row, 0, state.rows - 1)
+        };
+    }
+
+    let lastAimKey = '';
+    function updateAreaAim(clientX, clientY) {
+        if (!state.reachPreview) return;
+        const cell = screenToCell(clientX, clientY);
+        const key = cell.col + ',' + cell.row;
+        if (key === lastAimKey) return;
+        lastAimKey = key;
+        state.reachPreview.aim = cell;
+        renderBoard();
+    }
+
     function centerBoard() {
         const stageRect = els.stage.getBoundingClientRect();
         const boardW = state.cols * CELL_SIZE;
@@ -449,6 +470,23 @@
                 startRotate(ev, token);
             }
             return;
+        }
+
+        // Se há um preview de área ativo, qualquer clique no stage confirma o ataque
+        // (com a área atualmente apontada pelo mouse). Vale para clicks em células
+        // vazias OU sobre tokens.
+        if (state.reachPreview
+            && state.reachPreview.action
+            && isAreaAttack(state.reachPreview.action)) {
+            const attacker = state.tokens.find(t => t.id === state.reachPreview.tokenId);
+            if (attacker) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                // Atualiza o aim com a célula clicada antes de executar
+                updateAreaAim(ev.clientX, ev.clientY);
+                executeAreaAttack(attacker, state.reachPreview.action);
+                return;
+            }
         }
 
         if (tokenEl) {
@@ -509,6 +547,11 @@
         if (tt) {
             tt.x = ev.clientX;
             tt.y = ev.clientY;
+        }
+
+        // Tracking do aim para preview de área (sem precisar de drag/interaction)
+        if (state.reachPreview && state.reachPreview.action && isAreaAttack(state.reachPreview.action)) {
+            updateAreaAim(ev.clientX, ev.clientY);
         }
 
         if (!interaction) return;
@@ -1913,12 +1956,22 @@
             const buttons = document.createElement('div');
             buttons.className = 'cb-action-buttons';
 
+            const isArea = isAreaAttack(item);
+
             const selectAttack = document.createElement('button');
             selectAttack.type = 'button';
             selectAttack.className = 'cb-action-attack-btn';
+            if (isArea) selectAttack.classList.add('cb-action-area-btn');
+
             const setAttackLabel = () => {
                 const active = isReachPreviewActive(token.id, item);
-                selectAttack.textContent = active ? 'Alcance selecionado' : 'Mostrar alcance';
+                if (isArea) {
+                    selectAttack.textContent = active
+                        ? 'Mire com o mouse — clique para atacar'
+                        : 'Mostrar área e mirar';
+                } else {
+                    selectAttack.textContent = active ? 'Alcance selecionado' : 'Mostrar alcance';
+                }
                 selectAttack.classList.toggle('is-active', active);
             };
             setAttackLabel();
@@ -1930,19 +1983,6 @@
                 }
             });
             buttons.appendChild(selectAttack);
-
-            // Botão dedicado para ataques em área: aplica dano em todos os tokens dentro da área
-            if (isAreaAttack(item)) {
-                const areaAttack = document.createElement('button');
-                areaAttack.type = 'button';
-                areaAttack.className = 'cb-action-area-btn';
-                areaAttack.textContent = 'Atacar em área';
-                areaAttack.addEventListener('click', () => {
-                    executeAreaAttack(token, item);
-                    closeTokenActionPanel();
-                });
-                buttons.appendChild(areaAttack);
-            }
 
             card.appendChild(buttons);
         }
@@ -2037,11 +2077,16 @@
             clearReachPreview(true);
             return;
         }
+        // Para áreas, inicia o aim na frente do token (logo acima dele)
+        const aimInicial = isAreaAttack(item)
+            ? { col: token.col + Math.floor((token.sizeCells || 1) / 2), row: Math.max(0, token.row - 1) }
+            : null;
         state.reachPreview = {
             tokenId: token.id,
             actionKey: actionKey(item),
             alcance: item.alcance || 'corpo a corpo',
             action: item,
+            aim: aimInicial,
             results: [],
             totalDamage: 0
         };
@@ -2051,6 +2096,7 @@
     function clearReachPreview(shouldRender = true) {
         if (!state.reachPreview) return;
         state.reachPreview = null;
+        lastAimKey = '';
         if (shouldRender) renderBoard();
     }
 
@@ -2464,27 +2510,70 @@
         const size = Math.max(1, Number(token.sizeCells || 1));
         const cells = new Set();
 
+        // Posição "alvo" — vem do mouse (aim) quando preview está ativo
+        const aim = (state.reachPreview && state.reachPreview.tokenId === token.id && state.reachPreview.aim) || null;
+
         if (shape.tipo === 'cone') {
-            // Cone em cada uma das 4 direções cardeais a partir das bordas do token
-            for (const dir of ['n', 's', 'l', 'o']) {
-                addConeCells(cells, col, row, size, shape.tamanho, dir);
-            }
+            // Cone direcionado pelo mouse (8 direções)
+            const dir = aim ? directionFromTo(col, row, size, aim.col, aim.row) : 'n';
+            addConeCells(cells, col, row, size, shape.tamanho, dir);
         } else if (shape.tipo === 'linha') {
-            // Linha de 1 célula de largura nas 4 direções
-            for (const dir of ['n', 's', 'l', 'o']) {
-                addLineCells(cells, col, row, size, shape.tamanho, dir);
-            }
+            const dir = aim ? directionFromTo(col, row, size, aim.col, aim.row) : 'n';
+            addLineCells(cells, col, row, size, shape.tamanho, dir);
         } else if (shape.tipo === 'raio') {
-            // Esfera (raio) centrada no token; afeta tudo em raio R
-            addRadiusCells(cells, col, row, size, shape.tamanho);
+            // Centro = posição do mouse (ou centro do token se não houver aim)
+            const center = aim ? { col: aim.col, row: aim.row } : { col: col + Math.floor(size / 2), row: row + Math.floor(size / 2) };
+            addRadiusCellsCentered(cells, center.col, center.row, shape.tamanho);
         } else if (shape.tipo === 'cubo') {
-            // Cubo de lado N centrado no token
-            addCubeCells(cells, col, row, size, shape.tamanho);
+            const center = aim ? { col: aim.col, row: aim.row } : { col: col + Math.floor(size / 2), row: row + Math.floor(size / 2) };
+            addCubeCellsCentered(cells, center.col, center.row, shape.tamanho);
         } else {
             // Alcance simples (corpo a corpo, curto, longo)
             return buildReachCellsAt(col, row, token.sizeCells, shape.tamanho);
         }
         return cells;
+    }
+
+    /**
+     * Calcula a direção (8 cardeais) do token (col,row,size) até o ponto (tx,ty).
+     * Retorna uma das 8 strings: 'n','ne','l','se','s','so','o','no'.
+     * Pindorama: cada quadrado = 1,5m em qualquer direção (incl. diagonal).
+     */
+    function directionFromTo(col, row, size, tx, ty) {
+        const cx = col + (size - 1) / 2;
+        const cy = row + (size - 1) / 2;
+        const dx = tx - cx;
+        const dy = ty - cy;
+        if (dx === 0 && dy === 0) return 'n';
+        const angle = Math.atan2(dy, dx); // -PI..PI; 0 = leste, PI/2 = sul (eixo y para baixo)
+        // Divide em 8 setores
+        const oct = Math.round(angle / (Math.PI / 4));
+        switch (oct) {
+            case 0: return 'l';
+            case 1: return 'se';
+            case 2: return 's';
+            case 3: return 'so';
+            case 4: case -4: return 'o';
+            case -1: return 'ne';
+            case -2: return 'n';
+            case -3: return 'no';
+            default: return 'n';
+        }
+    }
+
+    function addRadiusCellsCentered(cells, cx, cy, radius) {
+        for (let r = cy - radius; r <= cy + radius; r++) {
+            for (let c = cx - radius; c <= cx + radius; c++) {
+                if (c < 0 || c >= state.cols || r < 0 || r >= state.rows) continue;
+                const dx = Math.abs(c - cx);
+                const dy = Math.abs(r - cy);
+                if (Math.max(dx, dy) <= radius) cells.add(occupiedKey(c, r));
+            }
+        }
+    }
+
+    function addCubeCellsCentered(cells, cx, cy, lado) {
+        addRadiusCellsCentered(cells, cx, cy, lado);
     }
 
     function parseAreaShape(alcance) {
@@ -2529,36 +2618,56 @@
         return shape.tamanho;
     }
 
+    /**
+     * Direções cardeais e diagonais como vetores unitários.
+     * Pindorama: cada passo (cardeal ou diagonal) = 1 quadrado = 1,5m.
+     */
+    const DIR_VECTORS = {
+        n: { dx: 0, dy: -1 },
+        s: { dx: 0, dy: 1 },
+        l: { dx: 1, dy: 0 },
+        o: { dx: -1, dy: 0 },
+        ne: { dx: 1, dy: -1 },
+        no: { dx: -1, dy: -1 },
+        se: { dx: 1, dy: 1 },
+        so: { dx: -1, dy: 1 }
+    };
+
     function addConeCells(cells, baseCol, baseRow, size, len, dir) {
-        // Cone que emana da borda do token na direção dir, com largura crescente.
-        // largura = 1, 3, 5, 7... (ímpar, cresce 2 por passo)
-        const right = baseCol + size - 1;
-        const bottom = baseRow + size - 1;
+        const v = DIR_VECTORS[dir] || DIR_VECTORS.n;
+        // Origem: borda do token na direção indicada (centralizada na lateral correspondente)
+        const cx = baseCol + (size - 1) / 2;
+        const cy = baseRow + (size - 1) / 2;
+        // Para diagonais e cardeais, usamos o mesmo padrão: a cada passo, a "largura"
+        // perpendicular cresce 2 (1, 3, 5, 7...). O step avança v unidades.
         for (let step = 1; step <= len; step++) {
-            const half = step;
-            for (let s = -half + 1; s < half; s++) {
-                let col, row;
-                if (dir === 'n') { col = baseCol + Math.floor(size / 2) + s; row = baseRow - step; }
-                else if (dir === 's') { col = baseCol + Math.floor(size / 2) + s; row = bottom + step; }
-                else if (dir === 'l') { col = right + step; row = baseRow + Math.floor(size / 2) + s; }
-                else { col = baseCol - step; row = baseRow + Math.floor(size / 2) + s; }
-                if (col < 0 || col >= state.cols || row < 0 || row >= state.rows) continue;
-                cells.add(occupiedKey(col, row));
+            // Origem do passo (deslocamento ao longo de v) — começa colado à borda do token
+            const px = cx + v.dx * (size / 2 + (step - 1));
+            const py = cy + v.dy * (size / 2 + (step - 1));
+            // Próximo passo
+            const ax = cx + v.dx * (size / 2 + step);
+            const ay = cy + v.dy * (size / 2 + step);
+            const half = step; // cells lateralmente: -(half-1)..(half-1)
+            // Vetor perpendicular
+            const perp = { dx: -v.dy, dy: v.dx };
+            for (let s = -(half - 1); s <= (half - 1); s++) {
+                const c = Math.round(ax + perp.dx * s);
+                const r = Math.round(ay + perp.dy * s);
+                if (c < 0 || c >= state.cols || r < 0 || r >= state.rows) continue;
+                cells.add(occupiedKey(c, r));
             }
         }
     }
 
     function addLineCells(cells, baseCol, baseRow, size, len, dir) {
-        const right = baseCol + size - 1;
-        const bottom = baseRow + size - 1;
+        const v = DIR_VECTORS[dir] || DIR_VECTORS.n;
+        const cx = baseCol + (size - 1) / 2;
+        const cy = baseRow + (size - 1) / 2;
         for (let step = 1; step <= len; step++) {
-            let col, row;
-            if (dir === 'n') { col = baseCol + Math.floor(size / 2); row = baseRow - step; }
-            else if (dir === 's') { col = baseCol + Math.floor(size / 2); row = bottom + step; }
-            else if (dir === 'l') { col = right + step; row = baseRow + Math.floor(size / 2); }
-            else { col = baseCol - step; row = baseRow + Math.floor(size / 2); }
-            if (col < 0 || col >= state.cols || row < 0 || row >= state.rows) continue;
-            cells.add(occupiedKey(col, row));
+            const c = Math.round(cx + v.dx * (size / 2 + step));
+            const r = Math.round(cy + v.dy * (size / 2 + step));
+            if (c < 0 || c >= state.cols || r < 0 || r >= state.rows) continue;
+            cells.add(occupiedKey(c, r));
         }
     }
 
@@ -3093,6 +3202,7 @@
                 }
             } else if (e.key === 'Escape') {
                 if (els.confirm && !els.confirm.hidden) closeAttackConfirmation();
+                else if (state.reachPreview) clearReachPreview(true);
                 else if (!els.actionPanel.hidden) closeTokenActionPanel();
                 else if (!els.modal.hidden) closeModal();
                 else selectToken(null);
