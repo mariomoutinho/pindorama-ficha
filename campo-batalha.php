@@ -7,7 +7,7 @@
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260503g" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
-    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260505n" />
+    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260505o" />
 </head>
 <body class="cb-body">
     <script src="assets/js/transitions.js?v=20260503d"></script>
@@ -38,6 +38,7 @@
                 <button type="button" id="cbAddBestiaryToken" class="cb-primary">+ Criatura</button>
                 <button type="button" id="cbRemoveToken" disabled>Remover seleção</button>
                 <button type="button" id="cbRotateToken" disabled>Girar 90°</button>
+                <button type="button" id="cbAdjustToken" disabled>Ajustar token</button>
                 <button type="button" id="cbClearAll">Limpar campo</button>
             </div>
 
@@ -119,6 +120,32 @@
 
         <div class="cb-tooltip" id="cbTooltip" hidden></div>
 
+        <div class="cb-modal-backdrop" id="cbAdjustModal" hidden>
+            <div class="cb-modal cb-adjust-modal" role="dialog" aria-modal="true" aria-labelledby="cbAdjustTitle">
+                <header class="cb-modal-header">
+                    <h2 id="cbAdjustTitle">Ajustar token</h2>
+                    <button type="button" id="cbAdjustClose" aria-label="Fechar">×</button>
+                </header>
+                <div class="cb-adjust-body">
+                    <div class="cb-adjust-preview" id="cbAdjustPreview" aria-label="Prévia do token">
+                        <div class="cb-adjust-frame">
+                            <img id="cbAdjustPreviewImg" src="" alt="" />
+                            <span id="cbAdjustPreviewEmpty">Sem imagem</span>
+                        </div>
+                    </div>
+                    <div class="cb-adjust-fields">
+                        <label>Zoom <input id="cbAdjustZoom" type="range" min="0.2" max="6" step="0.05" value="1" /></label>
+                        <label>Foco horizontal <input id="cbAdjustX" type="range" min="-220" max="220" step="1" value="0" /></label>
+                        <label>Foco vertical <input id="cbAdjustY" type="range" min="-220" max="220" step="1" value="0" /></label>
+                        <div class="cb-adjust-actions">
+                            <button type="button" id="cbAdjustReset">Centralizar</button>
+                            <button type="button" id="cbAdjustUseBestiario">Usar ajuste do bestiário</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <aside class="cb-action-panel" id="cbActionPanel" hidden aria-live="polite">
             <header>
                 <h2 id="cbActionTitle">Ações</h2>
@@ -166,6 +193,6 @@
 
     </main>
 
-    <script src="assets/js/campo-batalha.js?v=20260505r"></script>
+    <script src="assets/js/campo-batalha.js?v=20260505s"></script>
 </body>
 </html>

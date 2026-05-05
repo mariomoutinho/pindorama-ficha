@@ -62,7 +62,17 @@
         addBestiaryToken: document.getElementById('cbAddBestiaryToken'),
         removeToken: document.getElementById('cbRemoveToken'),
         rotateToken: document.getElementById('cbRotateToken'),
+        adjustToken: document.getElementById('cbAdjustToken'),
         clearAll: document.getElementById('cbClearAll'),
+        adjustModal: document.getElementById('cbAdjustModal'),
+        adjustClose: document.getElementById('cbAdjustClose'),
+        adjustPreview: document.getElementById('cbAdjustPreview'),
+        adjustPreviewImg: document.getElementById('cbAdjustPreviewImg'),
+        adjustZoom: document.getElementById('cbAdjustZoom'),
+        adjustX: document.getElementById('cbAdjustX'),
+        adjustY: document.getElementById('cbAdjustY'),
+        adjustReset: document.getElementById('cbAdjustReset'),
+        adjustUseBestiario: document.getElementById('cbAdjustUseBestiario'),
         zoomIn: document.getElementById('cbZoomIn'),
         zoomOut: document.getElementById('cbZoomOut'),
         zoomReset: document.getElementById('cbZoomReset'),
@@ -368,6 +378,10 @@
         const has = !!state.selectedId;
         els.removeToken.disabled = !has;
         els.rotateToken.disabled = !has;
+        if (els.adjustToken) {
+            const token = has ? state.tokens.find(t => t.id === state.selectedId) : null;
+            els.adjustToken.disabled = !token || !resolveTokenImageSrc(token);
+        }
     }
 
     // ----------------------------------------------------------------
@@ -852,6 +866,198 @@
         saveState();
     }
 
+    // ----------------------------------------------------------------
+    // Modal de ajuste de token (zoom/foco) por token
+    // ----------------------------------------------------------------
+
+    const adjustModalState = { tokenId: null };
+
+    function normalizeAdjust(value) {
+        const v = value || {};
+        return {
+            scale: Math.min(6, Math.max(0.2, Number(v.scale) || 1)),
+            x: Math.min(220, Math.max(-220, Number(v.x) || 0)),
+            y: Math.min(220, Math.max(-220, Number(v.y) || 0))
+        };
+    }
+
+    function openAdjustModalForSelected() {
+        if (!state.selectedId) return;
+        const token = state.tokens.find(t => t.id === state.selectedId);
+        if (!token) return;
+        const src = resolveTokenImageSrc(token);
+        if (!src) {
+            alert('Este token não tem uma imagem para ajustar.');
+            return;
+        }
+        adjustModalState.tokenId = token.id;
+        const ajuste = normalizeAdjust(token.tokenImageAdjust ?? token.imageAdjust);
+        els.adjustZoom.value = String(ajuste.scale);
+        els.adjustX.value = String(ajuste.x);
+        els.adjustY.value = String(ajuste.y);
+        els.adjustPreviewImg.src = src;
+        els.adjustPreviewImg.alt = token.name || 'Token';
+        els.adjustPreview.classList.add('has-image');
+        applyAdjustPreview(ajuste);
+        els.adjustModal.hidden = false;
+    }
+
+    function closeAdjustModal() {
+        adjustModalState.tokenId = null;
+        els.adjustModal.hidden = true;
+        els.adjustPreviewImg.removeAttribute('src');
+        els.adjustPreview.classList.remove('has-image');
+    }
+
+    function applyAdjustPreview(ajuste) {
+        const a = normalizeAdjust(ajuste);
+        els.adjustPreview.style.setProperty('--adjust-scale', String(a.scale));
+        els.adjustPreview.style.setProperty('--adjust-x', `${a.x}%`);
+        els.adjustPreview.style.setProperty('--adjust-y', `${a.y}%`);
+    }
+
+    function readAdjustForm() {
+        return normalizeAdjust({
+            scale: els.adjustZoom.value,
+            x: els.adjustX.value,
+            y: els.adjustY.value
+        });
+    }
+
+    function commitAdjustToToken() {
+        const id = adjustModalState.tokenId;
+        if (!id) return;
+        const token = state.tokens.find(t => t.id === id);
+        if (!token) return;
+        const ajuste = readAdjustForm();
+        token.tokenImageAdjust = ajuste;
+        token.tokenImageAdjustCustom = true;
+        // Atualiza só a imagem deste token, sem re-render geral
+        const tokenEl = els.tokensLayer.querySelector(`[data-token-id="${token.id}"]`);
+        const img = tokenEl ? tokenEl.querySelector('.cb-token-circle img') : null;
+        if (img) applyTokenImageAdjustment(img, ajuste);
+        saveState();
+    }
+
+    function resetAdjustToCenter() {
+        els.adjustZoom.value = '1';
+        els.adjustX.value = '0';
+        els.adjustY.value = '0';
+        applyAdjustPreview({ scale: 1, x: 0, y: 0 });
+        commitAdjustToToken();
+    }
+
+    function loadBestiaryAdjustIntoModal() {
+        const id = adjustModalState.tokenId;
+        if (!id) return;
+        const token = state.tokens.find(t => t.id === id);
+        if (!token || token.source !== 'bestiario' || !token.fichaId) {
+            alert('Este token não veio do bestiário.');
+            return;
+        }
+        const criatura = state.bestiario.find(c => c.id === token.fichaId);
+        if (!criatura) {
+            alert('Criatura não encontrada no bestiário carregado.');
+            return;
+        }
+        const ajuste = normalizeAdjust(criatura.tokenImagemAjuste || criatura.token?.tokenImagemAjuste || criatura.token?.imagemAjuste);
+        els.adjustZoom.value = String(ajuste.scale);
+        els.adjustX.value = String(ajuste.x);
+        els.adjustY.value = String(ajuste.y);
+        applyAdjustPreview(ajuste);
+        // Aplica o ajuste do bestiário e remove a flag de customização local,
+        // de modo que futuras edições no bestiário voltem a se propagar.
+        token.tokenImageAdjust = ajuste;
+        token.tokenImageAdjustCustom = false;
+        const tokenEl = els.tokensLayer.querySelector(`[data-token-id="${token.id}"]`);
+        const img = tokenEl ? tokenEl.querySelector('.cb-token-circle img') : null;
+        if (img) applyTokenImageAdjustment(img, ajuste);
+        saveState();
+    }
+
+    function bindAdjustPreviewDrag() {
+        if (!els.adjustPreview) return;
+        const pointers = new Map();
+        let start = null;
+
+        els.adjustPreview.addEventListener('pointerdown', (event) => {
+            if (!els.adjustPreview.classList.contains('has-image')) return;
+            if (event.target.closest('button, input, label')) return;
+            event.preventDefault();
+            els.adjustPreview.setPointerCapture?.(event.pointerId);
+            pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            start = {
+                ajuste: readAdjustForm(),
+                center: pointerCenter(pointers),
+                distance: pointerDistance(pointers)
+            };
+            els.adjustPreview.classList.add('is-adjusting');
+        });
+
+        els.adjustPreview.addEventListener('pointermove', (event) => {
+            if (!start || !pointers.has(event.pointerId)) return;
+            event.preventDefault();
+            pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            const center = pointerCenter(pointers);
+            const rect = els.adjustPreview.getBoundingClientRect();
+            const dx = ((center.x - start.center.x) / Math.max(1, rect.width)) * 100;
+            const dy = ((center.y - start.center.y) / Math.max(1, rect.height)) * 100;
+            const distance = pointerDistance(pointers);
+            const pinchScale = start.distance && distance ? distance / start.distance : 1;
+            const next = normalizeAdjust({
+                scale: start.ajuste.scale * pinchScale,
+                x: start.ajuste.x + dx,
+                y: start.ajuste.y + dy
+            });
+            els.adjustZoom.value = String(next.scale);
+            els.adjustX.value = String(next.x);
+            els.adjustY.value = String(next.y);
+            applyAdjustPreview(next);
+            commitAdjustToToken();
+        });
+
+        function finish(event) {
+            pointers.delete(event.pointerId);
+            if (!pointers.size) {
+                start = null;
+                els.adjustPreview.classList.remove('is-adjusting');
+            } else {
+                start = {
+                    ajuste: readAdjustForm(),
+                    center: pointerCenter(pointers),
+                    distance: pointerDistance(pointers)
+                };
+            }
+        }
+
+        els.adjustPreview.addEventListener('pointerup', finish);
+        els.adjustPreview.addEventListener('pointercancel', finish);
+        els.adjustPreview.addEventListener('wheel', (event) => {
+            if (!els.adjustPreview.classList.contains('has-image')) return;
+            event.preventDefault();
+            const current = readAdjustForm();
+            const factor = event.deltaY < 0 ? 1.08 : 1 / 1.08;
+            const next = normalizeAdjust({ ...current, scale: current.scale * factor });
+            els.adjustZoom.value = String(next.scale);
+            applyAdjustPreview(next);
+            commitAdjustToToken();
+        }, { passive: false });
+    }
+
+    function pointerCenter(pointers) {
+        const values = Array.from(pointers.values());
+        return {
+            x: values.reduce((sum, p) => sum + p.x, 0) / values.length,
+            y: values.reduce((sum, p) => sum + p.y, 0) / values.length
+        };
+    }
+
+    function pointerDistance(pointers) {
+        const values = Array.from(pointers.values());
+        if (values.length < 2) return 0;
+        return Math.hypot(values[0].x - values[1].x, values[0].y - values[1].y);
+    }
+
     function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
 
     function genId() {
@@ -987,7 +1193,11 @@
                 token.tokenImage = novaImg;
                 token.fotoImage = novaImg;
             }
-            token.tokenImageAdjust = parseTokenAdjustment(fresh.tokenImagemAjuste || fresh.imagemAjuste);
+            // Preserva ajuste customizado pelo usuário no campo de batalha;
+            // só atualiza a partir do bestiário se ele ainda não tiver sido tocado aqui.
+            if (!token.tokenImageAdjustCustom) {
+                token.tokenImageAdjust = parseTokenAdjustment(fresh.tokenImagemAjuste || fresh.imagemAjuste);
+            }
             synced++;
         }
 
@@ -3336,7 +3546,25 @@
 
         els.removeToken.addEventListener('click', removeSelectedToken);
         els.rotateToken.addEventListener('click', rotateSelectedTokenStep);
+        if (els.adjustToken) els.adjustToken.addEventListener('click', openAdjustModalForSelected);
         els.clearAll.addEventListener('click', clearAllTokens);
+
+        if (els.adjustClose) els.adjustClose.addEventListener('click', closeAdjustModal);
+        if (els.adjustModal) {
+            els.adjustModal.addEventListener('click', (event) => {
+                if (event.target === els.adjustModal) closeAdjustModal();
+            });
+        }
+        [els.adjustZoom, els.adjustX, els.adjustY].filter(Boolean).forEach((input) => {
+            input.addEventListener('input', () => {
+                const ajuste = readAdjustForm();
+                applyAdjustPreview(ajuste);
+                commitAdjustToToken();
+            });
+        });
+        if (els.adjustReset) els.adjustReset.addEventListener('click', resetAdjustToCenter);
+        if (els.adjustUseBestiario) els.adjustUseBestiario.addEventListener('click', loadBestiaryAdjustIntoModal);
+        bindAdjustPreviewDrag();
 
         els.zoomIn.addEventListener('click', () => { setScale(state.viewport.scale * 1.2); saveState(); });
         els.zoomOut.addEventListener('click', () => { setScale(state.viewport.scale / 1.2); saveState(); });
@@ -3377,7 +3605,8 @@
                     removeSelectedToken();
                 }
             } else if (e.key === 'Escape') {
-                if (els.confirm && !els.confirm.hidden) closeAttackConfirmation();
+                if (els.adjustModal && !els.adjustModal.hidden) closeAdjustModal();
+                else if (els.confirm && !els.confirm.hidden) closeAttackConfirmation();
                 else if (state.reachPreview) clearReachPreview(true);
                 else if (!els.actionPanel.hidden) closeTokenActionPanel();
                 else if (!els.modal.hidden) closeModal();
