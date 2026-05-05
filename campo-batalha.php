@@ -51,10 +51,14 @@
                 <button type="button" id="cbZoomReset" title="Resetar zoom e posição">Reset</button>
             </div>
 
-            <div class="cb-tool-group">
+<div class="cb-tool-group">
                 <label class="cb-toggle">
                     <input type="checkbox" id="cbToggleNumbers" />
                     <span>Numerar células</span>
+                </label>
+                <label class="cb-toggle" title="Quando ativado, o cenário se alinha aos quadrados do grid ao mover/redimensionar.">
+                    <input type="checkbox" id="cbSnapToGrid" />
+                    <span>Magnetizar cenário</span>
                 </label>
             </div>
 
@@ -238,6 +242,6 @@
 
     </main>
 
-    <script src="assets/js/campo-batalha.js?v=20260505t"></script>
+    <script src="assets/js/campo-batalha.js?v=20260505u"></script>
 </body>
 </html>

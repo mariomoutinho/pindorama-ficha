@@ -38,6 +38,7 @@
         viewport: { x: 0, y: 0, scale: 1 },
         tokens: [],                // { id, fichaId|null, name, tokenImage, tokenImageAdjust, fotoImage, col, row, sizeCells, rotation }
         scenery: [],               // { id, name, src, x, y, width, height, rotation, zIndex, hidden, locked }
+        snapToGrid: false,         // ímã: cenário gruda nas células do grid
         selectedId: null,
         selectedSceneryId: null,
         pages: [],                 // [{ id, name, cols, rows, viewport, tokens, scenery, showNumbers }]
@@ -92,6 +93,7 @@
         sceneryFile: document.getElementById('cbSceneryFile'),
         sceneryCancel: document.getElementById('cbSceneryCancel'),
         sceneryConfirm: document.getElementById('cbSceneryConfirm'),
+        snapToGrid: document.getElementById('cbSnapToGrid'),
         zoomIn: document.getElementById('cbZoomIn'),
         zoomOut: document.getElementById('cbZoomOut'),
         zoomReset: document.getElementById('cbZoomReset'),
@@ -161,7 +163,8 @@
             syncLiveToActivePage();
             const snap = {
                 pages: state.pages,
-                activePageId: state.activePageId
+                activePageId: state.activePageId,
+                snapToGrid: !!state.snapToGrid
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(snap));
         } catch (e) {
@@ -177,6 +180,7 @@
                 return;
             }
             const snap = JSON.parse(raw);
+            if (typeof snap.snapToGrid === 'boolean') state.snapToGrid = snap.snapToGrid;
             if (Array.isArray(snap.pages) && snap.pages.length) {
                 state.pages = snap.pages.map(normalizePage);
                 state.activePageId = snap.activePageId && state.pages.find(p => p.id === snap.activePageId)
@@ -1317,6 +1321,31 @@
         saveState();
     }
 
+    function snapValue(value, step) {
+        const s = step || CELL_SIZE;
+        return Math.round(value / s) * s;
+    }
+
+    function snapAllSceneryToGrid() {
+        if (!state.scenery.length) return;
+        for (const item of state.scenery) {
+            item.x = snapValue(item.x);
+            item.y = snapValue(item.y);
+            item.width = Math.max(CELL_SIZE, snapValue(item.width));
+            item.height = Math.max(CELL_SIZE, snapValue(item.height));
+        }
+        renderScenery();
+        renderLayersPanel();
+        saveState();
+    }
+
+    // Inverte temporariamente o snap se a tecla Alt (option) estiver pressionada,
+    // permitindo posicionamento livre quando o ímã está ativo (ou vice-versa).
+    function isSnapActive(e) {
+        const base = !!state.snapToGrid;
+        return e && e.altKey ? !base : base;
+    }
+
     function startSceneryDrag(ev, item) {
         if (item.locked) return;
         const startX = ev.clientX;
@@ -1330,8 +1359,14 @@
         function onMove(e) {
             const dx = (e.clientX - startX) / scale;
             const dy = (e.clientY - startY) / scale;
-            item.x = origX + dx;
-            item.y = origY + dy;
+            let nx = origX + dx;
+            let ny = origY + dy;
+            if (isSnapActive(e)) {
+                nx = snapValue(nx);
+                ny = snapValue(ny);
+            }
+            item.x = nx;
+            item.y = ny;
             if (el) {
                 el.style.left = item.x + 'px';
                 el.style.top = item.y + 'px';
@@ -1361,8 +1396,13 @@
 
         function onMove(e) {
             const dx = (e.clientX - startX) / scale;
-            const newW = Math.max(20, origW + dx);
-            const newH = Math.max(20, e.shiftKey ? origH + (e.clientY - startY) / scale : newW * ratio);
+            const dy = (e.clientY - startY) / scale;
+            let newW = Math.max(20, origW + dx);
+            let newH = e.shiftKey ? Math.max(20, origH + dy) : newW * ratio;
+            if (isSnapActive(e)) {
+                newW = Math.max(CELL_SIZE, snapValue(newW));
+                newH = e.shiftKey ? Math.max(CELL_SIZE, snapValue(newH)) : newW * ratio;
+            }
             item.width = newW;
             item.height = newH;
             if (el) {
@@ -4213,6 +4253,13 @@
         if (els.toggleLayers) els.toggleLayers.addEventListener('click', toggleLayersPanel);
         if (els.layersClose) els.layersClose.addEventListener('click', toggleLayersPanel);
         if (els.addPage) els.addPage.addEventListener('click', addPage);
+        if (els.snapToGrid) {
+            els.snapToGrid.addEventListener('change', (e) => {
+                state.snapToGrid = !!e.target.checked;
+                saveState();
+                if (state.snapToGrid) snapAllSceneryToGrid();
+            });
+        }
 
         if (els.sceneryClose) els.sceneryClose.addEventListener('click', closeSceneryModal);
         if (els.sceneryCancel) els.sceneryCancel.addEventListener('click', closeSceneryModal);
@@ -4313,6 +4360,7 @@
         els.cols.value = state.cols;
         els.rows.value = state.rows;
         els.toggleNumbers.checked = state.showNumbers;
+        if (els.snapToGrid) els.snapToGrid.checked = !!state.snapToGrid;
         renderPagesBar();
         renderBoard();
         renderScenery();
