@@ -3944,6 +3944,12 @@ function preencherFicha(ficha) {
     }
 
     if (window.AncestralidadesPindorama) {
+        // Limpa marcação stale de bônus de ancestralidade que pode ter sido aplicada
+        // durante o loop de preenchimento (dispatchedEvent disparou atualizarPainel
+        // com valores ainda iniciais; depois forca/constituicao foram sobrescritos
+        // com o valor base do banco). Sem essa limpeza, sincronizarBonusAtributos
+        // pula a re-aplicação por achar que já está aplicado.
+        limparBonusAncestralidadeAplicados();
         window.AncestralidadesPindorama.atualizarPainel();
     }
 
