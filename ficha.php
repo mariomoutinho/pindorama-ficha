@@ -15,7 +15,7 @@ $divindadesFicha = $dadosDivindades['divindades'] ?? [];
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ficha Pindorama RPG</title>
 
-    <link rel="stylesheet" href="assets/css/ficha.css?v=20260504tk" />
+    <link rel="stylesheet" href="assets/css/ficha.css?v=20260504tk2" />
     <link rel="stylesheet" href="assets/css/poderes.css?v=20260501b" />
     <link rel="stylesheet" href="assets/css/ancestralidades.css?v=20260430" />
     <link rel="stylesheet" href="assets/css/origens.css?v=20260430x" />
@@ -106,12 +106,12 @@ $divindadesFicha = $dadosDivindades['divindades'] ?? [];
                                 <img id="characterTokenPreview" src="" alt="">
                                 <span class="character-token-empty">Sem token</span>
                             </div>
-                            <div class="character-token-actions">
-                                <button type="button" id="btnCarregarTokenImagem">Carregar token</button>
-                                <button type="button" id="btnRemoverTokenImagem">Remover token</button>
-                            </div>
-                            <small class="character-token-hint">Se vazio, usa a foto principal recortada.</small>
                         </div>
+                        <div class="character-token-actions">
+                            <button type="button" id="btnCarregarTokenImagem">Carregar token</button>
+                            <button type="button" id="btnRemoverTokenImagem">Remover token</button>
+                        </div>
+                        <small class="character-token-hint">Se vazio, usa a foto principal recortada.</small>
                     </div>
 
                     <input
@@ -842,7 +842,7 @@ $divindadesFicha = $dadosDivindades['divindades'] ?? [];
 
     </main>
 
-    <script src="assets/js/ficha.js?v=20260504tk"></script>
+    <script src="assets/js/ficha.js?v=20260504tk2"></script>
     <script src="assets/js/atributos.js?v=20260501u"></script>
     <script src="assets/js/poderes.js?v=20260430j"></script>
     <script src="assets/js/ancestralidades-ficha.js?v=20260504a"></script>

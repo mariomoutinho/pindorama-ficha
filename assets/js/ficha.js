@@ -2928,6 +2928,8 @@ function bindImageAdjustSurface(surface, target) {
 
     surface.addEventListener("pointerdown", event => {
         if (!surface.closest(".character-card")?.classList.contains("has-image")) return;
+        // Não interceptar cliques em elementos interativos (botões, inputs, etc)
+        if (event.target.closest("button, input, a, select, textarea")) return;
         event.preventDefault();
         event.stopPropagation();
         surface.setPointerCapture?.(event.pointerId);

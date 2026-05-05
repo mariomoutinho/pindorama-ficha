@@ -506,6 +506,7 @@ textarea {
 .character-image-editor {
     display: grid;
     justify-items: center;
+    gap: 6px;
     opacity: 0;
     max-height: 0;
     overflow: hidden;
@@ -516,7 +517,7 @@ textarea {
 .character-card.active .character-image-editor,
 .character-card.has-image .character-image-editor {
     opacity: 1;
-    max-height: 260px;
+    max-height: 360px;
     pointer-events: auto;
 }
 
@@ -555,7 +556,8 @@ textarea {
 }
 
 .character-preview-box.has-image ~ .character-image-editor .character-token-frame img,
-.character-card.has-image .character-token-frame img {
+.character-card.has-image .character-token-frame img,
+.character-card.has-token-image .character-token-frame img {
     display: block;
 }
 
