@@ -987,6 +987,7 @@
                 token.tokenImage = novaImg;
                 token.fotoImage = novaImg;
             }
+            token.tokenImageAdjust = parseTokenAdjustment(fresh.tokenImagemAjuste || fresh.imagemAjuste);
             synced++;
         }
 
@@ -1043,11 +1044,16 @@
     }
 
     function addTokenFromBestiaryToken(token) {
+        const tokenSrc = token.tokenImagem || token.imagem || null;
+        const tokenAjuste = parseTokenAdjustment(token.tokenImagemAjuste || token.imagemAjuste);
         addTokenFromFicha({
             id: token.id,
             source: 'bestiario',
             personagem: token.nome || 'Criatura',
-            personagem_imagem: token.imagem || null,
+            personagem_imagem: tokenSrc,
+            personagem_imagem_ajuste: tokenAjuste,
+            personagem_token_imagem: tokenSrc,
+            personagem_token_imagem_ajuste: tokenAjuste,
             tamanho: token.tamanho,
             deslocamento: token.deslocamento,
             nd: token.nd,
@@ -1066,32 +1072,26 @@
     }
 
     function montarTokenCriatura(criatura) {
-        const token = criatura.token || {
-            id: criatura.id,
-            nome: criatura.nome,
-            nd: criatura.nd,
-            tipo: criatura.tipo,
-            tamanho: criatura.tamanho,
-            imagem: criatura.imagem,
-            pvAtual: criatura.pvAtual ?? criatura.pvAtuais ?? criatura.pvMax,
-            pvMax: criatura.pvMax,
-            pmAtual: criatura.pmAtual ?? criatura.pmAtuais ?? criatura.pmMax,
-            pmMax: criatura.pmMax,
-            defesa: criatura.defesa,
-            deslocamento: criatura.deslocamento,
-            ataquesPrincipais: criatura.ataques || [],
-            ataques: criatura.ataques || [],
-            habilidadesPrincipais: (criatura.habilidades || []).slice(0, 5).map(h => String(h).split('.')[0]),
-            bioma: criatura.bioma,
-            papelTatico: criatura.papelTatico
-        };
+        const token = criatura.token || {};
+        const imagemEfetiva = criatura.tokenImagem
+            || token.tokenImagem
+            || token.imagem
+            || criatura.imagem
+            || '';
+        const ajusteEfetivo = criatura.tokenImagemAjuste
+            ?? token.tokenImagemAjuste
+            ?? token.imagemAjuste
+            ?? null;
         return Object.assign({}, token, {
             id: token.id || criatura.id,
             nome: token.nome || criatura.nome,
             nd: token.nd ?? criatura.nd,
             tipo: token.tipo || criatura.tipo,
             tamanho: token.tamanho || criatura.tamanho,
-            imagem: token.imagem || criatura.imagem,
+            imagem: imagemEfetiva,
+            tokenImagem: imagemEfetiva,
+            imagemAjuste: ajusteEfetivo,
+            tokenImagemAjuste: ajusteEfetivo,
             pvAtual: token.pvAtual ?? token.pvAtuais ?? criatura.pvAtual ?? criatura.pvAtuais ?? criatura.pvMax,
             pvMax: token.pvMax ?? criatura.pvMax,
             pmAtual: token.pmAtual ?? token.pmAtuais ?? criatura.pmAtual ?? criatura.pmAtuais ?? criatura.pmMax,
@@ -1100,6 +1100,8 @@
             deslocamento: token.deslocamento || criatura.deslocamento,
             ataques: token.ataques || token.ataquesPrincipais || criatura.ataques || [],
             ataquesPrincipais: token.ataquesPrincipais || token.ataques || criatura.ataques || [],
+            habilidadesPrincipais: token.habilidadesPrincipais
+                || (criatura.habilidades || []).slice(0, 5).map(h => String(h).split('.')[0]),
             bioma: token.bioma || criatura.bioma,
             papelTatico: token.papelTatico || criatura.papelTatico
         });
@@ -1388,9 +1390,10 @@
     // o valor é um objeto plano {scale, x, y} sem nesting foto/token.
     function parseTokenAdjustment(value) {
         if (!value) return { scale: 1, x: 0, y: 0 };
-        if (typeof value === 'object') return normalizeImageAdjustment(value);
+        if (typeof value === 'object') return normalizeImageAdjustment(value.token || value);
         try {
-            return normalizeImageAdjustment(JSON.parse(value));
+            const parsed = JSON.parse(value);
+            return normalizeImageAdjustment(parsed.token || parsed);
         } catch (_) {
             return { scale: 1, x: 0, y: 0 };
         }
@@ -1405,7 +1408,7 @@
     }
 
     function applyTokenImageAdjustment(img, adjustment) {
-        const ajuste = parseImageAdjustment(adjustment);
+        const ajuste = parseTokenAdjustment(adjustment);
         img.style.setProperty('--token-img-scale', String(ajuste.scale));
         img.style.setProperty('--token-img-x', `${ajuste.x}%`);
         img.style.setProperty('--token-img-y', `${ajuste.y}%`);
@@ -1646,6 +1649,7 @@
                     img.remove();
                     thumb.textContent = getTokenInitials(criatura.nome);
                 };
+                applyFichaSalvaTokenAdjustment(img, token.imagemAjuste || token.tokenImagemAjuste);
                 thumb.appendChild(img);
             } else {
                 thumb.textContent = getTokenInitials(criatura.nome);
@@ -2518,19 +2522,24 @@
         const aim = (state.reachPreview && state.reachPreview.tokenId === token.id && state.reachPreview.aim) || null;
 
         if (shape.tipo === 'cone') {
-            // Cone direcionado pelo mouse (8 direções)
-            const dir = aim ? directionFromTo(col, row, size, aim.col, aim.row) : 'n';
-            addConeCells(cells, col, row, size, shape.tamanho, dir);
+            // Cone direcionado pelo mouse, partindo de um quadrado adjacente ao token.
+            const origin = getAreaOriginCell(col, row, size, aim);
+            const dir = directionFromOrigin(origin, aim, col, row, size);
+            addConeCellsFromOrigin(cells, origin.col, origin.row, shape.tamanho, dir);
         } else if (shape.tipo === 'linha') {
-            const dir = aim ? directionFromTo(col, row, size, aim.col, aim.row) : 'n';
-            addLineCells(cells, col, row, size, shape.tamanho, dir);
+            const origin = getAreaOriginCell(col, row, size, aim);
+            const dir = directionFromOrigin(origin, aim, col, row, size);
+            addLineCellsFromOrigin(cells, origin.col, origin.row, shape.tamanho, dir);
         } else if (shape.tipo === 'raio') {
-            // Centro = posição do mouse (ou centro do token se não houver aim)
+            // Centro = posição do mouse (ou centro do token se não houver aim).
+            // Áreas de raio usam o padrão do grid do livro, não um quadrado cheio.
             const center = aim ? { col: aim.col, row: aim.row } : { col: col + Math.floor(size / 2), row: row + Math.floor(size / 2) };
-            addRadiusCellsCentered(cells, center.col, center.row, shape.tamanho);
+            addRadiusCellsBookPattern(cells, center.col, center.row, shape.tamanho);
         } else if (shape.tipo === 'cubo') {
-            const center = aim ? { col: aim.col, row: aim.row } : { col: col + Math.floor(size / 2), row: row + Math.floor(size / 2) };
-            addCubeCellsCentered(cells, center.col, center.row, shape.tamanho);
+            const anchor = aim
+                ? { col: aim.col, row: aim.row }
+                : { col: col + size, row };
+            addCubeCellsFromAnchor(cells, anchor.col, anchor.row, shape.tamanho);
         } else {
             // Alcance simples (corpo a corpo, curto, longo)
             return buildReachCellsAt(col, row, token.sizeCells, shape.tamanho);
@@ -2560,6 +2569,90 @@
         return ySide > 0 ? 'so' : 'no';
     }
 
+    function getAdjacentOriginCells(baseCol, baseRow, size) {
+        const cells = [];
+        const minCol = baseCol - 1;
+        const maxCol = baseCol + size;
+        const minRow = baseRow - 1;
+        const maxRow = baseRow + size;
+
+        for (let row = minRow; row <= maxRow; row++) {
+            for (let col = minCol; col <= maxCol; col++) {
+                const insideToken = col >= baseCol && col < baseCol + size && row >= baseRow && row < baseRow + size;
+                const insideBoard = col >= 0 && col < state.cols && row >= 0 && row < state.rows;
+                if (!insideToken && insideBoard) {
+                    cells.push({ col, row });
+                }
+            }
+        }
+
+        return cells;
+    }
+
+    function getAreaOriginCell(baseCol, baseRow, size, aim) {
+        const origins = getAdjacentOriginCells(baseCol, baseRow, size);
+        if (!origins.length) {
+            return {
+                col: clamp(baseCol + Math.floor(size / 2), 0, state.cols - 1),
+                row: clamp(baseRow - 1, 0, state.rows - 1)
+            };
+        }
+        if (!aim) {
+            return origins.find(cell => cell.col >= baseCol && cell.col < baseCol + size && cell.row < baseRow) || origins[0];
+        }
+
+        let best = origins[0];
+        let bestScore = Infinity;
+        const outwardTarget = {
+            x: baseCol + (size - 1) / 2,
+            y: baseRow + (size - 1) / 2
+        };
+
+        for (const origin of origins) {
+            const dx = aim.col - origin.col;
+            const dy = aim.row - origin.row;
+            const distance = dx * dx + dy * dy;
+            const awayX = origin.col - outwardTarget.x;
+            const awayY = origin.row - outwardTarget.y;
+            const alignmentPenalty = (dx * awayX + dy * awayY) < 0 ? 10000 : 0;
+            const score = distance + alignmentPenalty;
+            if (score < bestScore) {
+                best = origin;
+                bestScore = score;
+            }
+        }
+
+        return best;
+    }
+
+    function directionFromOrigin(origin, aim, baseCol, baseRow, size) {
+        const fallback = directionFromTo(baseCol, baseRow, size, origin.col, origin.row);
+        if (!aim) return fallback;
+        const dx = Math.sign(aim.col - origin.col);
+        const dy = Math.sign(aim.row - origin.row);
+        const dir = vectorToDir(dx, dy) || fallback;
+        return directionPointsAwayFromToken(origin, dir, baseCol, baseRow, size) ? dir : fallback;
+    }
+
+    function vectorToDir(dx, dy) {
+        if (dx === 0 && dy < 0) return 'n';
+        if (dx === 0 && dy > 0) return 's';
+        if (dx > 0 && dy === 0) return 'l';
+        if (dx < 0 && dy === 0) return 'o';
+        if (dx > 0 && dy < 0) return 'ne';
+        if (dx < 0 && dy < 0) return 'no';
+        if (dx > 0 && dy > 0) return 'se';
+        if (dx < 0 && dy > 0) return 'so';
+        return '';
+    }
+
+    function directionPointsAwayFromToken(origin, dir, baseCol, baseRow, size) {
+        const v = DIR_VECTORS[dir] || DIR_VECTORS.n;
+        const nextCol = origin.col + v.dx;
+        const nextRow = origin.row + v.dy;
+        return !(nextCol >= baseCol && nextCol < baseCol + size && nextRow >= baseRow && nextRow < baseRow + size);
+    }
+
     function addRadiusCellsCentered(cells, cx, cy, radius) {
         for (let r = cy - radius; r <= cy + radius; r++) {
             for (let c = cx - radius; c <= cx + radius; c++) {
@@ -2571,8 +2664,33 @@
         }
     }
 
-    function addCubeCellsCentered(cells, cx, cy, lado) {
-        addRadiusCellsCentered(cells, cx, cy, lado);
+    function addRadiusCellsBookPattern(cells, centerCol, centerRow, radius) {
+        const r = Math.max(1, Number(radius || 1));
+        const diameter = r * 2;
+        const top = centerRow - r + 1;
+
+        for (let y = 0; y < diameter; y++) {
+            const width = 2 * Math.min(y + 1, diameter - y, r);
+            const row = top + y;
+            const left = centerCol - Math.floor(width / 2) + 1;
+            for (let x = 0; x < width; x++) {
+                const col = left + x;
+                if (col < 0 || col >= state.cols || row < 0 || row >= state.rows) continue;
+                cells.add(occupiedKey(col, row));
+            }
+        }
+    }
+
+    function addCubeCellsFromAnchor(cells, anchorCol, anchorRow, side) {
+        const size = Math.max(1, Number(side || 1));
+        const startCol = clamp(anchorCol, 0, Math.max(0, state.cols - size));
+        const startRow = clamp(anchorRow, 0, Math.max(0, state.rows - size));
+        for (let row = startRow; row < startRow + size; row++) {
+            for (let col = startCol; col < startCol + size; col++) {
+                if (col < 0 || col >= state.cols || row < 0 || row >= state.rows) continue;
+                cells.add(occupiedKey(col, row));
+            }
+        }
     }
 
     function parseAreaShape(alcance) {
@@ -2675,6 +2793,38 @@
         }
     }
 
+    function addConeCellsFromOrigin(cells, originCol, originRow, len, dir) {
+        const v = DIR_VECTORS[dir] || DIR_VECTORS.n;
+        const isDiagonal = v.dx !== 0 && v.dy !== 0;
+
+        if (isDiagonal) {
+            for (let dxStep = 0; dxStep < len; dxStep++) {
+                for (let dyStep = 0; dyStep < len; dyStep++) {
+                    if (dxStep + dyStep > len - 1) continue;
+                    const c = originCol + v.dx * dxStep;
+                    const r = originRow + v.dy * dyStep;
+                    if (c < 0 || c >= state.cols || r < 0 || r >= state.rows) continue;
+                    cells.add(occupiedKey(c, r));
+                }
+            }
+            return;
+        }
+
+        const perp = { dx: -v.dy, dy: v.dx };
+        for (let step = 0; step < len; step++) {
+            const ax = originCol + v.dx * step;
+            const ay = originRow + v.dy * step;
+            const width = 2 * Math.floor((step + 1) / 2) + 1;
+            const half = (width - 1) / 2;
+            for (let s = -half; s <= half; s++) {
+                const c = ax + perp.dx * s;
+                const r = ay + perp.dy * s;
+                if (c < 0 || c >= state.cols || r < 0 || r >= state.rows) continue;
+                cells.add(occupiedKey(c, r));
+            }
+        }
+    }
+
     function addLineCells(cells, baseCol, baseRow, size, len, dir) {
         const v = DIR_VECTORS[dir] || DIR_VECTORS.n;
         const cx = baseCol + (size - 1) / 2;
@@ -2682,6 +2832,16 @@
         for (let step = 1; step <= len; step++) {
             const c = Math.round(cx + v.dx * (size / 2 + step));
             const r = Math.round(cy + v.dy * (size / 2 + step));
+            if (c < 0 || c >= state.cols || r < 0 || r >= state.rows) continue;
+            cells.add(occupiedKey(c, r));
+        }
+    }
+
+    function addLineCellsFromOrigin(cells, originCol, originRow, len, dir) {
+        const v = DIR_VECTORS[dir] || DIR_VECTORS.n;
+        for (let step = 0; step < len; step++) {
+            const c = originCol + v.dx * step;
+            const r = originRow + v.dy * step;
             if (c < 0 || c >= state.cols || r < 0 || r >= state.rows) continue;
             cells.add(occupiedKey(c, r));
         }

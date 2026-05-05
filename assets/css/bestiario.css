@@ -201,6 +201,26 @@
     gap: 8px;
 }
 
+.bestiario-card-token {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0 6px;
+}
+
+.bestiario-card-token span {
+    font-style: italic;
+    color: var(--muted);
+}
+
+.bestiario-ficha-token--mini {
+    width: 56px;
+    height: 56px;
+    border-width: 3px;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
 .bestiario-form-panel {
     margin-top: 8px;
 }
@@ -300,8 +320,103 @@
     padding: 0 18px 18px;
 }
 
+.criatura-token-editor {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+    padding: 0 18px 18px;
+}
+
+.criatura-token-preview {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    touch-action: none;
+    cursor: grab;
+}
+
+.criatura-token-preview.is-adjusting {
+    cursor: grabbing;
+}
+
+.criatura-token-frame {
+    display: grid;
+    place-items: center;
+    width: 140px;
+    aspect-ratio: 1;
+    border: 4px solid var(--purple-dark);
+    border-radius: 50%;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--muted);
+    font-weight: 900;
+    text-align: center;
+    box-shadow: 0 10px 24px rgba(62, 32, 69, 0.18);
+}
+
+.criatura-token-frame img {
+    display: none;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: translate(var(--criatura-token-x, 0), var(--criatura-token-y, 0)) scale(var(--criatura-token-scale, 1));
+    transform-origin: center;
+}
+
+.criatura-token-preview.has-image img {
+    display: block;
+}
+
+.criatura-token-preview.has-image span {
+    display: none;
+}
+
+.criatura-token-fields {
+    display: grid;
+    gap: 12px;
+}
+
+.criatura-token-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.criatura-token-actions button {
+    min-height: 40px;
+    border: 2px solid var(--purple);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.88);
+    color: var(--purple);
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.criatura-token-actions button:hover {
+    background: var(--purple);
+    color: #ffffff;
+}
+
+.criatura-token-sliders {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.criatura-token-sliders input[type="range"] {
+    padding: 0;
+    min-height: 28px;
+}
+
 @media (max-width: 700px) {
     .criatura-secao-conteudo {
+        grid-template-columns: 1fr;
+    }
+
+    .criatura-token-editor,
+    .criatura-token-actions,
+    .criatura-token-sliders {
         grid-template-columns: 1fr;
     }
 }
@@ -488,6 +603,8 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transform: translate(var(--criatura-token-x, 0), var(--criatura-token-y, 0)) scale(var(--criatura-token-scale, 1));
+    transform-origin: center;
 }
 
 .bestiario-ficha-header h2 {

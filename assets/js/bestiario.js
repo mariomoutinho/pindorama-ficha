@@ -25,7 +25,19 @@
         form: document.getElementById('bestiarioForm'),
         cancelar: document.getElementById('bestiarioCancelarEdicao'),
         ataquesContainer: document.getElementById('criaturaAtaquesContainer'),
-        adicionarAtaque: document.getElementById('criaturaAdicionarAtaque')
+        adicionarAtaque: document.getElementById('criaturaAdicionarAtaque'),
+        tokenImagem: document.getElementById('criaturaTokenImagem'),
+        tokenAjuste: document.getElementById('criaturaTokenAjuste'),
+        tokenArquivo: document.getElementById('criaturaTokenArquivo'),
+        tokenPreview: document.getElementById('criaturaTokenPreview'),
+        tokenPreviewImg: document.getElementById('criaturaTokenPreviewImg'),
+        tokenCarregar: document.getElementById('criaturaTokenCarregar'),
+        tokenUsarFicha: document.getElementById('criaturaTokenUsarFicha'),
+        tokenResetar: document.getElementById('criaturaTokenResetar'),
+        tokenRemover: document.getElementById('criaturaTokenRemover'),
+        tokenZoom: document.getElementById('criaturaTokenZoom'),
+        tokenFocoX: document.getElementById('criaturaTokenFocoX'),
+        tokenFocoY: document.getElementById('criaturaTokenFocoY')
     };
 
     const ALCANCES_ATAQUE = [
@@ -69,6 +81,54 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    function defaultTokenAdjustment() {
+        return { scale: 1, x: 0, y: 0 };
+    }
+
+    function normalizarTokenAdjustment(valor = {}) {
+        return {
+            scale: Math.min(6, Math.max(0.2, Number(valor.scale) || 1)),
+            x: Math.min(220, Math.max(-220, Number(valor.x) || 0)),
+            y: Math.min(220, Math.max(-220, Number(valor.y) || 0))
+        };
+    }
+
+    function parseTokenAdjustment(valor) {
+        if (!valor) return defaultTokenAdjustment();
+        if (typeof valor === 'object') return normalizarTokenAdjustment(valor);
+        try {
+            return normalizarTokenAdjustment(JSON.parse(valor));
+        } catch (_) {
+            return defaultTokenAdjustment();
+        }
+    }
+
+    function tokenImagemSrc(criatura) {
+        return criatura?.tokenImagem || criatura?.token?.tokenImagem || criatura?.token?.imagem || criatura?.imagem || '';
+    }
+
+    function tokenAjuste(criatura) {
+        const candidato = criatura?.tokenImagemAjuste
+            ?? criatura?.token?.tokenImagemAjuste
+            ?? criatura?.token?.imagemAjuste;
+        return parseTokenAdjustment(candidato);
+    }
+
+    function tokenStyle(ajuste) {
+        const atual = normalizarTokenAdjustment(ajuste);
+        return `--criatura-token-scale:${atual.scale};--criatura-token-x:${atual.x}%;--criatura-token-y:${atual.y}%;`;
+    }
+
+    function tokenPreviewHtml(criatura, classeExtra = '') {
+        const src = tokenImagemSrc(criatura);
+        const classes = ['bestiario-ficha-token', 'bestiario-ficha-token--mini'];
+        if (classeExtra) classes.push(classeExtra);
+        if (!src) {
+            return `<div class="${classes.join(' ')}">${escapeHtml((criatura.nome || '?').charAt(0).toUpperCase())}</div>`;
+        }
+        return `<div class="${classes.join(' ')}" style="${escapeHtml(tokenStyle(tokenAjuste(criatura)))}"><img src="${escapeHtml(src)}" alt="${escapeHtml(criatura.nome || 'Criatura')}" onerror="this.remove(); this.parentElement.textContent='${escapeHtml((criatura.nome || '?').charAt(0).toUpperCase())}';"></div>`;
     }
 
     function linhas(valor) {
@@ -375,6 +435,11 @@
         const imagem = criatura.imagem
             ? `<img src="${escapeHtml(criatura.imagem)}" alt="${escapeHtml(criatura.nome)}" onerror="this.remove(); this.parentElement.textContent='Imagem pendente';">`
             : 'Imagem pendente';
+        const tokenSrc = tokenImagemSrc(criatura);
+        const tokenCustomizado = tokenSrc
+            && (criatura.tokenImagem && criatura.tokenImagem !== criatura.imagem
+                || (criatura.tokenImagemAjuste && (criatura.tokenImagemAjuste.scale !== 1 || criatura.tokenImagemAjuste.x !== 0 || criatura.tokenImagemAjuste.y !== 0)));
+        const tokenResumo = tokenCustomizado ? 'Token customizado' : 'Token usa imagem da ficha';
 
         return `
             <article class="bestiario-card" data-criatura-id="${escapeHtml(criatura.id)}">
@@ -394,6 +459,10 @@
                 <div class="bestiario-combate">
                     <span>PV ${escapeHtml(criatura.pvMax)}</span>
                     <span>Defesa ${escapeHtml(criatura.defesa)}</span>
+                </div>
+                <div class="bestiario-card-token">
+                    ${tokenPreviewHtml(criatura)}
+                    <span>${escapeHtml(tokenResumo)}</span>
                 </div>
                 <div class="bestiario-card-actions">
                     <button type="button" data-action="ver">Ver ficha</button>
@@ -440,10 +509,11 @@
     }
 
     function imagemCriaturaHtml(criatura) {
-        if (!criatura.imagem) {
+        const src = tokenImagemSrc(criatura);
+        if (!src) {
             return `<div class="bestiario-ficha-token">${escapeHtml((criatura.nome || '?').charAt(0).toUpperCase())}</div>`;
         }
-        return `<div class="bestiario-ficha-token"><img src="${escapeHtml(criatura.imagem)}" alt="${escapeHtml(criatura.nome || 'Criatura')}"></div>`;
+        return `<div class="bestiario-ficha-token" style="${escapeHtml(tokenStyle(tokenAjuste(criatura)))}"><img src="${escapeHtml(src)}" alt="${escapeHtml(criatura.nome || 'Criatura')}"></div>`;
     }
 
     function bloco(titulo, conteudo) {
@@ -524,6 +594,8 @@
     function lerForm() {
         const nome = campo('criaturaNome').value.trim();
         const id = campo('criaturaId').value || gerarId(nome);
+        const imagemFicha = campo('criaturaImagem').value.trim();
+        const imagemToken = els.tokenImagem?.value.trim() || imagemFicha;
         const criatura = {
             id,
             nome,
@@ -535,7 +607,9 @@
             bioma: campo('criaturaBioma').value,
             habitat: campo('criaturaHabitat').value.trim(),
             papelTatico: campo('criaturaPapelTatico').value,
-            imagem: campo('criaturaImagem').value.trim(),
+            imagem: imagemFicha,
+            tokenImagem: imagemToken,
+            tokenImagemAjuste: parseTokenAdjustment(els.tokenAjuste?.value),
             pvMax: Number(campo('criaturaPvMax').value || 0),
             pmMax: Number(campo('criaturaPmMax').value || 0),
             defesa: Number(campo('criaturaDefesa').value || 0),
@@ -589,6 +663,9 @@
         campo('criaturaHabitat').value = criatura.habitat || '';
         campo('criaturaPapelTatico').value = criatura.papelTatico || '';
         campo('criaturaImagem').value = criatura.imagem || '';
+        if (els.tokenImagem) els.tokenImagem.value = criatura.tokenImagem || criatura.token?.tokenImagem || '';
+        setTokenAdjustment(tokenAjuste(criatura));
+        atualizarTokenPreview();
         campo('criaturaConceito').value = criatura.conceito || '';
         campo('criaturaDescricao').value = criatura.descricao || '';
         campo('criaturaOrigemInspiracao').value = criatura.origemInspiracao || '';
@@ -631,17 +708,26 @@
         els.form.reset();
         campo('criaturaId').value = '';
         renderAtaquesForm();
+        if (els.tokenImagem) els.tokenImagem.value = '';
+        if (els.tokenArquivo) els.tokenArquivo.value = '';
+        setTokenAdjustment(defaultTokenAdjustment());
+        atualizarTokenPreview();
         els.formTitulo.textContent = 'Adicionar criatura';
     }
 
     function montarToken(criatura) {
+        const imagemEfetiva = criatura.tokenImagem || criatura.imagem || '';
+        const ajusteEfetivo = tokenAjuste(criatura);
         return {
             id: criatura.id,
             nome: criatura.nome,
             nd: criatura.nd,
             tipo: criatura.tipo,
             tamanho: criatura.tamanho,
-            imagem: criatura.imagem,
+            imagem: imagemEfetiva,
+            tokenImagem: imagemEfetiva,
+            imagemAjuste: ajusteEfetivo,
+            tokenImagemAjuste: ajusteEfetivo,
             pvMax: criatura.pvMax,
             pmMax: criatura.pmMax,
             defesa: criatura.defesa,
@@ -653,17 +739,141 @@
         };
     }
 
+    function lerTokenAdjustmentForm() {
+        return normalizarTokenAdjustment({
+            scale: els.tokenZoom?.value,
+            x: els.tokenFocoX?.value,
+            y: els.tokenFocoY?.value
+        });
+    }
+
+    function setTokenAdjustment(ajuste) {
+        const atual = normalizarTokenAdjustment(ajuste);
+        if (els.tokenAjuste) els.tokenAjuste.value = JSON.stringify(atual);
+        if (els.tokenZoom) els.tokenZoom.value = String(atual.scale);
+        if (els.tokenFocoX) els.tokenFocoX.value = String(atual.x);
+        if (els.tokenFocoY) els.tokenFocoY.value = String(atual.y);
+        aplicarTokenPreviewAdjustment(atual);
+    }
+
+    function aplicarTokenPreviewAdjustment(ajuste) {
+        if (!els.tokenPreview) return;
+        const atual = normalizarTokenAdjustment(ajuste);
+        els.tokenPreview.style.setProperty('--criatura-token-scale', String(atual.scale));
+        els.tokenPreview.style.setProperty('--criatura-token-x', `${atual.x}%`);
+        els.tokenPreview.style.setProperty('--criatura-token-y', `${atual.y}%`);
+    }
+
+    function atualizarTokenPreview() {
+        if (!els.tokenPreview || !els.tokenPreviewImg) return;
+        const src = (els.tokenImagem?.value.trim() || campo('criaturaImagem')?.value.trim() || '');
+        const ajuste = parseTokenAdjustment(els.tokenAjuste?.value);
+        aplicarTokenPreviewAdjustment(ajuste);
+        if (src) {
+            els.tokenPreviewImg.src = src;
+            els.tokenPreviewImg.alt = campo('criaturaNome')?.value || 'Token da criatura';
+            els.tokenPreview.classList.add('has-image');
+        } else {
+            els.tokenPreviewImg.removeAttribute('src');
+            els.tokenPreviewImg.alt = '';
+            els.tokenPreview.classList.remove('has-image');
+        }
+    }
+
+    function resetarTokenAdjustment() {
+        setTokenAdjustment(defaultTokenAdjustment());
+    }
+
+    function bindTokenPreviewDrag() {
+        if (!els.tokenPreview) return;
+        const pointers = new Map();
+        let start = null;
+
+        els.tokenPreview.addEventListener('pointerdown', (event) => {
+            if (!els.tokenPreview.classList.contains('has-image')) return;
+            if (event.target.closest('button, input, a, select, textarea')) return;
+            event.preventDefault();
+            els.tokenPreview.setPointerCapture?.(event.pointerId);
+            pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            start = {
+                ajuste: parseTokenAdjustment(els.tokenAjuste?.value),
+                center: pointerCenter(pointers),
+                distance: pointerDistance(pointers)
+            };
+            els.tokenPreview.classList.add('is-adjusting');
+        });
+
+        els.tokenPreview.addEventListener('pointermove', (event) => {
+            if (!start || !pointers.has(event.pointerId)) return;
+            event.preventDefault();
+            pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            const center = pointerCenter(pointers);
+            const rect = els.tokenPreview.getBoundingClientRect();
+            const dx = ((center.x - start.center.x) / Math.max(1, rect.width)) * 100;
+            const dy = ((center.y - start.center.y) / Math.max(1, rect.height)) * 100;
+            const distance = pointerDistance(pointers);
+            const pinchScale = start.distance && distance ? distance / start.distance : 1;
+            setTokenAdjustment({
+                scale: start.ajuste.scale * pinchScale,
+                x: start.ajuste.x + dx,
+                y: start.ajuste.y + dy
+            });
+        });
+
+        function finish(event) {
+            pointers.delete(event.pointerId);
+            if (!pointers.size) {
+                start = null;
+                els.tokenPreview.classList.remove('is-adjusting');
+            } else {
+                start = {
+                    ajuste: parseTokenAdjustment(els.tokenAjuste?.value),
+                    center: pointerCenter(pointers),
+                    distance: pointerDistance(pointers)
+                };
+            }
+        }
+
+        els.tokenPreview.addEventListener('pointerup', finish);
+        els.tokenPreview.addEventListener('pointercancel', finish);
+        els.tokenPreview.addEventListener('wheel', (event) => {
+            if (!els.tokenPreview.classList.contains('has-image')) return;
+            event.preventDefault();
+            const ajuste = parseTokenAdjustment(els.tokenAjuste?.value);
+            const factor = event.deltaY < 0 ? 1.08 : 1 / 1.08;
+            setTokenAdjustment({ ...ajuste, scale: ajuste.scale * factor });
+        }, { passive: false });
+    }
+
+    function pointerCenter(pointers) {
+        const values = Array.from(pointers.values());
+        return {
+            x: values.reduce((sum, pointer) => sum + pointer.x, 0) / values.length,
+            y: values.reduce((sum, pointer) => sum + pointer.y, 0) / values.length
+        };
+    }
+
+    function pointerDistance(pointers) {
+        const values = Array.from(pointers.values());
+        if (values.length < 2) return 0;
+        return Math.hypot(values[0].x - values[1].x, values[0].y - values[1].y);
+    }
+
     window.prepararTokenCriatura = function prepararTokenCriatura(criaturaId) {
-        const criatura = criaturas.find((item) => item.id === criaturaId);
+        const criatura = criaturaDoFormSeAtual(criaturaId) || criaturas.find((item) => item.id === criaturaId);
         if (!criatura) return null;
-        const token = Object.assign({}, montarToken(criatura), criatura.token || {});
-        token.ataquesPrincipais = normalizarAtaques(criatura.ataques || token.ataquesPrincipais);
-        token.pmMax = criatura.pmMax ?? token.pmMax;
+        const token = montarToken(criatura);
         localStorage.setItem(TOKEN_KEY, JSON.stringify(token));
-        // Integração futura: aqui o token será enviado diretamente para a página Campo de Batalha.
         alert(`Token preparado: ${token.nome}. Abra o Campo de Batalha para posicioná-lo.`);
         return token;
     };
+
+    function criaturaDoFormSeAtual(criaturaId) {
+        if (!els.formPanel?.open) return null;
+        if (!campo('criaturaId')?.value || campo('criaturaId').value !== criaturaId) return null;
+        if (!campo('criaturaNome')?.value.trim()) return null;
+        return lerForm();
+    }
 
     function editarCriatura(id) {
         const criatura = criaturas.find((item) => item.id === id);
@@ -725,6 +935,57 @@
         els.adicionarAtaque.addEventListener('click', () => adicionarAtaqueForm());
     }
 
+    if (els.tokenImagem) {
+        els.tokenImagem.addEventListener('input', atualizarTokenPreview);
+    }
+
+    const imagemFichaCampo = campo('criaturaImagem');
+    if (imagemFichaCampo) {
+        imagemFichaCampo.addEventListener('input', atualizarTokenPreview);
+    }
+
+    [els.tokenZoom, els.tokenFocoX, els.tokenFocoY].filter(Boolean).forEach((input) => {
+        input.addEventListener('input', () => setTokenAdjustment(lerTokenAdjustmentForm()));
+    });
+
+    if (els.tokenCarregar && els.tokenArquivo) {
+        els.tokenCarregar.addEventListener('click', () => els.tokenArquivo.click());
+        els.tokenArquivo.addEventListener('change', () => {
+            const arquivo = els.tokenArquivo.files?.[0];
+            if (!arquivo) return;
+            const reader = new FileReader();
+            reader.addEventListener('load', () => {
+                if (els.tokenImagem) els.tokenImagem.value = String(reader.result || '');
+                resetarTokenAdjustment();
+                atualizarTokenPreview();
+            });
+            reader.readAsDataURL(arquivo);
+        });
+    }
+
+    if (els.tokenUsarFicha) {
+        els.tokenUsarFicha.addEventListener('click', () => {
+            if (els.tokenImagem) els.tokenImagem.value = campo('criaturaImagem')?.value.trim() || '';
+            resetarTokenAdjustment();
+            atualizarTokenPreview();
+        });
+    }
+
+    if (els.tokenResetar) {
+        els.tokenResetar.addEventListener('click', resetarTokenAdjustment);
+    }
+
+    if (els.tokenRemover) {
+        els.tokenRemover.addEventListener('click', () => {
+            if (els.tokenImagem) els.tokenImagem.value = '';
+            if (els.tokenArquivo) els.tokenArquivo.value = '';
+            resetarTokenAdjustment();
+            atualizarTokenPreview();
+        });
+    }
+
+    bindTokenPreviewDrag();
     renderAtaquesForm();
+    atualizarTokenPreview();
     renderizar();
 })();

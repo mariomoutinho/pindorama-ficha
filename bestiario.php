@@ -20,7 +20,7 @@ function bestiarioOptions(array $valores): string
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260430" />
     <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
-    <link rel="stylesheet" href="assets/css/bestiario.css?v=20260505d" />
+    <link rel="stylesheet" href="assets/css/bestiario.css?v=20260505f" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
 </head>
 <body>
@@ -113,7 +113,39 @@ function bestiarioOptions(array $valores): string
                                 <label>Bioma principal <select id="criaturaBioma"><?= bestiarioOptions($filtrosBestiario['biomas'] ?? []) ?></select></label>
                                 <label>Habitat específico <input id="criaturaHabitat" /></label>
                                 <label>Papel tático <select id="criaturaPapelTatico"><?= bestiarioOptions($filtrosBestiario['papeisTaticos'] ?? []) ?></select></label>
-                                <label>Imagem/token <input id="criaturaImagem" placeholder="assets/img/bestiario/criatura.png" /></label>
+                                <label>Imagem da ficha <input id="criaturaImagem" placeholder="assets/img/bestiario/criatura.png" /></label>
+                            </div>
+                        </details>
+
+                        <details class="criatura-secao">
+                            <summary>Token de batalha</summary>
+                            <div class="criatura-token-editor">
+                                <input type="hidden" id="criaturaTokenAjuste" value='{"scale":1,"x":0,"y":0}' />
+                                <input type="file" id="criaturaTokenArquivo" accept="image/*" hidden />
+
+                                <div class="criatura-token-preview" id="criaturaTokenPreview" aria-label="Prévia do token da criatura">
+                                    <div class="criatura-token-frame">
+                                        <img id="criaturaTokenPreviewImg" src="" alt="" />
+                                        <span id="criaturaTokenPreviewEmpty">Sem token</span>
+                                    </div>
+                                </div>
+
+                                <div class="criatura-token-fields">
+                                    <label>Imagem do token
+                                        <input id="criaturaTokenImagem" placeholder="Use um caminho, URL ou carregue uma imagem" />
+                                    </label>
+                                    <div class="criatura-token-actions">
+                                        <button type="button" id="criaturaTokenCarregar">Carregar imagem</button>
+                                        <button type="button" id="criaturaTokenUsarFicha">Usar imagem da ficha</button>
+                                        <button type="button" id="criaturaTokenResetar">Centralizar</button>
+                                        <button type="button" id="criaturaTokenRemover">Remover token</button>
+                                    </div>
+                                    <div class="criatura-token-sliders">
+                                        <label>Zoom <input id="criaturaTokenZoom" type="range" min="0.2" max="6" step="0.05" value="1" /></label>
+                                        <label>Foco horizontal <input id="criaturaTokenFocoX" type="range" min="-220" max="220" step="1" value="0" /></label>
+                                        <label>Foco vertical <input id="criaturaTokenFocoY" type="range" min="-220" max="220" step="1" value="0" /></label>
+                                    </div>
+                                </div>
                             </div>
                         </details>
 
@@ -189,6 +221,6 @@ function bestiarioOptions(array $valores): string
     <script>
         window.BESTIARIO_BASE = <?= json_encode($dadosBestiario, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     </script>
-    <script src="assets/js/bestiario.js?v=20260505d"></script>
+    <script src="assets/js/bestiario.js?v=20260505h"></script>
 </body>
 </html>
