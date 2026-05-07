@@ -21,6 +21,10 @@
         </header>
 
         <section class="home-grid-ref">
+            <a class="home-card-ref" href="jogando.php">
+                <strong>Jogando</strong>
+                <span>Testes, ações e regras de cena.</span>
+            </a>
             <a class="home-card-ref" href="ancestralidades.php">
                 <strong>Ancestralidades</strong>
                 <span>Povos, traços e habilidades.</span>

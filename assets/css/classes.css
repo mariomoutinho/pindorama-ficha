@@ -13,6 +13,112 @@
     letter-spacing: 0.5px;
 }
 
+/* =====================================================
+   CAIXAS DE REGRA / CALLOUTS
+   Para os quadros laterais roxos do material original
+   (ex: "Não Seja Fominha!", "O Propósito do RPG").
+===================================================== */
+.caixa-regra {
+    background: rgba(105, 67, 111, 0.08);
+    border-left: 5px solid var(--purple, #69436f);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 18px 0;
+    color: var(--purple-dark, #3b1d43);
+}
+.caixa-regra .caixa-regra-titulo {
+    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    font-size: 1.1rem;
+    margin: 0 0 8px;
+    color: var(--purple-dark, #3b1d43);
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+.caixa-regra p { margin: 0 0 8px; }
+.caixa-regra p:last-child { margin-bottom: 0; }
+.caixa-regra ul { margin: 6px 0 0; padding-left: 22px; }
+.caixa-regra li + li { margin-top: 4px; }
+
+/* =====================================================
+   PLACEHOLDERS DE IMAGEM (artes futuras)
+===================================================== */
+.image-placeholder {
+    margin: 18px 0;
+    padding: 24px;
+    border: 2px dashed rgba(118, 84, 124, 0.5);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    color: var(--purple, #69436f);
+    font-style: italic;
+    font-size: 0.92rem;
+}
+.image-placeholder figcaption {
+    margin-top: 6px;
+    font-size: 0.82rem;
+    color: var(--muted, #6f5876);
+}
+
+/* =====================================================
+   TABELAS DE REGRAS (responsivas)
+===================================================== */
+.regras-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 14px 0 18px;
+}
+.regras-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(118, 84, 124, 0.28);
+    border-radius: 8px;
+    overflow: hidden;
+    min-width: 480px;
+}
+.regras-table caption {
+    text-align: left;
+    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    font-weight: 800;
+    color: var(--purple-dark, #3b1d43);
+    padding: 6px 8px 8px;
+    letter-spacing: 0.4px;
+    caption-side: top;
+}
+.regras-table th,
+.regras-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(118, 84, 124, 0.18);
+    text-align: left;
+    vertical-align: top;
+    font-size: 0.92rem;
+}
+.regras-table th {
+    background: rgba(105, 67, 111, 0.12);
+    font-weight: 800;
+    color: var(--purple-dark, #3b1d43);
+}
+.regras-table tr:last-child td { border-bottom: none; }
+.regras-table tbody tr:nth-child(even) td {
+    background: rgba(118, 84, 124, 0.06);
+}
+
+/* Fórmula em destaque (ex: "1d20 + Atributo") */
+.formula-destaque {
+    display: block;
+    text-align: center;
+    margin: 8px auto 16px;
+    padding: 10px 14px;
+    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+    color: var(--purple-dark, #3b1d43);
+    background: rgba(105, 67, 111, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(118, 84, 124, 0.2);
+    max-width: 480px;
+}
+
 .classes-page {
     width: min(1440px, 96vw);
     margin: 0 auto;

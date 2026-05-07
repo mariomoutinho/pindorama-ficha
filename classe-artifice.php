@@ -6,7 +6,7 @@
     <title>Artífice - Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/classes.css?v=20260507a" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260507b" />
 </head>
 
 <body>
