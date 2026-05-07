@@ -1199,7 +1199,10 @@ function adicionarAtaque(ataque = {}, fonte = null) {
             <button type="button" class="attack-dice-btn" data-attack-action="teste" title="Rolar teste de ataque" aria-label="Rolar teste">🎯</button>
             <button type="button" class="attack-dice-btn" data-attack-action="dano" title="Rolar dano" aria-label="Rolar dano">🎲</button>
         </div>
-        <button type="button" class="remove-btn">×</button>
+        <div class="attack-row-controls">
+            <button type="button" class="attack-save-btn" data-attack-action="save" title="Salvar ataque" aria-label="Salvar ataque">&#10003;</button>
+            <button type="button" class="remove-btn">×</button>
+        </div>
     `;
 
     const removeBtn = row.querySelector(".remove-btn");
@@ -1213,6 +1216,19 @@ function adicionarAtaque(ataque = {}, fonte = null) {
             const recolhido = row.classList.toggle("attack-row-recolhido");
             toggleBtn.setAttribute("aria-expanded", String(!recolhido));
             toggleBtn.setAttribute("aria-label", recolhido ? "Expandir ataque" : "Recolher ataque");
+        });
+    }
+
+    const saveBtn = row.querySelector('[data-attack-action="save"]');
+    if (saveBtn) {
+        saveBtn.addEventListener("click", () => {
+            const form = document.getElementById("fichaForm");
+            if (!form) return;
+            if (typeof form.requestSubmit === "function") {
+                form.requestSubmit();
+            } else {
+                form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+            }
         });
     }
 
