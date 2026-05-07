@@ -4285,7 +4285,11 @@
     function isAttackWithReach(item) {
         const alc = normalizeText(item && item.alcance);
         return normalizeText(item && item.tipo).includes('ataque')
-            || ['corpo a corpo', 'curto', 'longo', 'cubo', 'cone', 'raio', 'esfera', 'linha'].some(alvo => alc.includes(alvo))
+            || ['corpo a corpo', 'curto', 'longo',
+                'cubo', 'quadrado',
+                'cone',
+                'raio', 'esfera', 'cilindro',
+                'linha'].some(alvo => alc.includes(alvo))
             || isAreaAttack(item)
             || normalizeText(item && item.nome).includes('gavioes espinhosos')
             || normalizeText(item && item.nome).includes('gavinhos espinhosos')
@@ -4920,17 +4924,39 @@
         }
     }
 
+    /**
+     * Mapeamento do livro Pindorama (capítulo "Jogando" → "Alvos & Áreas")
+     * para os tipos internos da engine 2D:
+     *
+     *   livro      → engine (mesma forma renderizada no grid)
+     *   ─────────────────────────────────────────────────────
+     *   cone       → 'cone'
+     *   linha      → 'linha'
+     *   esfera     → 'raio'      (centro + Chebyshev N)
+     *   cilindro   → 'raio'      (a altura é meta-info do narrador, em 2D
+     *                              o footprint é o mesmo da esfera)
+     *   quadrado   → 'cubo'      (em 2D o cubo "vira" um quadrado N×N
+     *                              afetando o piso; o livro descreve cubo
+     *                              como "quadrado que afeta também a altura")
+     *
+     * TODO (item separado do plano): Linha de efeito com barreiras —
+     * o livro define que uma barreira sólida anula a linha de efeito
+     * para alvos/áreas. Hoje as áreas atravessam paredes; implementar
+     * checagem de bloqueadores é um item dedicado, não cabe nesta PR.
+     */
     function parseAreaShape(alcance) {
         const raw = String(alcance || '');
         const norm = normalizeText(raw);
-        // Match nos novos valores chaveados (cubo-3, cone-9, raio-6, linha-15)
-        const m = raw.match(/^(cubo|cone|raio|linha)-([\d.]+)$/i);
+        // Match nos novos valores chaveados (cubo-3, cone-9, raio-6, linha-15,
+        // quadrado-3, cilindro-6, esfera-6).
+        const m = raw.match(/^(cubo|quadrado|cone|raio|esfera|cilindro|linha)-([\d.]+)$/i);
         if (m) {
-            const tipo = m[1].toLowerCase();
+            const rawTipo = m[1].toLowerCase();
+            const tipo = aliasFormaArea(rawTipo);
             const valor = Number(m[2]);
             return { tipo, tamanho: areaSquaresFromMeters(tipo, valor) };
         }
-        if (norm.includes('cubo')) {
+        if (norm.includes('cubo') || norm.includes('quadrado')) {
             return { tipo: 'cubo', tamanho: norm.includes('3') ? 2 : 1 };
         }
         if (norm.includes('cone')) {
@@ -4938,7 +4964,7 @@
             const m6 = norm.includes('6');
             return { tipo: 'cone', tamanho: m9 ? 6 : (m6 ? 4 : 3) };
         }
-        if (norm.includes('raio') || norm.includes('esfera')) {
+        if (norm.includes('raio') || norm.includes('esfera') || norm.includes('cilindro')) {
             const m6 = norm.includes('6');
             const m3 = norm.includes('3');
             return { tipo: 'raio', tamanho: m6 ? 4 : (m3 ? 2 : 1) };
@@ -4949,6 +4975,20 @@
         if (norm.includes('longo') || norm.includes('90') || /\b60\b/.test(norm)) return { tipo: 'simples', tamanho: 60 };
         if (norm.includes('curto') || norm.includes('9m') || /\b6\s*quadr/.test(norm)) return { tipo: 'simples', tamanho: 6 };
         return { tipo: 'simples', tamanho: 1 };
+    }
+
+    /* Resolve aliases de forma do livro para o tipo interno (ver doc do
+       parseAreaShape acima). */
+    function aliasFormaArea(tipo) {
+        switch (tipo) {
+            case 'esfera':
+            case 'cilindro':
+                return 'raio';
+            case 'quadrado':
+                return 'cubo';
+            default:
+                return tipo;
+        }
     }
 
     function areaSquaresFromMeters(tipo, metros) {
