@@ -363,6 +363,29 @@
     transition: background 200ms ease, box-shadow 200ms ease;
 }
 
+/* Sub-fase C: preview de alcance de movimento.
+   Cor distinta de .cb-cell--alcance (ataques) — verde-azulado para
+   movimento normal, âmbar para terreno difícil (custo dobrado). */
+.cb-cell--movimento {
+    position: relative;
+    background:
+        radial-gradient(circle at center, rgba(120, 200, 160, 0.20) 0%, rgba(60, 140, 100, 0.30) 70%),
+        rgba(220, 245, 232, 0.35);
+    box-shadow:
+        inset 0 0 0 1.5px rgba(60, 130, 90, 0.45),
+        inset 0 0 14px rgba(60, 140, 100, 0.18);
+    transition: background 200ms ease, box-shadow 200ms ease;
+}
+
+.cb-cell--movimento.cb-cell--movimento-dificil {
+    background:
+        radial-gradient(circle at center, rgba(220, 170, 90, 0.24) 0%, rgba(180, 120, 40, 0.34) 70%),
+        rgba(252, 240, 215, 0.35);
+    box-shadow:
+        inset 0 0 0 1.5px rgba(160, 110, 40, 0.5),
+        inset 0 0 14px rgba(180, 120, 40, 0.22);
+}
+
 .cb-cell--alcance::before {
     content: "";
     position: absolute;

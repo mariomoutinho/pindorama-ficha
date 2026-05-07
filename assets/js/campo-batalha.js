@@ -800,6 +800,8 @@
         els.board.innerHTML = '';
 
         const targetCells = computeReachTargetCellSet();
+        // Sub-fase C: cache do preview de movimento por render.
+        movementPreviewMap = computeMovementPreviewMap();
 
         const frag = document.createDocumentFragment();
         for (let r = 0; r < state.rows; r++) {
@@ -810,6 +812,11 @@
                     cell.classList.add('cb-cell--alcance');
                     if (targetCells.has(occupiedKey(c, r))) {
                         cell.classList.add('cb-cell--target');
+                    }
+                } else if (isMovePreviewCell(c, r)) {
+                    cell.classList.add('cb-cell--movimento');
+                    if (isTerrainDifficult(c, r)) {
+                        cell.classList.add('cb-cell--movimento-dificil');
                     }
                 }
                 if (state.showNumbers) {
@@ -1477,7 +1484,11 @@
         const el = els.tokensLayer.querySelector(`[data-token-id="${token.id}"]`);
         if (el) el.classList.remove('is-dragging');
         updateTokenElement(token);
-        if (state.reachPreview && state.reachPreview.tokenId === token.id) {
+        // Sub-fase C: re-renderiza o tabuleiro também quando o token
+        // arrastado é o selecionado, para reposicionar o preview de
+        // movimento centrado na nova célula.
+        if ((state.reachPreview && state.reachPreview.tokenId === token.id)
+            || state.selectedId === token.id) {
             renderBoard();
         }
         saveState();
@@ -1575,16 +1586,21 @@
     // ----------------------------------------------------------------
 
     function selectToken(id) {
-        if (id !== state.selectedId && els.actionPanel && !els.actionPanel.hidden) {
+        const changed = id !== state.selectedId;
+        if (changed && els.actionPanel && !els.actionPanel.hidden) {
             closeTokenActionPanel();
         }
-        if (id !== state.selectedId) {
-            clearReachPreview(true);
+        if (changed) {
+            // Sub-fase C: limpa preview de ataque sem renderizar — o
+            // renderBoard final cobre o repintar e atualiza o overlay
+            // de movimento numa única passada.
+            clearReachPreview(false);
         }
         state.selectedId = id;
         updateSelectionVisuals();
         renderSidebarTokens();
         renderSelectedTokenTools();
+        if (changed) renderBoard();
     }
 
     function removeSelectedToken() {
@@ -3095,6 +3111,9 @@
         state.tokens.push(migrateLegacyTokenFields(t));
         state.selectedId = t.id;
         renderTokens();
+        // Sub-fase C: o token recém-adicionado é selecionado; renderBoard
+        // pinta o preview de movimento dele.
+        renderBoard();
         saveState();
     }
 
@@ -4962,6 +4981,92 @@
             if (token.id === attacker.id) return false;
             return getTokenCells(token).some(cell => reachable.has(occupiedKey(cell.col, cell.row)));
         });
+    }
+
+    // ----------------------------------------------------------------
+    // Sub-fase C: preview visual de alcance de movimento
+    // ----------------------------------------------------------------
+
+    // Dijkstra a partir da posição do token, considerando regra Chebyshev
+    // 5/10 (orto=1, diag=2) com terreno difícil dobrando o custo de entrar
+    // numa célula difícil. Devolve Map<"col,row", custoTotal> com todas as
+    // células alcançáveis dentro do `budget` (em quadrados).
+    //
+    // Limitações conhecidas (intencionais nesta fase):
+    // - Para tokens grandes (size > 1) o BFS parte da célula-âncora; o
+    //   preview pode mostrar células que o footprint não cabe ao parar.
+    //   A validação de pouso continua nas funções de drag existentes.
+    function buildMovementReachCells(token, budget) {
+        const result = new Map();
+        if (!token || !Number.isFinite(budget) || budget <= 0) return result;
+        const cols = state.cols, rows = state.rows;
+
+        // Células ocupadas por OUTROS tokens viram bloqueio.
+        const blocked = new Set();
+        for (const other of state.tokens) {
+            if (other.id === token.id) continue;
+            for (const cell of getTokenCells(other)) {
+                blocked.add(occupiedKey(cell.col, cell.row));
+            }
+        }
+
+        const startKey = occupiedKey(token.col, token.row);
+        const dist = new Map();
+        dist.set(startKey, 0);
+        // Priority queue ingênua (suficiente para grids até ~60×60).
+        const pq = [{ key: startKey, col: token.col, row: token.row, cost: 0 }];
+
+        while (pq.length) {
+            let minIdx = 0;
+            for (let i = 1; i < pq.length; i++) {
+                if (pq[i].cost < pq[minIdx].cost) minIdx = i;
+            }
+            const cur = pq.splice(minIdx, 1)[0];
+            if (dist.get(cur.key) !== cur.cost) continue; // entrada obsoleta
+            for (let dc = -1; dc <= 1; dc++) {
+                for (let dr = -1; dr <= 1; dr++) {
+                    if (dc === 0 && dr === 0) continue;
+                    const nc = cur.col + dc;
+                    const nr = cur.row + dr;
+                    if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+                    const nkey = occupiedKey(nc, nr);
+                    if (blocked.has(nkey)) continue;
+                    const isDiagonal = (dc !== 0 && dr !== 0);
+                    const dificil = isTerrainDifficult(nc, nr);
+                    let stepCost = isDiagonal ? 2 : 1;
+                    if (dificil) stepCost *= 2;
+                    const newCost = cur.cost + stepCost;
+                    if (newCost > budget) continue;
+                    const prev = dist.get(nkey);
+                    if (prev === undefined || newCost < prev) {
+                        dist.set(nkey, newCost);
+                        pq.push({ key: nkey, col: nc, row: nr, cost: newCost });
+                    }
+                }
+            }
+        }
+
+        dist.delete(startKey); // origem não conta como célula alcançada
+        return dist;
+    }
+
+    // Cache do preview de movimento por render — evita recomputar dentro
+    // do loop de células. Atualizado no início de cada renderBoard().
+    let movementPreviewMap = null;
+
+    // Determina se o token selecionado deve mostrar preview de movimento.
+    // Ataque ativo (`state.reachPreview`) tem prioridade visual.
+    function computeMovementPreviewMap() {
+        if (state.reachPreview) return null;
+        const sel = state.tokens.find(t => t.id === state.selectedId);
+        if (!sel) return null;
+        const restante = tokenMovimentoRestante(sel);
+        if (restante <= 0) return null;
+        return buildMovementReachCells(sel, restante);
+    }
+
+    function isMovePreviewCell(col, row) {
+        return movementPreviewMap ? movementPreviewMap.has(occupiedKey(col, row)) : false;
     }
 
     function isTokenInActionReach(target, attacker, action) {
