@@ -37,6 +37,52 @@
     flex: 0 0 auto;
 }
 
+/* Modo compacto: faixa fina com voltar / título / status / nav.
+   Liberta vertical para o palco ocupar a maior parte da tela. */
+.cb-topbar--mini {
+    padding: 4px 10px;
+    gap: 10px;
+    border-width: 2px;
+    border-radius: 10px;
+    box-shadow: 0 3px 8px rgba(79, 49, 86, 0.08);
+}
+
+.cb-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: #fff;
+    border: 2px solid var(--purple);
+    color: var(--purple-dark);
+    font-weight: 800;
+    font-size: 1rem;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: background 120ms ease;
+}
+
+.cb-back:hover {
+    background: var(--purple-light);
+}
+
+.cb-topbar-title {
+    margin: 0;
+    flex: 1 1 auto;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    color: var(--purple-dark);
+}
+
+.cb-link-btn--mini {
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    border-width: 1.5px;
+}
+
 .cb-title {
     display: flex;
     align-items: center;
@@ -234,8 +280,14 @@
     flex: 1 1 auto;
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-columns: 56px minmax(0, 1fr) 340px;
     gap: 10px;
+}
+
+@media (max-width: 900px) {
+    .cb-battle-shell {
+        grid-template-columns: 56px minmax(0, 1fr);
+    }
 }
 
 /* ---------- Stage / palco ---------- */
@@ -3010,3 +3062,229 @@
 .cb-maneuver-result.is-pass { color: #1f6b39; font-style: normal; font-weight: 700; }
 .cb-maneuver-result.is-fail { color: #8b1d35; font-style: normal; font-weight: 700; }
 .cb-maneuver-result.is-tie  { color: #6f4a16; font-style: normal; font-weight: 700; }
+
+/* ====================================================================
+   Toolbar lateral esquerda (Fase 2 do redesign Mesa de Jogo)
+   Coluna estreita com botões compactos por glifo + tooltip nativo.
+   ==================================================================== */
+
+.cb-toolbar-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 4px;
+    background: rgba(255, 255, 255, 0.88);
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(79, 49, 86, 0.10);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.cb-tl-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(118, 84, 124, 0.18);
+}
+
+.cb-tl-group:last-child {
+    border-bottom: none;
+}
+
+.cb-tl-btn {
+    width: 40px;
+    height: 32px;
+    margin: 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--purple);
+    background: #fff;
+    color: var(--purple-dark);
+    border-radius: 8px;
+    cursor: pointer;
+    font: 800 0.78rem inherit;
+    line-height: 1;
+    padding: 0;
+    transition: background 120ms ease, transform 120ms ease, border-color 120ms ease;
+}
+
+.cb-tl-btn:hover:not(:disabled) {
+    background: var(--purple-light);
+}
+
+.cb-tl-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.cb-tl-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.cb-tl-btn--accent {
+    background: var(--purple-dark);
+    border-color: var(--purple-dark);
+    color: #fff;
+}
+
+.cb-tl-btn--accent:hover:not(:disabled) {
+    background: var(--purple);
+    border-color: var(--purple);
+}
+
+.cb-tl-btn--save {
+    background: #fff8dc;
+    border-color: #9a7a22;
+    color: #5f4710;
+}
+
+.cb-tl-btn--save:hover:not(:disabled) {
+    background: #f2df93;
+}
+
+.cb-tl-btn--danger {
+    border-color: #9b254d;
+    color: #9b254d;
+}
+
+.cb-tl-btn--danger:hover:not(:disabled) {
+    background: rgba(155, 37, 77, 0.12);
+}
+
+.cb-tl-btn--mini {
+    width: 40px;
+    height: 22px;
+    font-size: 0.7rem;
+    border-radius: 6px;
+}
+
+/* Toggle "checkbox-styled-as-button": o input fica acessível mas
+   visualmente escondido; o <span> é a indicação do estado. */
+.cb-tl-toggle {
+    position: relative;
+    width: 40px;
+    height: 32px;
+    margin: 0 auto;
+    border: 1.5px dashed var(--purple);
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    color: var(--purple-dark);
+    cursor: pointer;
+    font: 800 0.95rem inherit;
+    user-select: none;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.cb-tl-toggle input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    margin: 0;
+    cursor: pointer;
+}
+
+.cb-tl-toggle:hover {
+    background: var(--purple-light);
+}
+
+.cb-tl-toggle:has(input:checked) {
+    background: var(--purple-dark);
+    color: #fff;
+    border-style: solid;
+    border-color: var(--purple-dark);
+}
+
+.cb-tl-toggle:has(input:checked):hover {
+    background: var(--purple);
+    border-color: var(--purple);
+}
+
+.cb-tl-select {
+    width: 40px;
+    height: 26px;
+    margin: 0 auto;
+    border: 1.5px solid var(--purple);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--purple-dark);
+    font: 800 0.7rem inherit;
+    text-align: center;
+    text-align-last: center;
+    padding: 0 2px;
+    cursor: pointer;
+}
+
+.cb-tl-zoom {
+    text-align: center;
+    color: var(--purple-dark);
+    font: 800 0.72rem inherit;
+    padding: 1px 0;
+}
+
+.cb-tl-mini {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 44px;
+    margin: 0 auto;
+    color: var(--muted);
+    font-size: 0.65rem;
+    font-weight: 800;
+}
+
+.cb-tl-mini > span {
+    color: var(--purple-dark);
+    width: 8px;
+    text-align: center;
+}
+
+.cb-tl-mini input {
+    width: 28px;
+    padding: 2px 3px;
+    border: 1px solid var(--purple);
+    border-radius: 5px;
+    background: #fff;
+    color: var(--purple-dark);
+    font: 800 0.7rem inherit;
+    text-align: center;
+    -moz-appearance: textfield;
+}
+
+.cb-tl-mini input::-webkit-outer-spin-button,
+.cb-tl-mini input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Em telas estreitas a toolbar lateral vira faixa horizontal logo abaixo
+   da topbar para não roubar largura do palco. */
+@media (max-width: 900px) {
+    .cb-toolbar-left {
+        flex-direction: row;
+        flex-wrap: wrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 4px;
+        gap: 6px;
+    }
+    .cb-tl-group {
+        flex-direction: row;
+        align-items: center;
+        border-bottom: none;
+        border-right: 1px solid rgba(118, 84, 124, 0.18);
+        padding: 0 6px;
+    }
+    .cb-tl-group:last-child {
+        border-right: none;
+    }
+}
+

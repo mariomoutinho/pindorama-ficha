@@ -11,83 +11,22 @@ exigirLogin();
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260503g" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
-    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260507h" />
+    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260507i" />
 </head>
 <body class="cb-body">
     <script src="assets/js/transitions.js?v=20260503d"></script>
 
     <main class="cb-page">
 
-        <header class="cb-topbar">
-            <div class="cb-title">
-                <a href="index.php" class="cb-brand-link" title="Voltar ao menu" aria-label="Voltar ao menu">
-                    <img src="assets/img/branding/pindorama-logo-nova.png" alt="Logo do Pindorama RPG" />
-                </a>
-                <div>
-                    <h1>Mesa de Jogo</h1>
-                    <p>Cenas em grid (1 quadrado = 1,5 m): tavernas, masmorras, florestas, batalhas — posicione tokens, arraste, redimensione e gire.</p>
-                </div>
-            </div>
-
+        <header class="cb-topbar cb-topbar--mini">
+            <a href="index.php" class="cb-back" title="Voltar ao menu" aria-label="Voltar ao menu">←</a>
+            <h1 class="cb-topbar-title">Mesa de Jogo</h1>
+            <span id="cbSaveStatus" class="cb-save-status" aria-live="polite"></span>
             <nav class="cb-nav">
-                <a class="cb-link-btn" href="index.php">Menu</a>
-                <a class="cb-link-btn" href="fichas.php">Fichas</a>
-                <a class="cb-link-btn" href="bestiario.php">Bestiário</a>
+                <a class="cb-link-btn cb-link-btn--mini" href="fichas.php">Fichas</a>
+                <a class="cb-link-btn cb-link-btn--mini" href="bestiario.php">Bestiário</a>
             </nav>
         </header>
-
-        <section class="cb-toolbar">
-            <div class="cb-tool-group">
-                <button type="button" id="cbAddToken" class="cb-primary">+ Personagem</button>
-                <button type="button" id="cbAddBestiaryToken" class="cb-primary">+ Criatura</button>
-                <button type="button" id="cbRemoveToken" disabled>Remover seleção</button>
-                <button type="button" id="cbRotateToken" disabled>Girar 90°</button>
-                <button type="button" id="cbAdjustToken" disabled>Ajustar token</button>
-                <button type="button" id="cbAddScenery">+ Cenário</button>
-                <button type="button" id="cbAddNpcImage">+ Imagem NPC</button>
-                <button type="button" id="cbToggleLayers">Camadas</button>
-                <button type="button" id="cbSaveBattle" class="cb-save-button">Salvar campo</button>
-                <span id="cbSaveStatus" class="cb-save-status" aria-live="polite"></span>
-                <button type="button" id="cbClearAll">Limpar campo</button>
-            </div>
-
-            <div class="cb-tool-group">
-                <button type="button" id="cbZoomOut" title="Reduzir">−</button>
-                <span id="cbZoomDisplay" class="cb-zoom-display">100%</span>
-                <button type="button" id="cbZoomIn" title="Ampliar">+</button>
-                <button type="button" id="cbZoomReset" title="Resetar zoom e posição">Reset</button>
-            </div>
-
-<div class="cb-tool-group">
-                <label class="cb-toggle">
-                    <input type="checkbox" id="cbToggleNumbers" />
-                    <span>Numerar células</span>
-                </label>
-                <label class="cb-toggle" title="Quando ativado, o cenário se alinha aos quadrados do grid ao mover/redimensionar.">
-                    <input type="checkbox" id="cbSnapToGrid" />
-                    <span>Magnetizar imagens</span>
-                </label>
-                <label class="cb-layer-select">
-                    Camada
-                    <select id="cbImageLayer">
-                        <option value="scenery">Cenário</option>
-                        <option value="npcs">NPCs</option>
-                    </select>
-                </label>
-            </div>
-
-            <div class="cb-tool-group cb-grid-config">
-                <label>
-                    Colunas
-                    <input type="number" id="cbCols" min="5" max="60" value="20" />
-                </label>
-                <label>
-                    Linhas
-                    <input type="number" id="cbRows" min="5" max="60" value="15" />
-                </label>
-                <button type="button" id="cbApplySize">Aplicar</button>
-            </div>
-        </section>
 
         <section class="cb-pages-bar" aria-label="Páginas do campo">
             <div class="cb-pages-tabs" id="cbPagesTabs"></div>
@@ -95,6 +34,61 @@ exigirLogin();
         </section>
 
         <section class="cb-battle-shell">
+            <aside class="cb-toolbar-left" aria-label="Ferramentas da Mesa de Jogo">
+                <div class="cb-tl-group">
+                    <button type="button" id="cbAddToken" class="cb-tl-btn cb-tl-btn--accent" title="Adicionar personagem">Pj</button>
+                    <button type="button" id="cbAddBestiaryToken" class="cb-tl-btn cb-tl-btn--accent" title="Adicionar criatura">Cr</button>
+                    <button type="button" id="cbAddScenery" class="cb-tl-btn" title="Adicionar cenário">Ce</button>
+                    <button type="button" id="cbAddNpcImage" class="cb-tl-btn" title="Adicionar imagem de NPC">NPC</button>
+                </div>
+
+                <div class="cb-tl-group">
+                    <button type="button" id="cbRotateToken" class="cb-tl-btn" title="Girar token 90°" disabled>↻</button>
+                    <button type="button" id="cbAdjustToken" class="cb-tl-btn" title="Ajustar token (recorte/zoom)" disabled>⌖</button>
+                    <button type="button" id="cbRemoveToken" class="cb-tl-btn cb-tl-btn--danger" title="Remover seleção" disabled>✕</button>
+                </div>
+
+                <div class="cb-tl-group">
+                    <button type="button" id="cbToggleLayers" class="cb-tl-btn" title="Camadas">≡</button>
+                    <label class="cb-tl-toggle" title="Numerar células">
+                        <input type="checkbox" id="cbToggleNumbers" />
+                        <span aria-hidden="true">#</span>
+                    </label>
+                    <label class="cb-tl-toggle" title="Magnetizar imagens ao grid">
+                        <input type="checkbox" id="cbSnapToGrid" />
+                        <span aria-hidden="true">⊞</span>
+                    </label>
+                    <select id="cbImageLayer" class="cb-tl-select" title="Camada-alvo das próximas imagens">
+                        <option value="scenery">Ce</option>
+                        <option value="npcs">NPC</option>
+                    </select>
+                </div>
+
+                <div class="cb-tl-group">
+                    <button type="button" id="cbZoomIn" class="cb-tl-btn" title="Aproximar">+</button>
+                    <span id="cbZoomDisplay" class="cb-tl-zoom">100%</span>
+                    <button type="button" id="cbZoomOut" class="cb-tl-btn" title="Afastar">−</button>
+                    <button type="button" id="cbZoomReset" class="cb-tl-btn" title="Resetar zoom e posição">⌂</button>
+                </div>
+
+                <div class="cb-tl-group">
+                    <button type="button" id="cbSaveBattle" class="cb-tl-btn cb-tl-btn--save" title="Salvar campo">Sv</button>
+                    <button type="button" id="cbClearAll" class="cb-tl-btn cb-tl-btn--danger" title="Limpar campo">Lp</button>
+                </div>
+
+                <div class="cb-tl-group cb-tl-group--config">
+                    <label class="cb-tl-mini" title="Colunas">
+                        <span>C</span>
+                        <input type="number" id="cbCols" min="5" max="60" value="20" />
+                    </label>
+                    <label class="cb-tl-mini" title="Linhas">
+                        <span>L</span>
+                        <input type="number" id="cbRows" min="5" max="60" value="15" />
+                    </label>
+                    <button type="button" id="cbApplySize" class="cb-tl-btn cb-tl-btn--mini" title="Aplicar dimensões do tabuleiro">OK</button>
+                </div>
+            </aside>
+
             <section class="cb-stage" id="cbStage">
                 <div class="cb-viewport" id="cbViewport">
                     <div class="cb-map-background" id="cbMapBackground"></div>
