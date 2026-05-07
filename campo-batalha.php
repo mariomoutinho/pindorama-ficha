@@ -7,7 +7,7 @@
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260503g" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
-    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260507c" />
+    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260507d" />
 </head>
 <body class="cb-body">
     <script src="assets/js/transitions.js?v=20260503d"></script>
@@ -164,10 +164,18 @@
                         <h2>Iniciativa</h2>
                         <button type="button" id="cbNextTurn">Próximo</button>
                     </header>
+                    <div class="cb-round-bar">
+                        <strong class="cb-round-label">Rodada <span id="cbRoundNumber">1</span></strong>
+                        <div class="cb-round-controls">
+                            <button type="button" id="cbRoundIncrement" title="+1 rodada (sem trocar de turno)">+1</button>
+                            <button type="button" id="cbRoundReset" title="Reiniciar para rodada 1">Reset</button>
+                        </div>
+                    </div>
                     <div class="cb-initiative-actions">
                         <button type="button" id="cbAddTurnSelected">Rolar seleção</button>
                         <button type="button" id="cbSortTurns">Ordenar</button>
                     </div>
+                    <p class="cb-initiative-hint">Marque "Surpreso" em participantes que entraram surpresos. Eles ficam destacados na rodada 1 e não devem agir nela (regra do livro).</p>
                     <div class="cb-turn-list" id="cbTurnList"></div>
                 </div>
 
@@ -475,6 +483,6 @@
     </main>
 
     <script src="assets/js/regras-distancia.js?v=20260507a"></script>
-    <script src="assets/js/campo-batalha.js?v=20260507ag"></script>
+    <script src="assets/js/campo-batalha.js?v=20260507ah"></script>
 </body>
 </html>

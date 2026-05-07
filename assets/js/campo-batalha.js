@@ -54,6 +54,7 @@
         rollLog: [],
         turns: [],
         currentTurnIndex: 0,
+        currentRound: 1,           // rodada de combate da cena ativa
         tipo: '',                  // tipo da cena ativa: combate/cidade/taverna/...
         notasNarrador: '',         // anotações livres do narrador para a cena ativa
         terrainDifficult: new Set(), // células de terreno difícil ("col,row")
@@ -186,6 +187,9 @@
         nextTurn: document.getElementById('cbNextTurn'),
         addTurnSelected: document.getElementById('cbAddTurnSelected'),
         sortTurns: document.getElementById('cbSortTurns'),
+        roundNumber: document.getElementById('cbRoundNumber'),
+        roundIncrement: document.getElementById('cbRoundIncrement'),
+        roundReset: document.getElementById('cbRoundReset'),
         turnList: document.getElementById('cbTurnList'),
         mapImage: document.getElementById('cbMapImage'),
         mapFile: document.getElementById('cbMapFile'),
@@ -575,6 +579,7 @@
             rollLog: [],
             turns: [],
             currentTurnIndex: 0,
+            currentRound: 1,
             tipo: '',
             notasNarrador: '',
             terrainDifficult: []
@@ -599,6 +604,7 @@
             rollLog: Array.isArray(page.rollLog) ? page.rollLog.slice(0, 80) : [],
             turns: Array.isArray(page.turns) ? page.turns.map(normalizeTurn).filter(Boolean) : [],
             currentTurnIndex: Math.max(0, Number(page.currentTurnIndex) || 0),
+            currentRound: Math.max(1, Number(page.currentRound) || 1),
             tipo: typeof page.tipo === 'string' ? page.tipo : '',
             notasNarrador: typeof page.notasNarrador === 'string' ? page.notasNarrador : '',
             terrainDifficult: Array.isArray(page.terrainDifficult)
@@ -612,7 +618,8 @@
         return {
             id: turn.id || ('turn_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36)),
             tokenId: turn.tokenId,
-            initiative: Number(turn.initiative) || 0
+            initiative: Number(turn.initiative) || 0,
+            surprised: !!turn.surprised
         };
     }
 
@@ -659,6 +666,7 @@
         page.rollLog = state.rollLog;
         page.turns = state.turns;
         page.currentTurnIndex = state.currentTurnIndex;
+        page.currentRound = state.currentRound || 1;
         page.tipo = state.tipo || '';
         page.notasNarrador = state.notasNarrador || '';
         page.terrainDifficult = state.terrainDifficult instanceof Set
@@ -679,6 +687,7 @@
         state.rollLog = page.rollLog || [];
         state.turns = page.turns || [];
         state.currentTurnIndex = Math.min(page.currentTurnIndex || 0, Math.max(0, state.turns.length - 1));
+        state.currentRound = Math.max(1, Number(page.currentRound) || 1);
         state.tipo = typeof page.tipo === 'string' ? page.tipo : '';
         state.notasNarrador = typeof page.notasNarrador === 'string' ? page.notasNarrador : '';
         state.terrainDifficult = new Set(Array.isArray(page.terrainDifficult) ? page.terrainDifficult : []);
@@ -5981,16 +5990,21 @@
     function renderTurnList() {
         if (!els.turnList) return;
         state.currentTurnIndex = Math.min(state.currentTurnIndex, Math.max(0, state.turns.length - 1));
+        refreshRoundDisplay();
         els.turnList.innerHTML = '';
         if (!state.turns.length) {
             els.turnList.innerHTML = '<p class="cb-sidebar-empty">Adicione tokens para criar a ordem de turno.</p>';
             return;
         }
+        const round = Math.max(1, Number(state.currentRound) || 1);
         const frag = document.createDocumentFragment();
         state.turns.forEach((turn, idx) => {
             const token = state.tokens.find(t => t.id === turn.tokenId);
             const row = document.createElement('article');
-            row.className = 'cb-turn-row' + (idx === state.currentTurnIndex ? ' is-current' : '');
+            const isSurprisedNow = !!turn.surprised && round === 1;
+            row.className = 'cb-turn-row'
+                + (idx === state.currentTurnIndex ? ' is-current' : '')
+                + (isSurprisedNow ? ' is-surprised-now' : '');
             row.innerHTML = `<button type="button" class="cb-turn-name">${escapeHtml(token?.name || 'Token removido')}</button>`;
             const input = document.createElement('input');
             input.type = 'number';
@@ -6000,6 +6014,33 @@
                 saveState();
             });
             row.appendChild(input);
+
+            const surpriseLabel = document.createElement('label');
+            surpriseLabel.className = 'cb-turn-surprise' + (turn.surprised ? ' is-on' : '');
+            surpriseLabel.title = 'Marca este participante como surpreso. Personagens surpresos não devem agir na rodada 1 (regra do livro).';
+            const surpriseBox = document.createElement('input');
+            surpriseBox.type = 'checkbox';
+            surpriseBox.checked = !!turn.surprised;
+            surpriseBox.addEventListener('change', () => {
+                turn.surprised = surpriseBox.checked;
+                addLog({
+                    title: turn.surprised ? 'Marcado surpreso' : 'Removida surpresa',
+                    detail: (token?.name || 'Token') + (turn.surprised ? ' começa surpreso (não age na rodada 1).' : ' não está mais surpreso.')
+                });
+                renderTurnList();
+                saveState();
+            });
+            surpriseLabel.appendChild(surpriseBox);
+            surpriseLabel.appendChild(document.createTextNode('Surpreso'));
+            row.appendChild(surpriseLabel);
+
+            if (isSurprisedNow) {
+                const tag = document.createElement('span');
+                tag.className = 'cb-turn-tag-surprised';
+                tag.textContent = 'Surpreso — não age nesta rodada';
+                row.appendChild(tag);
+            }
+
             const remove = document.createElement('button');
             remove.type = 'button';
             remove.textContent = 'Remover';
@@ -6022,6 +6063,8 @@
     function sortTurns() {
         state.turns.sort((a, b) => (Number(b.initiative) || 0) - (Number(a.initiative) || 0));
         state.currentTurnIndex = 0;
+        state.currentRound = 1;
+        addLog({ title: 'Iniciativa ordenada', detail: 'Início do combate — Rodada 1.' });
         renderTurnList();
         renderTokens();
         saveState();
@@ -6029,10 +6072,41 @@
 
     function nextTurn() {
         if (!state.turns.length) return;
-        state.currentTurnIndex = (state.currentTurnIndex + 1) % state.turns.length;
+        const last = state.turns.length - 1;
+        if (state.currentTurnIndex >= last) {
+            // ciclo completo: avança rodada
+            state.currentTurnIndex = 0;
+            state.currentRound = (Number(state.currentRound) || 1) + 1;
+            addLog({ title: 'Nova rodada', detail: 'Rodada ' + state.currentRound + '.' });
+        } else {
+            state.currentTurnIndex += 1;
+        }
         renderTurnList();
         renderTokens();
         saveState();
+    }
+
+    function incrementRound() {
+        state.currentRound = (Number(state.currentRound) || 1) + 1;
+        addLog({ title: 'Rodada incrementada', detail: 'Rodada ' + state.currentRound + ' (manual).' });
+        renderTurnList();
+        saveState();
+    }
+
+    function resetRound() {
+        if (!confirm('Reiniciar para Rodada 1? Isso não remove ninguém da iniciativa.')) return;
+        state.currentRound = 1;
+        state.currentTurnIndex = 0;
+        addLog({ title: 'Rodada reiniciada', detail: 'Combate volta para a Rodada 1.' });
+        renderTurnList();
+        renderTokens();
+        saveState();
+    }
+
+    function refreshRoundDisplay() {
+        if (els.roundNumber) {
+            els.roundNumber.textContent = String(Math.max(1, Number(state.currentRound) || 1));
+        }
     }
 
     function isCurrentTurnToken(tokenId) {
@@ -6303,6 +6377,8 @@
         if (els.addTurnSelected) els.addTurnSelected.addEventListener('click', addSelectedTokenToTurns);
         if (els.sortTurns) els.sortTurns.addEventListener('click', sortTurns);
         if (els.nextTurn) els.nextTurn.addEventListener('click', nextTurn);
+        if (els.roundIncrement) els.roundIncrement.addEventListener('click', incrementRound);
+        if (els.roundReset) els.roundReset.addEventListener('click', resetRound);
         if (els.tokenEditorClose) els.tokenEditorClose.addEventListener('click', closeTokenEditor);
         if (els.tokenEditorCancel) els.tokenEditorCancel.addEventListener('click', closeTokenEditor);
         if (els.tokenEditorSave) els.tokenEditorSave.addEventListener('click', saveTokenEditor);
