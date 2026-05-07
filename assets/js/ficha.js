@@ -2850,7 +2850,7 @@ function setTokenImageAdjustmentValue(ajuste) {
 }
 
 function defaultCharacterImageAdjustment() {
-    return { scale: 1, x: 0, y: 0, focusX: 50, focusY: 50 };
+    return { scale: 1, x: 0, y: 0 };
 }
 
 function defaultCharacterImageAdjustments() {
@@ -2894,11 +2894,9 @@ function writeCharacterImageAdjustment(ajustes) {
 
 function normalizeCharacterImageAdjustment(ajuste = {}) {
     return {
-        scale: Math.min(6, Math.max(0.2, Number(ajuste.scale ?? ajuste.zoom) || 1)),
+        scale: Math.min(6, Math.max(0.2, Number(ajuste.scale) || 1)),
         x: Math.min(220, Math.max(-220, Number(ajuste.x) || 0)),
-        y: Math.min(220, Math.max(-220, Number(ajuste.y) || 0)),
-        focusX: Math.min(100, Math.max(0, Number(ajuste.focusX ?? ajuste.focoX) || 50)),
-        focusY: Math.min(100, Math.max(0, Number(ajuste.focusY ?? ajuste.focoY) || 50))
+        y: Math.min(220, Math.max(-220, Number(ajuste.y) || 0))
     };
 }
 
@@ -3808,8 +3806,8 @@ function applySavedSheetTokenAdjustment(img, ficha) {
     img.style.setProperty("--saved-token-scale", String(ajuste.scale));
     img.style.setProperty("--saved-token-x", `${ajuste.x}%`);
     img.style.setProperty("--saved-token-y", `${ajuste.y}%`);
-    img.style.setProperty("--saved-token-focus-x", `${ajuste.focusX}%`);
-    img.style.setProperty("--saved-token-focus-y", `${ajuste.focusY}%`);
+    img.style.transform = `translate(${ajuste.x}%, ${ajuste.y}%) scale(${ajuste.scale})`;
+    img.style.transformOrigin = "center";
 }
 
 function abrirAvisoFicha(titulo, texto) {

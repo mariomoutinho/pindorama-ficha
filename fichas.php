@@ -33,8 +33,6 @@ function normalizarAjusteAvatarFicha($valor): array
         'scale' => min(6, max(0.2, (float) ($dados['scale'] ?? $dados['zoom'] ?? 1))),
         'x' => min(220, max(-220, (float) ($dados['x'] ?? 0))),
         'y' => min(220, max(-220, (float) ($dados['y'] ?? 0))),
-        'focusX' => min(100, max(0, (float) ($dados['focusX'] ?? $dados['focoX'] ?? 50))),
-        'focusY' => min(100, max(0, (float) ($dados['focusY'] ?? $dados['focoY'] ?? 50))),
     ];
 }
 
@@ -63,7 +61,7 @@ function avatarFichaSalva(array $ficha): array
     <title>Listar Fichas — Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/home.css?v=20260507b" />
+    <link rel="stylesheet" href="assets/css/home.css?v=20260507c" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
 </head>
 <body class="home-body">
@@ -96,7 +94,7 @@ function avatarFichaSalva(array $ficha): array
                                 <img
                                     src="<?= htmlspecialchars($img) ?>"
                                     alt=""
-                                    style="--home-token-scale: <?= htmlspecialchars((string) $ajuste['scale']) ?>; --home-token-x: <?= htmlspecialchars((string) $ajuste['x']) ?>%; --home-token-y: <?= htmlspecialchars((string) $ajuste['y']) ?>%; --home-token-focus-x: <?= htmlspecialchars((string) $ajuste['focusX']) ?>%; --home-token-focus-y: <?= htmlspecialchars((string) $ajuste['focusY']) ?>%;"
+                                    style="--saved-token-scale: <?= htmlspecialchars((string) $ajuste['scale']) ?>; --saved-token-x: <?= htmlspecialchars((string) $ajuste['x']) ?>%; --saved-token-y: <?= htmlspecialchars((string) $ajuste['y']) ?>%; transform: translate(<?= htmlspecialchars((string) $ajuste['x']) ?>%, <?= htmlspecialchars((string) $ajuste['y']) ?>%) scale(<?= htmlspecialchars((string) $ajuste['scale']) ?>); transform-origin: center;"
                                 />
                             <?php else: ?>
                                 <span aria-hidden="true">?</span>

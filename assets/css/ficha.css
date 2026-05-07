@@ -239,8 +239,9 @@ button.primary {
 .sheet-list-token img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    object-position: var(--saved-token-focus-x, 50%) var(--saved-token-focus-y, 50%);
+    object-fit: contain;
+    object-position: center;
+    background: #ffffff;
     transform:
         translate(var(--saved-token-x, 0), var(--saved-token-y, 0))
         scale(var(--saved-token-scale, 1));
