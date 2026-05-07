@@ -824,13 +824,26 @@
 
 .cb-turn-init {
     width: 44px;
-    padding: 3px 4px;
+    height: 26px;
+    padding: 0 4px;
     border: 1px solid var(--purple);
     border-radius: 6px;
     text-align: center;
     font: 700 0.82rem inherit;
+    line-height: 1;
     color: var(--purple-dark);
     background: #fff;
+    box-sizing: border-box;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* Esconde os spinners de number no Chrome/Safari — eles roubavam
+   largura do dígito e cortavam a descendente do "9". */
+.cb-turn-init::-webkit-outer-spin-button,
+.cb-turn-init::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .cb-turn-row-actions {
