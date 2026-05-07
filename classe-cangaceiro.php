@@ -6,7 +6,7 @@
     <title>Cangaceiro - Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260507a" />
 </head>
 
 <body>

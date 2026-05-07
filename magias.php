@@ -22,7 +22,7 @@ function magiaOptions(array $valores): string
     <title>Magias - Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260430" />
-    <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/magias.css?v=20260503a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
 </head>
@@ -32,7 +32,7 @@ function magiaOptions(array $valores): string
 
         <header class="top-actions classes-topbar">
             <div>
-                <h1>Magias</h1>
+                <h1 class="titulo-cordel">Magias</h1>
                 <p>Consulta completa com filtros por tipo, círculo, escola e características.</p>
             </div>
             <div class="actions">

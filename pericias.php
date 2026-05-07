@@ -6,7 +6,7 @@
     <title>Perícias - Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/pericias.css?v=20260503-padrao" />
 </head>
 
@@ -15,7 +15,7 @@
 
         <header class="top-actions classes-topbar">
             <div>
-                <h1>Perícias</h1>
+                <h1 class="titulo-cordel">Perícias</h1>
                 <p>Regras de treinamento, bônus, usos cotidianos e testes de perícia em Pindorama RPG.</p>
             </div>
 

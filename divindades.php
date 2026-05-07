@@ -16,7 +16,7 @@ $idx = indexarPoderesGerais();
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Divindades — Pindorama RPG</title>
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260430" />
-    <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/divindades.css?v=20260430" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
 </head>
@@ -25,7 +25,7 @@ $idx = indexarPoderesGerais();
     <main class="page-wrapper classes-page">
         <header class="top-actions classes-topbar">
             <div>
-                <h1>Divindades</h1>
+                <h1 class="titulo-cordel">Divindades</h1>
                 <p>Os deuses de Pindorama, seus devotos, poderes concedidos e obrigações.</p>
             </div>
             <div class="actions">

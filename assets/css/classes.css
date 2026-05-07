@@ -3,6 +3,16 @@
    Página introdutória geral das classes
 ===================================================== */
 
+/* Classe utilitária para títulos em estilo cordel/xilogravura.
+   Quando o arquivo PindoramaCordel-Regular.ttf for criado em assets/fonts/,
+   adicione um @font-face apontando para ele e a fonte autoral começa a ser
+   usada automaticamente. Enquanto isso, o fallback é Eldes Cordel (já
+   registrada em home.css) e depois Georgia/serif. */
+.titulo-cordel {
+    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    letter-spacing: 0.5px;
+}
+
 .classes-page {
     width: min(1440px, 96vw);
     margin: 0 auto;

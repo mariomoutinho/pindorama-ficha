@@ -13,6 +13,16 @@
     font-style: normal;
 }
 
+/* Classe utilitária para títulos em estilo cordel/xilogravura.
+   Quando o arquivo autoral PindoramaCordel-Regular.ttf existir em
+   assets/fonts/, adicione um @font-face apontando para ele e a fonte
+   começa a ser usada automaticamente em qualquer .titulo-cordel.
+   Enquanto isso, o fallback Eldes Cordel é exibido. */
+.titulo-cordel {
+    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    letter-spacing: 0.5px;
+}
+
 .home-body {
     min-height: 100vh;
     display: flex;
@@ -76,7 +86,7 @@
 }
 
 .home-title {
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
     font-size: 2.6rem;
     font-weight: 600;
     margin: 0;
@@ -139,7 +149,7 @@
     color: var(--purple-dark);
     text-align: center;
     text-decoration: none;
-    font-family: 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
     font-size: 1.25rem;
     letter-spacing: 0.4px;
     font-weight: bold;
@@ -310,10 +320,14 @@
 }
 
 .home-card-ref strong {
-    font-family: 'Eldes Cordel', Georgia, "Times New Roman", serif;
-    font-size: 1.2rem;
+    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    font-size: clamp(1rem, 2.6vw, 1.2rem);
     letter-spacing: 0.3px;
     color: var(--purple-dark);
+    line-height: 1.15;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    hyphens: auto;
 }
 
 .home-card-ref span {

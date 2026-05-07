@@ -25,7 +25,7 @@ $nomeAtributo = [
     <title>Origens — Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260430" />
-    <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/origens.css?v=20260430" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
 </head>
@@ -35,7 +35,7 @@ $nomeAtributo = [
 
         <header class="top-actions classes-topbar">
             <div>
-                <h1>Origens</h1>
+                <h1 class="titulo-cordel">Origens</h1>
                 <p>O que você fazia antes de se aventurar — escolha seus benefícios e poder único.</p>
             </div>
             <div class="actions">

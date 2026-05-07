@@ -25,7 +25,7 @@ function imagemAncestralidade(string $id): ?string {
     <title>Ancestralidades - Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/ancestralidades.css?v=20260501a" />
 </head>
 
@@ -34,7 +34,7 @@ function imagemAncestralidade(string $id): ?string {
 
         <header class="top-actions classes-topbar">
             <div>
-                <h1>Ancestralidades</h1>
+                <h1 class="titulo-cordel">Ancestralidades</h1>
                 <p>Povos, espíritos e linhagens de Pindorama, com seus traços ancestrais completos.</p>
             </div>
 

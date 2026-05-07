@@ -6,7 +6,7 @@
     <title>Classes - Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/classes.css?v=20260503j" />
+    <link rel="stylesheet" href="assets/css/classes.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
 </head>
 
@@ -16,7 +16,7 @@
 
         <header class="top-actions classes-topbar">
             <div>
-                <h1>Classes</h1>
+                <h1 class="titulo-cordel">Classes</h1>
                 <p>
                     Introdução às classes do Pindorama RPG: escolha da classe,
                     características gerais, progressão de personagem, patamares de jogo
