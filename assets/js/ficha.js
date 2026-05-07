@@ -2850,7 +2850,7 @@ function setTokenImageAdjustmentValue(ajuste) {
 }
 
 function defaultCharacterImageAdjustment() {
-    return { scale: 1, x: 0, y: 0 };
+    return { scale: 1, x: 0, y: 0, focusX: 50, focusY: 50 };
 }
 
 function defaultCharacterImageAdjustments() {
@@ -2894,9 +2894,11 @@ function writeCharacterImageAdjustment(ajustes) {
 
 function normalizeCharacterImageAdjustment(ajuste = {}) {
     return {
-        scale: Math.min(6, Math.max(0.2, Number(ajuste.scale) || 1)),
+        scale: Math.min(6, Math.max(0.2, Number(ajuste.scale ?? ajuste.zoom) || 1)),
         x: Math.min(220, Math.max(-220, Number(ajuste.x) || 0)),
-        y: Math.min(220, Math.max(-220, Number(ajuste.y) || 0))
+        y: Math.min(220, Math.max(-220, Number(ajuste.y) || 0)),
+        focusX: Math.min(100, Math.max(0, Number(ajuste.focusX ?? ajuste.focoX) || 50)),
+        focusY: Math.min(100, Math.max(0, Number(ajuste.focusY ?? ajuste.focoY) || 50))
     };
 }
 
@@ -3768,7 +3770,7 @@ function renderizarListaFichasSalvas() {
                     ${ficha.nivel ? ` • Nível ${escapeHtml(ficha.nivel)}` : ""}
                 </small>
             </span>
-            <span class="sheet-list-token">
+            <span class="sheet-list-token" data-avatar-source="${getSavedSheetTokenSource(ficha)}">
                 ${getSavedSheetTokenSrc(ficha) ? `<img src="${escapeHtml(getSavedSheetTokenSrc(ficha))}" alt="">` : "<span>?</span>"}
             </span>
         `;
@@ -3783,6 +3785,12 @@ function renderizarListaFichasSalvas() {
 
 function getSavedSheetTokenSrc(ficha) {
     return ficha?.personagem_token_imagem || ficha?.personagem_imagem || "";
+}
+
+function getSavedSheetTokenSource(ficha) {
+    if (ficha?.personagem_token_imagem) return "token";
+    if (ficha?.personagem_imagem) return "photo";
+    return "placeholder";
 }
 
 function formatarNomeFichaLista(valor) {
@@ -3800,6 +3808,8 @@ function applySavedSheetTokenAdjustment(img, ficha) {
     img.style.setProperty("--saved-token-scale", String(ajuste.scale));
     img.style.setProperty("--saved-token-x", `${ajuste.x}%`);
     img.style.setProperty("--saved-token-y", `${ajuste.y}%`);
+    img.style.setProperty("--saved-token-focus-x", `${ajuste.focusX}%`);
+    img.style.setProperty("--saved-token-focus-y", `${ajuste.focusY}%`);
 }
 
 function abrirAvisoFicha(titulo, texto) {
