@@ -2670,3 +2670,88 @@
     cursor: pointer;
 }
 .cb-tactical-checkbox input { cursor: pointer; }
+
+/* =====================================================
+   Testes de resistência (item I — parte 1)
+   UI standalone no painel do token. Roll puro, sem mexer em PV.
+===================================================== */
+.cb-save-section {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(118, 84, 124, 0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.cb-save-title {
+    margin: 0;
+    font-size: 0.84rem;
+    font-weight: 800;
+    color: var(--purple-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.cb-save-hint {
+    margin: 0 0 4px;
+    font-size: 0.74rem;
+    color: var(--muted);
+    font-style: italic;
+    line-height: 1.3;
+}
+.cb-save-cd-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--purple-dark);
+    font-weight: 700;
+}
+.cb-save-cd-row input {
+    width: 70px;
+    padding: 4px 6px;
+    border: 1px solid rgba(118, 84, 124, 0.45);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--purple-dark);
+    font-family: inherit;
+}
+.cb-save-buttons {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.cb-save-btn {
+    flex: 1 1 0;
+    padding: 6px 8px;
+    border: 1.5px solid var(--purple-light);
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--purple-dark);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+.cb-save-btn:hover {
+    background: var(--purple);
+    color: #fff;
+    border-color: var(--purple-dark);
+    transform: translateY(-1px);
+}
+.cb-save-result {
+    margin: 4px 0 0;
+    font-size: 0.78rem;
+    font-style: italic;
+    line-height: 1.3;
+    color: var(--muted);
+    min-height: 1.2em;
+}
+.cb-save-result.is-pass {
+    color: #1f6b39;
+    font-style: normal;
+}
+.cb-save-result.is-fail {
+    color: #8b1d35;
+    font-style: normal;
+}

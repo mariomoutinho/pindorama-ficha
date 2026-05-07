@@ -4858,6 +4858,19 @@
         };
     }
 
+    /* Função pura — calcula a CD de um teste de resistência conforme o
+       capítulo "Jogando":
+           CD = 10 + (metade do nível, arredondado para baixo) + atributo
+       O atributo aparece entre parênteses na descrição da fonte do efeito
+       (ex.: "CD Sabedoria"). Usada como infraestrutura para a parte 2 do
+       item I do plano (onde o atacante quer descobrir a CD esperada de
+       uma habilidade que vai lançar). Não mexe em PV/PM. */
+    function calcularCDResistencia(nivel, atributoValor) {
+        const n = Math.max(1, Number(nivel) || 1);
+        const a = Number(atributoValor) || 0;
+        return 10 + Math.floor(n / 2) + a;
+    }
+
     function getTokensInActionReach(attacker, action) {
         const reachable = buildActionReachCells(attacker, action);
         return state.tokens.filter(token => {
@@ -5772,6 +5785,88 @@
             els.selectedTokenTools.appendChild(btn);
         }
         els.selectedTokenTools.appendChild(buildTacticalConditionsSection(token));
+        els.selectedTokenTools.appendChild(buildSaveTestsSection(token));
+    }
+
+    /* Bloco "Testes de resistência" no painel do token selecionado.
+       O narrador digita uma CD, escolhe Fortitude / Reflexos / Vontade
+       e o token rola d20 + bônus do próprio save (vindo da ficha ou
+       atributo correspondente). Resultado é registrado no log e
+       mostrado num resumo discreto. Não toca em PV, PM, condições. */
+    function buildSaveTestsSection(token) {
+        const wrap = document.createElement('div');
+        wrap.className = 'cb-save-section';
+
+        const title = document.createElement('h3');
+        title.className = 'cb-save-title';
+        title.textContent = 'Testes de resistência';
+        wrap.appendChild(title);
+
+        const hint = document.createElement('p');
+        hint.className = 'cb-save-hint';
+        hint.textContent = 'Digite a CD e role o save do alvo. Não altera PV (aplicação de dano fica para passo seguinte).';
+        wrap.appendChild(hint);
+
+        const cdRow = document.createElement('label');
+        cdRow.className = 'cb-save-cd-row';
+        const cdLabel = document.createElement('span');
+        cdLabel.textContent = 'CD';
+        cdRow.appendChild(cdLabel);
+        const cdInput = document.createElement('input');
+        cdInput.type = 'number';
+        cdInput.min = '1';
+        cdInput.max = '60';
+        cdInput.value = '15';
+        cdRow.appendChild(cdInput);
+        wrap.appendChild(cdRow);
+
+        const buttonsRow = document.createElement('div');
+        buttonsRow.className = 'cb-save-buttons';
+
+        const result = document.createElement('p');
+        result.className = 'cb-save-result';
+        result.setAttribute('aria-live', 'polite');
+
+        const rolarSave = (tipo) => {
+            const cd = Math.max(1, Number(cdInput.value) || 0);
+            if (!cd) {
+                alert('Informe uma CD válida (1 ou maior).');
+                return;
+            }
+            const r = rollTargetSave(token, tipo, cd);
+            const rotulo = rotuloSaveTipo(tipo);
+            const sinalBonus = r.bonus >= 0 ? '+' + r.bonus : String(r.bonus);
+            const veredito = r.success ? 'PASSOU' : 'FALHOU';
+            const textoLog = (token.name || 'Token')
+                + ' — ' + rotulo + ' CD ' + cd + ': '
+                + 'd20 ' + r.d20 + ' ' + sinalBonus + ' = ' + r.total
+                + ' (' + veredito + ')';
+            addLog({ title: 'Resistência: ' + rotulo, detail: textoLog });
+            result.textContent = '↳ ' + textoLog;
+            result.classList.toggle('is-pass', r.success);
+            result.classList.toggle('is-fail', !r.success);
+        };
+
+        const tipos = [
+            ['fortitude', 'Fortitude'],
+            ['reflexos', 'Reflexos'],
+            ['vontade', 'Vontade']
+        ];
+        for (const [key, label] of tipos) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'cb-save-btn';
+            btn.dataset.saveTipo = key;
+            btn.textContent = label;
+            btn.title = 'Rolar ' + label + ' do alvo contra a CD informada';
+            btn.addEventListener('click', () => rolarSave(key));
+            buttonsRow.appendChild(btn);
+        }
+
+        wrap.appendChild(buttonsRow);
+        wrap.appendChild(result);
+
+        return wrap;
     }
 
     function buildTacticalConditionsSection(token) {
