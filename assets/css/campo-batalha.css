@@ -2755,3 +2755,161 @@
     color: #8b1d35;
     font-style: normal;
 }
+
+/* =====================================================
+   Aplicação faseada de dano (item I — parte 2)
+   Bloco standalone no painel do token. Bruto → resistência →
+   metade adicional → RD → confirmação manual.
+===================================================== */
+.cb-damage-section {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(118, 84, 124, 0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.cb-damage-title {
+    margin: 0;
+    font-size: 0.84rem;
+    font-weight: 800;
+    color: var(--purple-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.cb-damage-hint {
+    margin: 0 0 4px;
+    font-size: 0.74rem;
+    color: var(--muted);
+    font-style: italic;
+    line-height: 1.3;
+}
+.cb-damage-formula-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+}
+.cb-damage-formula-label {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.78rem;
+    color: var(--purple-dark);
+    font-weight: 700;
+}
+.cb-damage-formula-label input {
+    padding: 5px 8px;
+    border: 1px solid rgba(118, 84, 124, 0.45);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--purple-dark);
+    font-family: monospace, monospace;
+    font-size: 0.86rem;
+}
+.cb-damage-roll-btn {
+    padding: 6px 12px;
+    border: 1.5px solid var(--purple-light);
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--purple-dark);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+.cb-damage-roll-btn:hover {
+    background: var(--purple);
+    color: #fff;
+    border-color: var(--purple-dark);
+}
+.cb-damage-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    background: rgba(105, 67, 111, 0.06);
+    border: 1px solid rgba(118, 84, 124, 0.32);
+    border-radius: 8px;
+    margin-top: 4px;
+}
+.cb-damage-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.78rem;
+    color: var(--purple-dark);
+    font-weight: 700;
+}
+.cb-damage-field select,
+.cb-damage-field input {
+    padding: 4px 6px;
+    border: 1px solid rgba(118, 84, 124, 0.45);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--purple-dark);
+    font-family: inherit;
+    font-size: 0.82rem;
+}
+.cb-damage-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--purple-dark);
+    font-weight: 700;
+    cursor: pointer;
+}
+.cb-damage-checkbox input { cursor: pointer; }
+.cb-damage-summary {
+    margin: 4px 0 0;
+    padding-left: 18px;
+    font-size: 0.78rem;
+    color: var(--purple-dark);
+    line-height: 1.35;
+}
+.cb-damage-summary li + li { margin-top: 2px; }
+.cb-damage-summary li:last-child {
+    font-weight: 800;
+    color: #8b1d35;
+}
+.cb-damage-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+.cb-damage-cancel-btn {
+    padding: 5px 12px;
+    border: 1px solid rgba(118, 84, 124, 0.5);
+    background: rgba(255, 255, 255, 0.8);
+    color: var(--purple-dark);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+.cb-damage-cancel-btn:hover { background: rgba(118, 84, 124, 0.15); }
+.cb-damage-apply-btn {
+    padding: 5px 14px;
+    border: 1.5px solid #8b1d35;
+    background: #8b1d35;
+    color: #fff;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+.cb-damage-apply-btn:hover {
+    background: #6e1429;
+    border-color: #6e1429;
+}
+.cb-damage-apply-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

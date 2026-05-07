@@ -5786,6 +5786,238 @@
         }
         els.selectedTokenTools.appendChild(buildTacticalConditionsSection(token));
         els.selectedTokenTools.appendChild(buildSaveTestsSection(token));
+        els.selectedTokenTools.appendChild(buildDamageApplicationSection(token));
+    }
+
+    /* Heurística para ler a RD (Redução de Dano) do token a partir de
+       chaves possíveis na ficha. Usado como default no painel de
+       aplicação faseada de dano — o narrador sempre pode sobrescrever. */
+    function parseRD(token) {
+        if (!token) return 0;
+        const candidates = ['rd', 'reducaoDano', 'reducao_dano', 'reducao', 'damageReduction'];
+        for (const k of candidates) {
+            const v = token[k];
+            if (v !== undefined && v !== null && v !== '') {
+                const n = Number(String(v).match(/\d+/)?.[0]);
+                if (Number.isFinite(n) && n >= 0) return n;
+            }
+        }
+        return 0;
+    }
+
+    /* Bloco "Aplicação faseada de dano" no painel do token selecionado.
+       Fluxo do livro Pindorama (ordem das clarificações de regras):
+           1. Teste de resistência (anula / metade / parcial / nada)
+           2. Metade adicional (habilidades como Durão)
+           3. Redução de Dano (RD)
+       Sempre exige confirmação manual antes de aplicar — só `Aplicar`
+       chama `applyDamageToToken`. Tudo entra no log. */
+    function buildDamageApplicationSection(token) {
+        const wrap = document.createElement('div');
+        wrap.className = 'cb-damage-section';
+
+        const title = document.createElement('h3');
+        title.className = 'cb-damage-title';
+        title.textContent = 'Aplicação faseada de dano';
+        wrap.appendChild(title);
+
+        const hint = document.createElement('p');
+        hint.className = 'cb-damage-hint';
+        hint.textContent = 'Bruto → resistência → metade adicional → RD. PV só muda depois de "Aplicar".';
+        wrap.appendChild(hint);
+
+        // Linha de input do dano + botão Rolar
+        const formulaRow = document.createElement('div');
+        formulaRow.className = 'cb-damage-formula-row';
+        const formulaLabel = document.createElement('label');
+        formulaLabel.className = 'cb-damage-formula-label';
+        formulaLabel.appendChild(document.createTextNode('Dano (fórmula ou nº)'));
+        const formulaInput = document.createElement('input');
+        formulaInput.type = 'text';
+        formulaInput.value = '1d8';
+        formulaInput.placeholder = 'ex: 2d6+3';
+        formulaLabel.appendChild(formulaInput);
+        formulaRow.appendChild(formulaLabel);
+        const rollBtn = document.createElement('button');
+        rollBtn.type = 'button';
+        rollBtn.className = 'cb-damage-roll-btn';
+        rollBtn.textContent = 'Rolar';
+        formulaRow.appendChild(rollBtn);
+        wrap.appendChild(formulaRow);
+
+        // Painel de preview (oculto até o primeiro roll)
+        const preview = document.createElement('div');
+        preview.className = 'cb-damage-preview';
+        preview.hidden = true;
+        wrap.appendChild(preview);
+
+        // Resultado do save
+        const saveLabel = document.createElement('label');
+        saveLabel.className = 'cb-damage-field';
+        saveLabel.appendChild(document.createTextNode('Resultado da resistência'));
+        const saveSelect = document.createElement('select');
+        const saveOpts = [
+            ['nenhuma', 'Sem teste de resistência'],
+            ['nada', 'Falhou — sofre dano cheio'],
+            ['metade', 'Passou — reduz à metade'],
+            ['parcial', 'Passou — efeito parcial (≈ metade)'],
+            ['anula', 'Passou — anula o dano'],
+            ['desacredita', 'Desacredita (ilusão) — sem dano']
+        ];
+        for (const [v, t] of saveOpts) {
+            const opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = t;
+            saveSelect.appendChild(opt);
+        }
+        saveLabel.appendChild(saveSelect);
+        preview.appendChild(saveLabel);
+
+        // Metade adicional (Durão etc.)
+        const halfRow = document.createElement('label');
+        halfRow.className = 'cb-damage-checkbox';
+        const halfBox = document.createElement('input');
+        halfBox.type = 'checkbox';
+        halfRow.appendChild(halfBox);
+        halfRow.appendChild(document.createTextNode(' Metade adicional (ex.: Durão)'));
+        preview.appendChild(halfRow);
+
+        // RD
+        const rdLabel = document.createElement('label');
+        rdLabel.className = 'cb-damage-field';
+        rdLabel.appendChild(document.createTextNode('Redução de Dano (RD)'));
+        const rdInput = document.createElement('input');
+        rdInput.type = 'number';
+        rdInput.min = '0';
+        rdInput.value = String(parseRD(token));
+        rdLabel.appendChild(rdInput);
+        preview.appendChild(rdLabel);
+
+        // Resumo das fases
+        const summary = document.createElement('ul');
+        summary.className = 'cb-damage-summary';
+        preview.appendChild(summary);
+
+        // Botões finais
+        const buttons = document.createElement('div');
+        buttons.className = 'cb-damage-buttons';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'cb-damage-cancel-btn';
+        cancelBtn.textContent = 'Cancelar';
+        buttons.appendChild(cancelBtn);
+        const applyBtn = document.createElement('button');
+        applyBtn.type = 'button';
+        applyBtn.className = 'cb-damage-apply-btn';
+        applyBtn.textContent = 'Aplicar';
+        buttons.appendChild(applyBtn);
+        preview.appendChild(buttons);
+
+        // Estado interno do painel
+        let lastRoll = null;        // { total, rollsText }
+        let resumoFases = [];       // entradas humanas para o log
+        let danoFinal = 0;
+
+        function recalcular() {
+            if (!lastRoll) return;
+            const bruto = Math.max(0, Number(lastRoll.total) || 0);
+            const saveTipo = saveSelect.value;
+            const halfExtra = !!halfBox.checked;
+            const rd = Math.max(0, Number(rdInput.value) || 0);
+
+            let dano = bruto;
+            const fases = [];
+            fases.push('Bruto: ' + bruto + ' (' + lastRoll.rollsText + ')');
+
+            if (saveTipo === 'anula' || saveTipo === 'desacredita') {
+                fases.push('Resistência (' + saveTipo + '): dano anulado → 0');
+                dano = 0;
+            } else if (saveTipo === 'metade' || saveTipo === 'parcial') {
+                const before = dano;
+                dano = Math.floor(dano / 2);
+                fases.push('Resistência (' + saveTipo + '): ' + before + ' / 2 = ' + dano);
+            } else if (saveTipo === 'nada') {
+                fases.push('Resistência: falhou — sofre cheio (' + dano + ')');
+            } else {
+                fases.push('Sem teste de resistência');
+            }
+
+            if (halfExtra && dano > 0) {
+                const before = dano;
+                dano = Math.floor(dano / 2);
+                fases.push('Metade adicional (Durão etc.): ' + before + ' / 2 = ' + dano);
+            }
+
+            if (rd > 0 && dano > 0) {
+                const before = dano;
+                dano = Math.max(0, dano - rd);
+                fases.push('RD ' + rd + ': ' + before + ' − ' + rd + ' = ' + dano);
+            }
+
+            const pvMax = Number(token.pvMax) || 0;
+            const pvAtual = clampResource(token.pvAtual, pvMax);
+            const pvDepois = pvMax > 0
+                ? clamp(pvAtual - dano, 0, pvMax)
+                : pvAtual - dano;
+            fases.push('PV: ' + pvAtual + (pvMax ? ('/' + pvMax) : '') + ' → ' + pvDepois + (pvMax ? ('/' + pvMax) : ''));
+
+            summary.innerHTML = '';
+            for (const linha of fases) {
+                const li = document.createElement('li');
+                li.textContent = linha;
+                summary.appendChild(li);
+            }
+            resumoFases = fases;
+            danoFinal = dano;
+            applyBtn.textContent = 'Aplicar (−' + dano + ' PV)';
+            applyBtn.disabled = (pvMax > 0 && pvAtual === 0 && dano === 0);
+        }
+
+        rollBtn.addEventListener('click', () => {
+            const formula = String(formulaInput.value || '').trim();
+            if (!formula) {
+                alert('Informe um número (ex.: 12) ou uma fórmula (ex.: 2d6+3).');
+                return;
+            }
+            // Número fixo
+            if (/^\d+$/.test(formula)) {
+                lastRoll = { total: Number(formula), rollsText: formula };
+            } else {
+                const r = rollDamage(formula);
+                if (!r.total && r.rollsText === '0') {
+                    alert('Fórmula inválida. Use algo como "2d6+3" ou um número.');
+                    return;
+                }
+                lastRoll = r;
+            }
+            preview.hidden = false;
+            recalcular();
+        });
+
+        saveSelect.addEventListener('change', recalcular);
+        halfBox.addEventListener('change', recalcular);
+        rdInput.addEventListener('input', recalcular);
+
+        cancelBtn.addEventListener('click', () => {
+            lastRoll = null;
+            preview.hidden = true;
+        });
+
+        applyBtn.addEventListener('click', () => {
+            if (!lastRoll) return;
+            const dano = Math.max(0, Number(danoFinal) || 0);
+            applyDamageToToken(token, dano);
+            addLog({
+                title: 'Dano aplicado',
+                detail: (token.name || 'Token') + ' — ' + resumoFases.join(' · ')
+            });
+            renderTokens();
+            saveState();
+            // Re-renderiza o painel para refletir o novo PV no preview futuro
+            renderSelectedTokenTools();
+        });
+
+        return wrap;
     }
 
     /* Bloco "Testes de resistência" no painel do token selecionado.
