@@ -2342,3 +2342,60 @@
     opacity: 0.85;
     font-weight: 600;
 }
+
+/* =====================================================
+   Ações de cena (capítulo "Jogando" — declarativas)
+   Aparecem no painel de ação do token, depois das
+   seções vindas da ficha (Ataques, Magias, etc.).
+===================================================== */
+.cb-scene-actions-section {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(118, 84, 124, 0.4);
+}
+.cb-scene-action-block {
+    margin: 10px 0 12px;
+}
+.cb-scene-action-head {
+    margin: 0 0 4px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--purple-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.cb-scene-action-hint {
+    margin: 0 0 6px;
+    font-size: 0.76rem;
+    color: var(--muted);
+    font-style: italic;
+}
+.cb-scene-action-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.cb-scene-action-btn {
+    border: 1.5px solid var(--purple-light);
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--purple-dark);
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+.cb-scene-action-btn:hover {
+    background: var(--purple);
+    color: #fff;
+    border-color: var(--purple-dark);
+    transform: translateY(-1px);
+}
+.cb-scene-action-btn.is-just-clicked {
+    background: var(--purple-dark);
+    color: #fff;
+    border-color: var(--purple-dark);
+    transform: scale(0.97);
+}

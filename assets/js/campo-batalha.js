@@ -234,6 +234,68 @@
         manobras: 'MAN'
     };
 
+    /* Ações de cena (capítulo "Jogando" do livro Pindorama).
+       Botões puramente declarativos: clicar registra no log "Token X
+       declarou Y" para o narrador acompanhar a ordem de ações da
+       rodada. Não mexem em PV/PM/condições — esses ficam para itens
+       posteriores do plano (G, I) com confirmação manual. */
+    const SCENE_ACTION_CATEGORIES = [
+        {
+            key: 'padrao',
+            label: 'Ação padrão',
+            hint: 'A coisa mais importante do turno.',
+            actions: [
+                { label: 'Agredir', detail: 'Ataque com arma corpo a corpo ou à distância.' },
+                { label: 'Lançar magia', detail: 'Maioria das magias usa ação padrão.' },
+                { label: 'Mirar', detail: 'Anula penalidade de –5 contra alvo em combate corpo a corpo.' },
+                { label: 'Preparar', detail: 'Prepara ação para usar fora do turno, como reação.' },
+                { label: 'Atropelar', detail: 'Avança pelo espaço de uma criatura (teste oposto).' },
+                { label: 'Fintar', detail: 'Enganação vs Reflexos para deixar alvo desprevenido.' },
+                { label: 'Usar habilidade/item', detail: 'Habilidade especial ou item mágico (ex: poção).' }
+            ]
+        },
+        {
+            key: 'movimento',
+            label: 'Ação de movimento',
+            hint: 'Mover-se ou manipular algo de posição.',
+            actions: [
+                { label: 'Movimentar-se', detail: 'Percorre até o deslocamento (padrão 9 m / 6 quadrados).' },
+                { label: 'Levantar-se', detail: 'Levantar do chão, cama, cadeira.' },
+                { label: 'Sacar/guardar item', detail: 'Tirar arma da bainha ou guardar.' },
+                { label: 'Manipular item', detail: 'Pegar item da mochila, abrir porta, atirar corda.' }
+            ]
+        },
+        {
+            key: 'completa',
+            label: 'Ação completa',
+            hint: 'Consome o turno todo (padrão + movimento juntos).',
+            actions: [
+                { label: 'Investida', detail: 'Até o dobro do deslocamento + ataque corpo a corpo: +2 ataque, –2 Defesa.' },
+                { label: 'Corrida', detail: 'Corre mais que o deslocamento normal (Atletismo).' },
+                { label: 'Golpe de misericórdia', detail: 'Alvo adjacente e indefeso: crítico automático + chance de morte instantânea.' }
+            ]
+        },
+        {
+            key: 'livre',
+            label: 'Ação livre',
+            hint: 'Tempo/esforço quase nulo, só no próprio turno.',
+            actions: [
+                { label: 'Atrasar', detail: 'Reduz iniciativa voluntariamente para agir depois na rodada.' },
+                { label: 'Falar', detail: 'Falar (limite padrão ~20 palavras na rodada).' },
+                { label: 'Jogar-se no chão', detail: 'Cai voluntariamente; aplica benefícios/penalidades de caído.' },
+                { label: 'Largar item', detail: 'Deixa cair item que estava segurando.' }
+            ]
+        },
+        {
+            key: 'reacao',
+            label: 'Reação',
+            hint: 'Resposta automática; pode ocorrer fora do próprio turno.',
+            actions: [
+                { label: 'Reagir', detail: 'Resposta a evento (ex.: esquiva, habilidade engatilhada).' }
+            ]
+        }
+    ];
+
     // ----------------------------------------------------------------
     // Persistência
     // ----------------------------------------------------------------
@@ -3890,7 +3952,66 @@
             els.actionList.appendChild(frag);
         }
 
+        // Quando o painel é aberto sem filtro, anexa as 5 categorias
+        // canônicas do capítulo "Jogando" (declarativas, registram no log).
+        if (!actionType) {
+            els.actionList.appendChild(buildSceneActionsSection(token));
+        }
+
         els.actionPanel.hidden = false;
+    }
+
+    function buildSceneActionsSection(token) {
+        const wrap = document.createElement('section');
+        wrap.className = 'cb-action-section cb-scene-actions-section';
+
+        const title = document.createElement('h3');
+        title.className = 'cb-action-section-title';
+        title.textContent = 'Ações de cena';
+        title.title = 'Categorias do capítulo "Jogando". Clicar registra a declaração no log.';
+        wrap.appendChild(title);
+
+        for (const cat of SCENE_ACTION_CATEGORIES) {
+            const block = document.createElement('div');
+            block.className = 'cb-scene-action-block';
+            block.dataset.category = cat.key;
+
+            const head = document.createElement('h4');
+            head.className = 'cb-scene-action-head';
+            head.textContent = cat.label;
+            block.appendChild(head);
+
+            if (cat.hint) {
+                const hint = document.createElement('p');
+                hint.className = 'cb-scene-action-hint';
+                hint.textContent = cat.hint;
+                block.appendChild(hint);
+            }
+
+            const grid = document.createElement('div');
+            grid.className = 'cb-scene-action-grid';
+            for (const act of cat.actions) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'cb-scene-action-btn';
+                btn.textContent = act.label;
+                btn.title = act.detail;
+                btn.addEventListener('click', () => {
+                    addLog({
+                        title: cat.label + ' declarada',
+                        detail: (token.name || 'Token') + ' — ' + act.label +
+                                (act.detail ? ' · ' + act.detail : '')
+                    });
+                    btn.classList.add('is-just-clicked');
+                    setTimeout(() => btn.classList.remove('is-just-clicked'), 600);
+                });
+                grid.appendChild(btn);
+            }
+            block.appendChild(grid);
+            wrap.appendChild(block);
+        }
+
+        return wrap;
     }
 
     function buildActionCard(item, token) {
