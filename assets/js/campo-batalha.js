@@ -186,6 +186,8 @@
         sidebarTokens: document.getElementById('cbSidebarTokens'),
         nextTurn: document.getElementById('cbNextTurn'),
         addTurnSelected: document.getElementById('cbAddTurnSelected'),
+        rollSceneInitiative: document.getElementById('cbRollSceneInitiative'),
+        resetMovimentos: document.getElementById('cbResetMovimentos'),
         sortTurns: document.getElementById('cbSortTurns'),
         roundNumber: document.getElementById('cbRoundNumber'),
         roundIncrement: document.getElementById('cbRoundIncrement'),
@@ -6744,7 +6746,7 @@
     function addSelectedTokenToTurns() {
         const token = state.tokens.find(t => t.id === state.selectedId);
         if (!token) return;
-        const bonus = parseSignedNumber(token.iniciativa) ?? 0;
+        const bonus = tokenIniciativaMod(token);
         const d20 = rollDie(20);
         const total = d20 + bonus;
         const existing = state.turns.find(turn => turn.tokenId === token.id);
@@ -6758,6 +6760,60 @@
             detail: `${token.name || 'Token'}: d20 ${d20}${formatSignedBonus(bonus)} = ${total}`
         });
         sortTurns();
+    }
+
+    // Rola iniciativa para TODOS os tokens da cena de uma vez (Sub-fase B).
+    // Substitui rolls anteriores e zera a lista — uso típico no início do
+    // combate. Usa `tokenIniciativaMod` (cache numérico) para o bônus.
+    function rollInitiativeForScene() {
+        if (!state.tokens.length) {
+            alert('Não há tokens na cena para rolar iniciativa.');
+            return;
+        }
+        if (state.turns.length && !confirm('Rolar iniciativa de todos os tokens substitui a ordem atual. Continuar?')) {
+            return;
+        }
+        const novos = [];
+        const detalhes = [];
+        for (const token of state.tokens) {
+            const bonus = tokenIniciativaMod(token);
+            const d20 = rollDie(20);
+            const total = d20 + bonus;
+            novos.push(normalizeTurn({ tokenId: token.id, initiative: total }));
+            detalhes.push(`${token.name || 'Token'}: ${total} (d20=${d20}${formatSignedBonus(bonus)})`);
+        }
+        state.turns = novos;
+        addLog({
+            title: 'Iniciativa da cena',
+            detail: `${novos.length} ${novos.length === 1 ? 'token rolou' : 'tokens rolaram'} — ${detalhes.join(' • ')}`
+        });
+        // Reset de movimento ao começar combate é o comportamento esperado.
+        resetMovimentosTodos({ silent: true });
+        sortTurns();
+    }
+
+    // Zera o `movimentoUsado` de todos os tokens. Usada manualmente pelo
+    // botão "Resetar movs." e automaticamente em mudanças de rodada.
+    function resetMovimentosTodos(opts) {
+        const silent = opts && opts.silent;
+        let alterados = 0;
+        for (const token of state.tokens) {
+            if (Number.isFinite(token.movimentoUsado) && token.movimentoUsado !== 0) {
+                alterados += 1;
+            }
+            token.movimentoUsado = 0;
+        }
+        if (!silent) {
+            addLog({
+                title: 'Deslocamentos resetados',
+                detail: alterados
+                    ? `${alterados} ${alterados === 1 ? 'token teve' : 'tokens tiveram'} o deslocamento zerado.`
+                    : 'Nenhum token tinha deslocamento gasto.'
+            });
+        }
+        renderTokens();
+        renderTurnList();
+        saveState();
     }
 
     function renderTurnList() {
@@ -6834,7 +6890,15 @@
     }
 
     function sortTurns() {
-        state.turns.sort((a, b) => (Number(b.initiative) || 0) - (Number(a.initiative) || 0));
+        // Sub-fase B: desempate por modificador de iniciativa do token,
+        // depois ordem estável (Array.prototype.sort é estável no V8/SpiderMonkey).
+        state.turns.sort((a, b) => {
+            const diff = (Number(b.initiative) || 0) - (Number(a.initiative) || 0);
+            if (diff !== 0) return diff;
+            const tokenA = state.tokens.find(t => t.id === a.tokenId);
+            const tokenB = state.tokens.find(t => t.id === b.tokenId);
+            return tokenIniciativaMod(tokenB) - tokenIniciativaMod(tokenA);
+        });
         state.currentTurnIndex = 0;
         state.currentRound = 1;
         addLog({ title: 'Iniciativa ordenada', detail: 'Início do combate — Rodada 1.' });
@@ -6847,10 +6911,11 @@
         if (!state.turns.length) return;
         const last = state.turns.length - 1;
         if (state.currentTurnIndex >= last) {
-            // ciclo completo: avança rodada
+            // ciclo completo: avança rodada e zera deslocamentos.
             state.currentTurnIndex = 0;
             state.currentRound = (Number(state.currentRound) || 1) + 1;
             addLog({ title: 'Nova rodada', detail: 'Rodada ' + state.currentRound + '.' });
+            resetMovimentosTodos({ silent: true });
         } else {
             state.currentTurnIndex += 1;
         }
@@ -6862,6 +6927,8 @@
     function incrementRound() {
         state.currentRound = (Number(state.currentRound) || 1) + 1;
         addLog({ title: 'Rodada incrementada', detail: 'Rodada ' + state.currentRound + ' (manual).' });
+        // Manual +1 também restaura deslocamentos (consistente com avanço natural).
+        resetMovimentosTodos({ silent: true });
         renderTurnList();
         saveState();
     }
@@ -7195,6 +7262,12 @@
             });
         }
         if (els.addTurnSelected) els.addTurnSelected.addEventListener('click', addSelectedTokenToTurns);
+        if (els.rollSceneInitiative) els.rollSceneInitiative.addEventListener('click', rollInitiativeForScene);
+        if (els.resetMovimentos) els.resetMovimentos.addEventListener('click', () => {
+            if (confirm('Zerar o deslocamento gasto de todos os tokens?')) {
+                resetMovimentosTodos({ silent: false });
+            }
+        });
         if (els.sortTurns) els.sortTurns.addEventListener('click', sortTurns);
         if (els.nextTurn) els.nextTurn.addEventListener('click', nextTurn);
         if (els.roundIncrement) els.roundIncrement.addEventListener('click', incrementRound);

@@ -170,8 +170,10 @@ exigirLogin();
                         </div>
                     </div>
                     <div class="cb-initiative-actions">
-                        <button type="button" id="cbAddTurnSelected">Rolar seleção</button>
-                        <button type="button" id="cbSortTurns">Ordenar</button>
+                        <button type="button" id="cbRollSceneInitiative" class="cb-primary" title="Rola d20+modificador para todos os tokens da cena e ordena automaticamente">Rolar cena</button>
+                        <button type="button" id="cbAddTurnSelected" title="Rola apenas para o token selecionado">Rolar seleção</button>
+                        <button type="button" id="cbSortTurns" title="Reordena por iniciativa (desempata por modificador)">Ordenar</button>
+                        <button type="button" id="cbResetMovimentos" title="Zera o deslocamento gasto de todos os tokens">Resetar movs.</button>
                     </div>
                     <p class="cb-initiative-hint">Marque "Surpreso" em participantes que entraram surpresos. Eles ficam destacados na rodada 1 e não devem agir nela (regra do livro).</p>
                     <div class="cb-turn-list" id="cbTurnList"></div>
