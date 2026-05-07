@@ -7056,20 +7056,111 @@
         const frag = document.createDocumentFragment();
         state.turns.forEach((turn, idx) => {
             const token = state.tokens.find(t => t.id === turn.tokenId);
-            const row = document.createElement('article');
             const isSurprisedNow = !!turn.surprised && round === 1;
+            const isCurrent = idx === state.currentTurnIndex;
+            const hasActed = idx < state.currentTurnIndex;
+
+            const row = document.createElement('article');
             row.className = 'cb-turn-row'
-                + (idx === state.currentTurnIndex ? ' is-current' : '')
+                + (isCurrent ? ' is-current' : '')
+                + (hasActed ? ' has-acted' : '')
                 + (isSurprisedNow ? ' is-surprised-now' : '');
-            row.innerHTML = `<button type="button" class="cb-turn-name">${escapeHtml(token?.name || 'Token removido')}</button>`;
+
+            // Sub-fase E: thumbnail compacta à esquerda.
+            const thumb = document.createElement('div');
+            thumb.className = 'cb-turn-thumb';
+            const tokenSrc = token ? resolveTokenImageSrc(token) : null;
+            if (tokenSrc) {
+                const img = document.createElement('img');
+                img.src = tokenSrc;
+                img.alt = '';
+                img.loading = 'lazy';
+                img.onerror = () => {
+                    img.remove();
+                    thumb.textContent = getTokenInitials(token?.name || '?');
+                };
+                thumb.appendChild(img);
+            } else {
+                thumb.textContent = getTokenInitials(token?.name || '?');
+            }
+            row.appendChild(thumb);
+
+            // Bloco central: nome (clicável) + meta (movimento + status).
+            const body = document.createElement('div');
+            body.className = 'cb-turn-body';
+
+            const nameBtn = document.createElement('button');
+            nameBtn.type = 'button';
+            nameBtn.className = 'cb-turn-name';
+            nameBtn.textContent = token?.name || 'Token removido';
+            nameBtn.addEventListener('click', () => {
+                if (token) selectToken(token.id);
+            });
+            body.appendChild(nameBtn);
+
+            const meta = document.createElement('div');
+            meta.className = 'cb-turn-meta';
+
+            if (token) {
+                const total = tokenDeslocamentoQuadrados(token);
+                const restante = tokenMovimentoRestante(token);
+                const mov = document.createElement('span');
+                mov.className = 'cb-turn-mov' + (restante === 0 ? ' is-empty' : '');
+                mov.textContent = `${restante}/${total} qd`;
+                mov.title = `Deslocamento restante na rodada (${restante} de ${total} quadrados).`;
+                meta.appendChild(mov);
+            }
+
+            if (isCurrent) {
+                const tag = document.createElement('span');
+                tag.className = 'cb-turn-status cb-turn-status--current';
+                tag.textContent = 'Agora';
+                meta.appendChild(tag);
+            } else if (hasActed) {
+                const tag = document.createElement('span');
+                tag.className = 'cb-turn-status cb-turn-status--acted';
+                tag.textContent = 'Já agiu';
+                meta.appendChild(tag);
+            }
+
+            if (isSurprisedNow) {
+                const tag = document.createElement('span');
+                tag.className = 'cb-turn-status cb-turn-status--surprised';
+                tag.textContent = 'Surpreso — não age';
+                meta.appendChild(tag);
+            }
+            body.appendChild(meta);
+            row.appendChild(body);
+
+            // Input numérico de iniciativa (editável).
             const input = document.createElement('input');
             input.type = 'number';
+            input.className = 'cb-turn-init';
             input.value = String(turn.initiative);
+            input.title = 'Editar manualmente o resultado de iniciativa.';
             input.addEventListener('change', () => {
                 turn.initiative = Number(input.value) || 0;
                 saveState();
             });
             row.appendChild(input);
+
+            // Bloco de ações compactas: focar, surpreso, remover.
+            const actions = document.createElement('div');
+            actions.className = 'cb-turn-actions';
+
+            if (token) {
+                const focusBtn = document.createElement('button');
+                focusBtn.type = 'button';
+                focusBtn.className = 'cb-turn-focus';
+                focusBtn.title = 'Selecionar e centralizar este token no mapa.';
+                focusBtn.setAttribute('aria-label', 'Focar token');
+                focusBtn.textContent = '⌖';
+                focusBtn.addEventListener('click', () => {
+                    selectToken(token.id);
+                    focusTokenOnMap(token);
+                });
+                actions.appendChild(focusBtn);
+            }
 
             const surpriseLabel = document.createElement('label');
             surpriseLabel.className = 'cb-turn-surprise' + (turn.surprised ? ' is-on' : '');
@@ -7088,17 +7179,11 @@
             });
             surpriseLabel.appendChild(surpriseBox);
             surpriseLabel.appendChild(document.createTextNode('Surpreso'));
-            row.appendChild(surpriseLabel);
-
-            if (isSurprisedNow) {
-                const tag = document.createElement('span');
-                tag.className = 'cb-turn-tag-surprised';
-                tag.textContent = 'Surpreso — não age nesta rodada';
-                row.appendChild(tag);
-            }
+            actions.appendChild(surpriseLabel);
 
             const remove = document.createElement('button');
             remove.type = 'button';
+            remove.className = 'cb-turn-remove';
             remove.textContent = 'Remover';
             remove.addEventListener('click', () => {
                 state.turns.splice(idx, 1);
@@ -7107,13 +7192,25 @@
                 renderTokens();
                 saveState();
             });
-            row.appendChild(remove);
-            row.querySelector('.cb-turn-name').addEventListener('click', () => {
-                if (token) selectToken(token.id);
-            });
+            actions.appendChild(remove);
+
+            row.appendChild(actions);
             frag.appendChild(row);
         });
         els.turnList.appendChild(frag);
+    }
+
+    // Sub-fase E: centraliza o palco no token sem alterar o zoom atual.
+    function focusTokenOnMap(token) {
+        if (!token || !els.stage) return;
+        const stageRect = els.stage.getBoundingClientRect();
+        const size = Math.max(1, Number(token.sizeCells || 1));
+        const tokenCenterX = (Number(token.col) + size / 2) * CELL_SIZE;
+        const tokenCenterY = (Number(token.row) + size / 2) * CELL_SIZE;
+        const scale = state.viewport.scale || 1;
+        state.viewport.x = (stageRect.width / 2) - tokenCenterX * scale;
+        state.viewport.y = (stageRect.height / 2) - tokenCenterY * scale;
+        applyViewport();
     }
 
     function sortTurns() {
@@ -7129,6 +7226,8 @@
         state.currentTurnIndex = 0;
         state.currentRound = 1;
         addLog({ title: 'Iniciativa ordenada', detail: 'Início do combate — Rodada 1.' });
+        // Sub-fase E: ao iniciar o combate, foca o token que age primeiro.
+        focusCurrentTurnToken();
         renderTurnList();
         renderTokens();
         saveState();
@@ -7146,9 +7245,28 @@
         } else {
             state.currentTurnIndex += 1;
         }
+        // Sub-fase E: auto-seleciona e foca o token cujo turno começou.
+        focusCurrentTurnToken();
         renderTurnList();
         renderTokens();
         saveState();
+    }
+
+    // Aplica seleção + log + foco no token do turno atual. Reusado por
+    // nextTurn, sortTurns e rollInitiativeForScene.
+    function focusCurrentTurnToken() {
+        const turn = state.turns[state.currentTurnIndex];
+        if (!turn) return;
+        const token = state.tokens.find(t => t.id === turn.tokenId);
+        if (!token) return;
+        if (state.selectedId !== token.id) selectToken(token.id);
+        focusTokenOnMap(token);
+        const restante = tokenMovimentoRestante(token);
+        const total = tokenDeslocamentoQuadrados(token);
+        addLog({
+            title: 'Turno',
+            detail: `${token.name || 'Token'} (${restante}/${total} qd disponíveis).`
+        });
     }
 
     function incrementRound() {
