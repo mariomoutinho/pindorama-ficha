@@ -19,8 +19,8 @@
     const BESTIARIO_STORAGE_KEY = 'pindorama.bestiario.criaturas';
     const BESTIARIO_TOKEN_KEY = 'pindorama.campoBatalha.tokenPendente';
     let CELL_SIZE = 56;            // tamanho base da célula em pixels, persistido por cena
-    const MIN_SCALE = 0.4;
-    const MAX_SCALE = 3;
+    const MIN_SCALE = 0.1;
+    const MAX_SCALE = 8;
     const LONG_PRESS_MS = 520;
     const LONG_PRESS_MOVE_TOLERANCE = 8;
     const GRID_METERS = 1.5;
