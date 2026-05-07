@@ -1,0 +1,75 @@
+<?php
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/permissions.php';
+
+$usuario = exigirLogin();
+$ehFacilitador = ehFacilitadorGlobal();
+?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel — Pindorama RPG</title>
+
+    <link rel="stylesheet" href="assets/css/ficha.css" />
+    <link rel="stylesheet" href="assets/css/home.css?v=20260507d" />
+    <link rel="stylesheet" href="assets/css/auth.css?v=20260507a" />
+    <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
+</head>
+<body class="home-body">
+    <script src="assets/js/transitions.js?v=20260503d"></script>
+
+    <main class="home-shell auth-shell">
+        <header class="home-hero home-hero-compact">
+            <a href="index.php" class="home-back" aria-label="Voltar ao menu">&larr;</a>
+            <h1 class="home-title"><?= $ehFacilitador ? 'Painel do Facilitador' : 'Painel do Participante' ?></h1>
+            <p class="home-subtitle">
+                Olá, <?= htmlspecialchars($usuario['nome']) ?>
+                <span class="auth-role-tag"><?= htmlspecialchars(ucfirst($usuario['role'])) ?></span>
+            </p>
+        </header>
+
+        <?php if ($ehFacilitador): ?>
+            <nav class="home-grid-ref" aria-label="Ações do Facilitador">
+                <a class="home-card-ref" href="campo-batalha.php">
+                    <strong>Mesa de Jogo</strong>
+                    <span>Cenas, mapas, tokens e NPCs.</span>
+                </a>
+                <a class="home-card-ref" href="fichas.php">
+                    <strong>Fichas</strong>
+                    <span>Personagens dos participantes.</span>
+                </a>
+                <a class="home-card-ref" href="bestiario.php">
+                    <strong>Bestiário</strong>
+                    <span>Criaturas e ameaças.</span>
+                </a>
+                <a class="home-card-ref" href="referencia.php">
+                    <strong>Acervo</strong>
+                    <span>Catálogos e regras.</span>
+                </a>
+            </nav>
+        <?php else: ?>
+            <nav class="home-grid-ref" aria-label="Ações do Participante">
+                <a class="home-card-ref" href="ficha.php">
+                    <strong>Minha Ficha</strong>
+                    <span>Crie ou edite seu personagem.</span>
+                </a>
+                <a class="home-card-ref" href="fichas.php">
+                    <strong>Minhas Fichas</strong>
+                    <span>Personagens salvos.</span>
+                </a>
+                <a class="home-card-ref" href="referencia.php">
+                    <strong>Acervo</strong>
+                    <span>Consulte regras e catálogos.</span>
+                </a>
+            </nav>
+        <?php endif; ?>
+
+        <div class="home-list-footer auth-footer">
+            <a class="home-btn home-btn-ghost" href="index.php">Voltar ao menu</a>
+            <a class="home-btn" href="logout.php">Sair</a>
+        </div>
+    </main>
+</body>
+</html>

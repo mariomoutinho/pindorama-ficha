@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/auth.php';
+exigirLogin();
+
 $dadosAncestralidades = json_decode(file_get_contents(__DIR__ . '/data/ancestralidades.json'), true);
 $ancestralidadesFicha = $dadosAncestralidades['ancestralidades'] ?? [];
 

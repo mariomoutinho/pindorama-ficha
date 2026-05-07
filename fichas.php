@@ -1,5 +1,12 @@
 <?php
+require_once __DIR__ . '/includes/auth.php';
+exigirLogin();
+
 require_once 'config.php';
+
+// Nota técnica: por enquanto a listagem é global (todas as fichas).
+// Quando o vínculo ficha↔usuário for adicionado, filtrar por
+// fichas do próprio usuário (Participante) ou da mesa do Facilitador.
 
 $stmt = $pdo->query("
     SELECT id, participante, personagem, ancestralidade, classe, nivel,

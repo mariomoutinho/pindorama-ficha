@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/includes/auth.php';
+exigirLogin();
+
 header('Content-Type: application/json; charset=utf-8');
 
 $stateFile = __DIR__ . '/data/campo-batalha-state.json';
