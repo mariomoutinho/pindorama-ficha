@@ -40,7 +40,7 @@ $csrf = tokenCsrf();
     <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260508a" />
 </head>
 <body class="home-body">
-    <script src="assets/js/transitions.js?v=20260508k"></script>
+    <script src="assets/js/transitions.js?v=20260508o"></script>
 
     <main class="home-shell painel-shell">
         <header class="home-hero home-hero-compact">

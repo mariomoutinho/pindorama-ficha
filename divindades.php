@@ -21,7 +21,7 @@ $idx = indexarPoderesGerais();
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508k" />
 </head>
 <body>
-    <script src="assets/js/transitions.js?v=20260508k"></script>
+    <script src="assets/js/transitions.js?v=20260508o"></script>
     <main class="page-wrapper classes-page">
         <header class="top-actions classes-topbar">
             <div>

@@ -90,7 +90,7 @@ function avatarFichaSalva(array $ficha): array
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508k" />
 </head>
 <body class="home-body">
-    <script src="assets/js/transitions.js?v=20260508k"></script>
+    <script src="assets/js/transitions.js?v=20260508o"></script>
 
     <main class="home-shell home-shell-list">
 

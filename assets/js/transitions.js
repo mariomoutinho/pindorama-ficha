@@ -40,6 +40,20 @@
         );
     }
 
+    /**
+     * Limpeza DEFENSIVA de estado preso. Cuida apenas do body/html
+     * (classes residuais e overflow/opacity inline).
+     *
+     * NÃO toca em modais reais (não muda classes de abertura, aria-hidden
+     * nem pointer-events inline) — fazer isso quebrava cliques quando o
+     * usuário abria o modal depois. Cada módulo é responsável por abrir
+     * e fechar seu próprio modal; o guard cuida só do body.
+     *
+     * Adicionalmente faz CURA: remove `style="pointer-events: ..."`
+     * inline de backdrops que tenham sido danificados por uma versão
+     * anterior desta função — garante que páginas com cache antigo
+     * não fiquem com modais inertes.
+     */
     function closeAllOverlays() {
         for (const cls of STUCK_BODY_CLASSES) {
             document.body.classList.remove(cls);
@@ -52,15 +66,16 @@
         if (document.documentElement.style.overflow === 'hidden') document.documentElement.style.overflow = '';
         if (document.documentElement.style.filter) document.documentElement.style.filter = '';
 
-        // Tira estado "aberto" de qualquer backdrop conhecido.
+        // CURA: tira pointer-events inline de qualquer backdrop/modal
+        // que tenha sido danificado pelo guard antigo. Não mexe em
+        // classes de abertura nem em aria-hidden — esses são do módulo.
         const SELS = '.modal-backdrop, .overlay, .backdrop, .action-overlay, ' +
                      '.battle-backdrop, .mesa-backdrop, .anc-picker-backdrop, ' +
                      '.poder-modal-backdrop, .sheet-modal-backdrop, ' +
-                     '.cb-modal-backdrop, .dice-overlay';
+                     '.cb-modal-backdrop, .dice-overlay, .cb-modal, .poder-modal, ' +
+                     '.sheet-modal';
         document.querySelectorAll(SELS).forEach(el => {
-            el.classList.remove('is-open', 'show', 'active', 'is-active', 'is-visible');
-            el.setAttribute('aria-hidden', 'true');
-            el.style.pointerEvents = 'none';
+            if (el.style.pointerEvents) el.style.pointerEvents = '';
         });
     }
 
