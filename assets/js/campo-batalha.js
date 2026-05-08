@@ -2303,7 +2303,7 @@
         moverBtn.type = 'button';
         moverBtn.className = 'cb-turno-atual-mover';
         moverBtn.textContent = '↣ Mover';
-        const movRest = token.acaoCompletaUsada ? 0 : (token.acaoMovimentoUsada ? 0 : 1);
+        // Reusa `movRest` já calculado acima (linha do meta). Não redeclarar.
         const podeDobro = !token.acaoPadraoUsada || token.dobroMovimento;
         // Habilitado se ainda há mov OU se padrão livre p/ converter em dobro.
         moverBtn.disabled = (movRest === 0 && !podeDobro) || token.acaoCompletaUsada;
