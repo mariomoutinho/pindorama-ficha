@@ -550,6 +550,6 @@ $papelUsuarioCB = papelGlobal() ?: 'participante';
     </main>
 
     <script src="assets/js/regras-distancia.js?v=20260507a"></script>
-    <script src="assets/js/campo-batalha.js?v=20260508n"></script>
+    <script src="assets/js/campo-batalha.js?v=20260508p"></script>
 </body>
 </html>

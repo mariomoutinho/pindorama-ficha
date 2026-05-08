@@ -5721,6 +5721,24 @@
         return tokenHasLineOfEffectTo(attacker, target);
     }
 
+    /**
+     * Filtra um Set de células ("col,row") mantendo apenas as que têm
+     * linha de efeito livre a partir do (origCol, origRow). Usado para
+     * que áreas (cone/linha/raio/cubo) respeitem barreiras: o efeito
+     * não vaza para o lado oposto da parede.
+     */
+    function filterCellsByLineOfEffect(cellSet, origCol, origRow) {
+        const out = new Set();
+        for (const key of cellSet) {
+            const m = /^(\d+),(\d+)$/.exec(key);
+            if (!m) { out.add(key); continue; }
+            const c = Number(m[1]), r = Number(m[2]);
+            if (c === origCol && r === origRow) { out.add(key); continue; }
+            if (hasLineOfEffect(origCol, origRow, c, r)) out.add(key);
+        }
+        return out;
+    }
+
     function buildActionReachCells(token, action) {
         const shape = parseAreaShape(action?.alcance);
         const { col, row } = getReachAttackerPosition(token);
@@ -5735,25 +5753,44 @@
             const origin = getAreaOriginCell(col, row, size, aim);
             const dir = directionFromOrigin(origin, aim, col, row, size);
             addConeCellsFromOrigin(cells, origin.col, origin.row, shape.tamanho, dir);
+            // Barreiras param a propagação do cone.
+            return filterCellsByLineOfEffect(cells, origin.col, origin.row);
         } else if (shape.tipo === 'linha') {
             const origin = getAreaOriginCell(col, row, size, aim);
             const dir = directionFromOrigin(origin, aim, col, row, size);
             addLineCellsFromOrigin(cells, origin.col, origin.row, shape.tamanho, dir);
+            return filterCellsByLineOfEffect(cells, origin.col, origin.row);
         } else if (shape.tipo === 'raio') {
             // Centro = posição do mouse (ou centro do token se não houver aim).
             // Áreas de raio usam o padrão do grid do livro, não um quadrado cheio.
             const center = aim ? { col: aim.col, row: aim.row } : { col: col + Math.floor(size / 2), row: row + Math.floor(size / 2) };
+            // Se houver aim, verifica LoE do atacante até o ponto de
+            // explosão. Sem LoE, a explosão não pode ser direcionada lá.
+            if (aim && !tokenHasLineOfEffectToCell(token, center.col, center.row)) {
+                return new Set();
+            }
             addRadiusCellsBookPattern(cells, center.col, center.row, shape.tamanho);
+            // Filtra a partir do CENTRO da explosão — efeito não passa
+            // por barreiras, mesmo que a esfera as contenha.
+            return filterCellsByLineOfEffect(cells, center.col, center.row);
         } else if (shape.tipo === 'cubo') {
             const anchor = aim
                 ? { col: aim.col, row: aim.row }
                 : { col: col + size, row };
+            // Mesma regra do raio: cubo distante exige LoE até o anchor.
+            if (aim && !tokenHasLineOfEffectToCell(token, anchor.col, anchor.row)) {
+                return new Set();
+            }
             addCubeCellsFromAnchor(cells, anchor.col, anchor.row, shape.tamanho);
+            const half = Math.floor(Number(shape.tamanho) / 2);
+            const cCol = anchor.col + half;
+            const cRow = anchor.row + half;
+            return filterCellsByLineOfEffect(cells, cCol, cRow);
         } else {
-            // Alcance simples (corpo a corpo, curto, longo)
+            // Alcance simples (corpo a corpo, curto, longo) — LoE checada
+            // por isReachPreviewCellBlocked / isTokenInActionReach.
             return buildReachCellsAt(col, row, token.sizeCells, shape.tamanho);
         }
-        return cells;
     }
 
     /**
