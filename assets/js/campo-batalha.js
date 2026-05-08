@@ -730,6 +730,11 @@
         if (!Number.isFinite(token.movimentoUsado)) {
             token.movimentoUsado = 0;
         }
+        // Estado de ações por turno (reset ao iniciar o turno do token).
+        if (typeof token.acaoPadraoUsada !== 'boolean') token.acaoPadraoUsada = false;
+        if (typeof token.acaoMovimentoUsada !== 'boolean') token.acaoMovimentoUsada = false;
+        if (typeof token.dobroMovimento !== 'boolean') token.dobroMovimento = false;
+        if (typeof token.acaoCompletaUsada !== 'boolean') token.acaoCompletaUsada = false;
         const modParsed = parseSignedNumber(token.iniciativa);
         if (Number.isFinite(modParsed)) {
             token.iniciativaMod = modParsed;
@@ -1515,6 +1520,8 @@
             && interaction.originCol != null
             && (snappedCol !== interaction.originCol || snappedRow !== interaction.originRow)
             && window.PindoramaRegras) {
+            // Parte 7: snapshot p/ undo do último movimento.
+            captureMoveUndo(token);
             const passos = chebyshevPath(
                 interaction.originCol, interaction.originRow,
                 snappedCol, snappedRow
@@ -1535,9 +1542,24 @@
                     ortogonaisDificeis, diagonaisDificeis
                 });
                 if (custo.quadrados > 0) {
+                    if (token.acaoCompletaUsada) {
+                        showCbToast(`${token.name || 'Token'} já usou a ação completa neste turno.`);
+                    }
                     const before = Number.isFinite(token.movimentoUsado) ? token.movimentoUsado : 0;
                     token.movimentoUsado = before + custo.quadrados;
-                    const total = tokenDeslocamentoQuadrados(token);
+                    token.acaoMovimentoUsada = true;
+                    const base = tokenDeslocamentoQuadrados(token);
+                    // Se ultrapassou o deslocamento base e ainda não estava em "2× mov",
+                    // engata automaticamente: consome a ação padrão como segunda ação de movimento.
+                    if (token.movimentoUsado > base && !token.dobroMovimento && !token.acaoPadraoUsada) {
+                        token.dobroMovimento = true;
+                        token.acaoPadraoUsada = true;
+                        addLog({
+                            title: '2ª ação de movimento',
+                            detail: `${token.name || 'Token'} consumiu a ação padrão como segunda ação de movimento (deslocamento até ${base * 2} qd).`
+                        });
+                    }
+                    const total = token.dobroMovimento ? base * 2 : base;
                     const restante = Math.max(0, total - token.movimentoUsado);
                     addLog({
                         title: 'Movimento',
@@ -4194,7 +4216,7 @@
         const types = actionType
             ? [actionType]
             : Object.keys(ACTION_LABELS).filter(type => groups[type] && groups[type].length);
-        els.actionTitle.textContent = 'Ações';
+        els.actionTitle.textContent = token.name ? `Ações — ${token.name}` : 'Ações';
         els.actionList.innerHTML = '';
 
         if (!types.length) {
@@ -4285,62 +4307,189 @@
         card.className = 'cb-action-card';
         const attackWithReach = isAttackWithReach(item);
 
+        const header = document.createElement('button');
+        header.type = 'button';
+        header.className = 'cb-action-card-header';
+        header.setAttribute('aria-expanded', 'false');
+
+        const headerMain = document.createElement('div');
+        headerMain.className = 'cb-action-card-headmain';
+
         const title = document.createElement('h4');
         title.textContent = getActionDisplayName(item);
-        card.appendChild(title);
+        headerMain.appendChild(title);
 
         const metaParts = [item.tipo, item.origem].filter(Boolean);
         if (metaParts.length) {
             const meta = document.createElement('span');
             meta.className = 'cb-action-meta';
             meta.textContent = metaParts.join(' • ');
-            card.appendChild(meta);
+            headerMain.appendChild(meta);
         }
 
         if (attackWithReach) {
-            card.appendChild(buildAttackFields(item));
+            const summary = document.createElement('div');
+            summary.className = 'cb-action-card-summary';
+            const alc = item.alcance || 'corpo a corpo';
+            const dano = item.dano || item.danoFormula || '—';
+            summary.textContent = `${alc} · ${dano}`;
+            headerMain.appendChild(summary);
+        }
+
+        header.appendChild(headerMain);
+
+        const chevron = document.createElement('span');
+        chevron.className = 'cb-action-card-chevron';
+        chevron.setAttribute('aria-hidden', 'true');
+        chevron.textContent = '▾';
+        header.appendChild(chevron);
+
+        card.appendChild(header);
+
+        const body = document.createElement('div');
+        body.className = 'cb-action-card-body';
+        body.hidden = true;
+
+        if (attackWithReach) {
+            body.appendChild(buildAttackFields(item));
         } else if (item.detalhe) {
             const detail = document.createElement('p');
             detail.textContent = item.detalhe;
-            card.appendChild(detail);
+            body.appendChild(detail);
         }
 
-        if (attackWithReach) {
-            const buttons = document.createElement('div');
-            buttons.className = 'cb-action-buttons';
+        card.appendChild(body);
 
-            const isArea = isAreaAttack(item);
+        const collapseSiblings = () => {
+            if (!els.actionList) return;
+            els.actionList.querySelectorAll('.cb-action-card.is-expanded').forEach(other => {
+                if (other === card) return;
+                other.classList.remove('is-expanded');
+                const otherBody = other.querySelector('.cb-action-card-body');
+                const otherHeader = other.querySelector('.cb-action-card-header');
+                if (otherBody) otherBody.hidden = true;
+                if (otherHeader) otherHeader.setAttribute('aria-expanded', 'false');
+            });
+        };
 
-            const selectAttack = document.createElement('button');
-            selectAttack.type = 'button';
-            selectAttack.className = 'cb-action-attack-btn';
-            if (isArea) selectAttack.classList.add('cb-action-area-btn');
-
-            const setAttackLabel = () => {
-                const active = isReachPreviewActive(token.id, item);
-                if (isArea) {
-                    selectAttack.textContent = active
-                        ? 'Mire com o mouse — clique para atacar'
-                        : 'Mostrar área e mirar';
-                } else {
-                    selectAttack.textContent = active ? 'Alcance selecionado' : 'Mostrar alcance';
-                }
-                selectAttack.classList.toggle('is-active', active);
-            };
-            setAttackLabel();
-            selectAttack.addEventListener('click', () => {
+        header.addEventListener('click', () => {
+            hideActionPreview();
+            collapseSiblings();
+            if (attackWithReach) {
+                // Expande visualmente, ativa alcance no mapa e fecha o painel.
+                body.hidden = false;
+                card.classList.add('is-expanded');
+                header.setAttribute('aria-expanded', 'true');
                 toggleReachPreview(token, item);
-                setAttackLabel();
                 if (isReachPreviewActive(token.id, item)) {
                     closeTokenActionPanel();
                 }
-            });
-            buttons.appendChild(selectAttack);
+                return;
+            }
+            // Itens sem alcance (descritivos): apenas alterna expand/collapse.
+            const willExpand = body.hidden;
+            body.hidden = !willExpand;
+            card.classList.toggle('is-expanded', willExpand);
+            header.setAttribute('aria-expanded', willExpand ? 'true' : 'false');
+        });
 
-            card.appendChild(buttons);
+        if (attackWithReach) {
+            attachActionPreviewHandlers(header, card, item);
         }
 
         return card;
+    }
+
+    let _actionPreviewEl = null;
+    let _actionPreviewLongPressTimer = null;
+    let _actionPreviewSuppressClick = false;
+
+    function ensureActionPreviewEl() {
+        if (_actionPreviewEl) return _actionPreviewEl;
+        const el = document.createElement('div');
+        el.className = 'cb-action-preview';
+        el.hidden = true;
+        document.body.appendChild(el);
+        _actionPreviewEl = el;
+        return el;
+    }
+
+    function showActionPreview(item, anchorEl) {
+        const el = ensureActionPreviewEl();
+        el.innerHTML = '';
+        const title = document.createElement('div');
+        title.className = 'cb-action-preview-title';
+        title.textContent = getActionDisplayName(item);
+        el.appendChild(title);
+        el.appendChild(buildAttackFields(item));
+
+        el.hidden = false;
+        const rect = anchorEl.getBoundingClientRect();
+        const margin = 10;
+        // Render to measure
+        el.style.left = '0px';
+        el.style.top = '0px';
+        const w = el.offsetWidth;
+        const h = el.offsetHeight;
+        // Prefer left of card; fall back to above
+        let left = rect.left - w - margin;
+        if (left < 8) left = rect.right + margin;
+        if (left + w > window.innerWidth - 8) {
+            left = Math.max(8, window.innerWidth - w - 8);
+        }
+        let top = rect.top;
+        if (top + h > window.innerHeight - 8) {
+            top = Math.max(8, window.innerHeight - h - 8);
+        }
+        el.style.left = left + 'px';
+        el.style.top = top + 'px';
+    }
+
+    function hideActionPreview() {
+        if (_actionPreviewEl) _actionPreviewEl.hidden = true;
+        if (_actionPreviewLongPressTimer) {
+            clearTimeout(_actionPreviewLongPressTimer);
+            _actionPreviewLongPressTimer = null;
+        }
+    }
+
+    function attachActionPreviewHandlers(header, card, item) {
+        const shouldShow = () => !card.classList.contains('is-expanded');
+
+        header.addEventListener('mouseenter', () => {
+            if (shouldShow()) showActionPreview(item, card);
+        });
+        header.addEventListener('mouseleave', () => hideActionPreview());
+        header.addEventListener('blur', () => hideActionPreview());
+
+        header.addEventListener('touchstart', (ev) => {
+            if (!shouldShow()) return;
+            if (_actionPreviewLongPressTimer) clearTimeout(_actionPreviewLongPressTimer);
+            _actionPreviewLongPressTimer = setTimeout(() => {
+                _actionPreviewSuppressClick = true;
+                showActionPreview(item, card);
+            }, 450);
+        }, { passive: true });
+
+        const cancelLongPress = () => {
+            if (_actionPreviewLongPressTimer) {
+                clearTimeout(_actionPreviewLongPressTimer);
+                _actionPreviewLongPressTimer = null;
+            }
+            hideActionPreview();
+        };
+        header.addEventListener('touchend', cancelLongPress);
+        header.addEventListener('touchcancel', cancelLongPress);
+        header.addEventListener('touchmove', cancelLongPress, { passive: true });
+
+        // Suprime o clique que vem na sequência de um long-press
+        header.addEventListener('click', (ev) => {
+            if (_actionPreviewSuppressClick) {
+                _actionPreviewSuppressClick = false;
+                ev.stopImmediatePropagation();
+                ev.preventDefault();
+            }
+        }, true);
     }
 
     function buildAttackFields(item) {
@@ -4496,6 +4645,21 @@
     }
 
     function executeAreaAttack(attacker, item) {
+        if (state.turns.length && !isCurrentTurnToken(attacker.id)) {
+            showCbToast(`${attacker.name || 'Token'} não está no turno atual.`);
+            clearReachPreview();
+            return;
+        }
+        if (!canTakeStandardAction(attacker)) {
+            const motivo = attacker.acaoCompletaUsada
+                ? 'ação completa já gasta neste turno'
+                : (attacker.dobroMovimento
+                    ? 'segunda ação de movimento em uso — ação padrão indisponível'
+                    : 'ação padrão da rodada já foi usada');
+            showCbToast(`Não pode atacar: ${motivo}.`);
+            clearReachPreview();
+            return;
+        }
         const targets = getTokensInActionReach(attacker, item);
         if (!isReachPreviewActive(attacker.id, item)) {
             toggleReachPreview(attacker, item);
@@ -4593,6 +4757,8 @@
         if (!pendingAttack || !pendingAttack.isArea) return false;
         const { attacker, action: item, areaTargets } = pendingAttack;
         closeAttackConfirmation();
+        // Ataque em área conta como UMA ação padrão.
+        consumeStandardAction(attacker, `ataque em área com ${getActionDisplayName(item)}`);
 
         const damageFormula = item.danoFormula || parseDamageFormula(item.dano || item.detalhe || item.nome || '') || '1d6';
         const damage = rollDamage(damageFormula);
@@ -5643,8 +5809,25 @@
 
     function openAttackConfirmation(attacker, target, action) {
         if (!els.confirm) return;
+        // Apenas o token da vez pode atacar (quando há iniciativa definida).
+        if (state.turns.length && !isCurrentTurnToken(attacker.id)) {
+            showCbToast(`${attacker.name || 'Token'} não está no turno atual.`);
+            clearReachPreview();
+            return;
+        }
         const totalAttacks = action.quantidadeAtaques || parseAttackCount(action, action.nome) || 1;
         const attackIndex = getCurrentAttackIndex(action);
+        // Bloqueio: ação padrão já gasta. Multi-ataque (índice > 1) reusa a mesma ação padrão já consumida.
+        if (attackIndex === 1 && !canTakeStandardAction(attacker)) {
+            const motivo = attacker.acaoCompletaUsada
+                ? 'ação completa já gasta neste turno'
+                : (attacker.dobroMovimento
+                    ? 'segunda ação de movimento em uso — ação padrão indisponível'
+                    : 'ação padrão da rodada já foi usada');
+            showCbToast(`Não pode atacar: ${motivo}.`);
+            clearReachPreview();
+            return;
+        }
         pendingAttack = { attacker, target, action, attackIndex, totalAttacks };
 
         const actionName = action ? getActionDisplayName(action) : 'este ataque';
@@ -5705,6 +5888,12 @@
         }
         const { attacker, target, action, attackIndex, totalAttacks } = pendingAttack;
         closeAttackConfirmation();
+
+        // Consome a ação padrão na PRIMEIRA execução do ataque (mesmo que tenha
+        // múltiplas iterações — todas pertencem à mesma ação padrão).
+        if (attackIndex === 1) {
+            consumeStandardAction(attacker, `ataque com ${getActionDisplayName(action)}`);
+        }
 
         const result = rollSingleMeleeAttack(attacker, action, target, attackIndex);
         if (state.reachPreview && state.reachPreview.tokenId === attacker.id) {
@@ -7053,11 +7242,15 @@
         const silent = opts && opts.silent;
         let alterados = 0;
         for (const token of state.tokens) {
-            if (Number.isFinite(token.movimentoUsado) && token.movimentoUsado !== 0) {
+            if ((Number.isFinite(token.movimentoUsado) && token.movimentoUsado !== 0)
+                || token.acaoPadraoUsada || token.acaoMovimentoUsada
+                || token.dobroMovimento || token.acaoCompletaUsada) {
                 alterados += 1;
             }
-            token.movimentoUsado = 0;
+            resetTurnActions(token);
         }
+        _undoMoveSnapshot = null;
+        refreshUndoButton();
         if (!silent) {
             addLog({
                 title: 'Deslocamentos resetados',
@@ -7161,6 +7354,10 @@
                 meta.appendChild(tag);
             }
             body.appendChild(meta);
+
+            if (token) {
+                body.appendChild(buildTurnActionState(token, isCurrent));
+            }
             main.appendChild(body);
 
             const initInput = document.createElement('input');
@@ -7279,6 +7476,15 @@
         } else {
             state.currentTurnIndex += 1;
         }
+        // Reset de ações do token entrante: começa o turno com 1 padrão + 1 movimento.
+        const turn = state.turns[state.currentTurnIndex];
+        if (turn) {
+            const incoming = state.tokens.find(t => t.id === turn.tokenId);
+            if (incoming) resetTurnActions(incoming);
+        }
+        // Snapshot de undo é específico do turno anterior — invalida.
+        _undoMoveSnapshot = null;
+        refreshUndoButton();
         // Sub-fase E: auto-seleciona e foca o token cujo turno começou.
         focusCurrentTurnToken();
         renderTurnList();
@@ -7378,11 +7584,196 @@
     }
 
     // Quadrados de movimento ainda disponíveis na rodada atual.
+    // Quando `dobroMovimento` está ligado, o teto vai ao dobro do deslocamento padrão.
     function tokenMovimentoRestante(token) {
         if (!token) return 0;
-        const total = tokenDeslocamentoQuadrados(token);
+        const base = tokenDeslocamentoQuadrados(token);
+        const total = token.dobroMovimento ? base * 2 : base;
         const usado = Number.isFinite(token.movimentoUsado) ? token.movimentoUsado : 0;
         return Math.max(0, total - usado);
+    }
+
+    // ---- Estado de ações por turno (Parte 5/6) ----
+
+    function canTakeStandardAction(token) {
+        if (!token) return false;
+        if (token.acaoCompletaUsada) return false;
+        if (token.acaoPadraoUsada) return false;
+        if (token.dobroMovimento) return false;
+        return true;
+    }
+
+    function consumeStandardAction(token, motivo) {
+        if (!token) return;
+        if (token.acaoPadraoUsada) return;
+        token.acaoPadraoUsada = true;
+        addLog({
+            title: 'Ação padrão consumida',
+            detail: `${token.name || 'Token'}${motivo ? ' — ' + motivo : ''}.`
+        });
+    }
+
+    function resetTurnActions(token) {
+        if (!token) return;
+        token.acaoPadraoUsada = false;
+        token.acaoMovimentoUsada = false;
+        token.dobroMovimento = false;
+        token.acaoCompletaUsada = false;
+        token.movimentoUsado = 0;
+    }
+
+    // ---- Undo do último movimento (Parte 7, escopo leve) ----
+    let _undoMoveSnapshot = null;
+
+    function captureMoveUndo(token) {
+        if (!token) return;
+        _undoMoveSnapshot = {
+            tokenId: token.id,
+            col: token.col,
+            row: token.row,
+            movimentoUsado: token.movimentoUsado,
+            acaoMovimentoUsada: !!token.acaoMovimentoUsada,
+            acaoPadraoUsada: !!token.acaoPadraoUsada,
+            dobroMovimento: !!token.dobroMovimento
+        };
+        refreshUndoButton();
+    }
+
+    function refreshUndoButton() {
+        const btn = document.getElementById('cbUndoMove');
+        if (!btn) return;
+        btn.disabled = !_undoMoveSnapshot;
+    }
+
+    function undoLastMove() {
+        if (!_undoMoveSnapshot) {
+            showCbToast('Nada para desfazer.');
+            return;
+        }
+        const snap = _undoMoveSnapshot;
+        const token = state.tokens.find(t => t.id === snap.tokenId);
+        if (!token) {
+            _undoMoveSnapshot = null;
+            refreshUndoButton();
+            return;
+        }
+        token.col = snap.col;
+        token.row = snap.row;
+        token.movimentoUsado = snap.movimentoUsado;
+        token.acaoMovimentoUsada = snap.acaoMovimentoUsada;
+        token.acaoPadraoUsada = snap.acaoPadraoUsada;
+        token.dobroMovimento = snap.dobroMovimento;
+        _undoMoveSnapshot = null;
+        addLog({ title: 'Movimento desfeito', detail: `${token.name || 'Token'} voltou à posição anterior.` });
+        renderTokens();
+        renderTurnList();
+        renderBoard();
+        saveState();
+        refreshUndoButton();
+    }
+
+    // Marcador "P:X M:Y" + toggles "2× mov" e "Ação completa" no turno atual.
+    function buildTurnActionState(token, isCurrent) {
+        const wrap = document.createElement('div');
+        wrap.className = 'cb-turn-actstate';
+
+        const padrao = (token.acaoPadraoUsada || token.acaoCompletaUsada) ? 0 : 1;
+        const movRest = token.acaoCompletaUsada ? 0 : (token.acaoMovimentoUsada ? 0 : 1);
+
+        const badge = document.createElement('span');
+        badge.className = 'cb-turn-actstate-badge'
+            + (padrao === 0 ? ' is-no-padrao' : '')
+            + (movRest === 0 ? ' is-no-mov' : '');
+        badge.textContent = `P:${padrao} M:${movRest}`;
+        badge.title = 'Ações restantes neste turno: P = ação padrão, M = ação de movimento.';
+        wrap.appendChild(badge);
+
+        if (!isCurrent) return wrap;
+
+        const dobroBtn = document.createElement('button');
+        dobroBtn.type = 'button';
+        dobroBtn.className = 'cb-turn-actstate-btn'
+            + (token.dobroMovimento ? ' is-on' : '');
+        dobroBtn.textContent = '2× mov';
+        dobroBtn.title = 'Usar a ação padrão como segunda ação de movimento (deslocamento dobrado).';
+        dobroBtn.disabled = !!token.acaoCompletaUsada;
+        dobroBtn.addEventListener('click', () => {
+            if (token.acaoCompletaUsada) return;
+            if (token.dobroMovimento) {
+                // Desligar: só permitido se o usado ainda couber no deslocamento base.
+                const base = tokenDeslocamentoQuadrados(token);
+                if (token.movimentoUsado > base) {
+                    showCbToast('Já se moveu além do deslocamento padrão; desfaça o movimento antes.');
+                    return;
+                }
+                token.dobroMovimento = false;
+                token.acaoPadraoUsada = false;
+                addLog({ title: '2× movimento desligado', detail: `${token.name || 'Token'} recupera a ação padrão.` });
+            } else {
+                if (token.acaoPadraoUsada) {
+                    showCbToast('Ação padrão já gasta; não pode virar 2× movimento.');
+                    return;
+                }
+                token.dobroMovimento = true;
+                token.acaoPadraoUsada = true;
+                const base = tokenDeslocamentoQuadrados(token);
+                addLog({ title: '2× movimento', detail: `${token.name || 'Token'}: deslocamento até ${base * 2} qd nesta rodada.` });
+            }
+            renderTurnList();
+            renderTokens();
+            saveState();
+        });
+        wrap.appendChild(dobroBtn);
+
+        const completaBtn = document.createElement('button');
+        completaBtn.type = 'button';
+        completaBtn.className = 'cb-turn-actstate-btn'
+            + (token.acaoCompletaUsada ? ' is-on' : '');
+        completaBtn.textContent = 'Ação completa';
+        completaBtn.title = 'Usar uma única ação completa (consome ação padrão e ação de movimento).';
+        completaBtn.addEventListener('click', () => {
+            if (token.acaoCompletaUsada) {
+                token.acaoCompletaUsada = false;
+                token.acaoPadraoUsada = false;
+                token.acaoMovimentoUsada = false;
+                addLog({ title: 'Ação completa desfeita', detail: `${token.name || 'Token'} recupera ação padrão e movimento.` });
+            } else {
+                token.acaoCompletaUsada = true;
+                token.acaoPadraoUsada = true;
+                token.acaoMovimentoUsada = true;
+                token.dobroMovimento = false;
+                addLog({ title: 'Ação completa', detail: `${token.name || 'Token'} declarou uma ação completa.` });
+            }
+            renderTurnList();
+            renderTokens();
+            saveState();
+        });
+        wrap.appendChild(completaBtn);
+
+        return wrap;
+    }
+
+    // ---- Toast discreto (avisos rápidos, não bloqueantes) ----
+
+    let _cbToastEl = null;
+    let _cbToastTimer = null;
+    function showCbToast(message, opts) {
+        const variant = (opts && opts.variant) || 'warn';
+        if (!_cbToastEl) {
+            _cbToastEl = document.createElement('div');
+            _cbToastEl.className = 'cb-toast';
+            _cbToastEl.setAttribute('role', 'status');
+            _cbToastEl.setAttribute('aria-live', 'polite');
+            document.body.appendChild(_cbToastEl);
+        }
+        _cbToastEl.classList.remove('cb-toast--warn', 'cb-toast--info');
+        _cbToastEl.classList.add('cb-toast--' + variant);
+        _cbToastEl.textContent = message;
+        _cbToastEl.classList.add('is-visible');
+        if (_cbToastTimer) clearTimeout(_cbToastTimer);
+        _cbToastTimer = setTimeout(() => {
+            _cbToastEl.classList.remove('is-visible');
+        }, 2400);
     }
 
     function normalizeText(value) {
@@ -7508,7 +7899,10 @@
 
         els.addToken.addEventListener('click', openModal);
         els.addBestiaryToken.addEventListener('click', openBestiaryModal);
-        els.actionClose.addEventListener('click', closeTokenActionPanel);
+        els.actionClose.addEventListener('click', () => {
+            clearReachPreview();
+            closeTokenActionPanel();
+        });
 
         if (els.confirm) {
             els.confirmClose.addEventListener('click', closeAttackConfirmation);
@@ -7647,6 +8041,8 @@
                 resetMovimentosTodos({ silent: false });
             }
         });
+        const undoBtn = document.getElementById('cbUndoMove');
+        if (undoBtn) undoBtn.addEventListener('click', undoLastMove);
         if (els.sortTurns) els.sortTurns.addEventListener('click', sortTurns);
         if (els.nextTurn) els.nextTurn.addEventListener('click', nextTurn);
         if (els.roundIncrement) els.roundIncrement.addEventListener('click', incrementRound);
@@ -7738,6 +8134,18 @@
             if (ev.key === 'Escape' && state.terrainMarkingMode) {
                 setTerrainMarkingMode(false);
             }
+        });
+
+        // Ctrl+Z: desfaz o último movimento (Parte 7).
+        document.addEventListener('keydown', (ev) => {
+            if (!(ev.ctrlKey || ev.metaKey)) return;
+            if (ev.key !== 'z' && ev.key !== 'Z') return;
+            const tag = (document.activeElement && document.activeElement.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable)) {
+                return;
+            }
+            ev.preventDefault();
+            undoLastMove();
         });
 
         els.zoomIn.addEventListener('click', () => { setScale(state.viewport.scale * 1.2); saveState(); });

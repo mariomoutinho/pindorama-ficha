@@ -11,7 +11,7 @@ exigirLogin();
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260503g" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260503d" />
-    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260507n" />
+    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260508e" />
 </head>
 <body class="cb-body">
     <script src="assets/js/transitions.js?v=20260503d"></script>
@@ -175,6 +175,7 @@ exigirLogin();
                             <button type="button" id="cbAddTurnSelected" title="Rola apenas para o token selecionado">Rolar seleção</button>
                             <button type="button" id="cbSortTurns" title="Reordena por iniciativa (desempata por modificador)">Ordenar</button>
                             <button type="button" id="cbResetMovimentos" title="Zera o deslocamento gasto de todos os tokens">Resetar movs.</button>
+                            <button type="button" id="cbUndoMove" title="Desfazer último movimento (Ctrl+Z)" disabled>↶ Desfazer</button>
                         </div>
                     </div>
                     <div class="cb-turn-list" id="cbTurnList"></div>
@@ -485,6 +486,6 @@ exigirLogin();
     </main>
 
     <script src="assets/js/regras-distancia.js?v=20260507a"></script>
-    <script src="assets/js/campo-batalha.js?v=20260507al"></script>
+    <script src="assets/js/campo-batalha.js?v=20260508f"></script>
 </body>
 </html>
