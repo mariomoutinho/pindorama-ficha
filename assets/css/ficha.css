@@ -1612,6 +1612,119 @@ textarea {
     color: #2f7a4f;
 }
 
+/* ----------------------------------------------------------------
+   Tags de magias na ficha — versão consolidada.
+
+   Variantes:
+     .magia-tag                       — base (estrutura interna).
+     .magia-tag-selecionada           — magia comum (classe).
+     .magia-tag-ancestralidade        — magia recebida por ancestral.
+     .magia-tag--sinergia             — magia aprendida 2× com bônus.
+     .magia-tag--sinergia.magia-tag--natureza
+                                      — variante para magias natu-
+                                        rais (Lâmina da Mata etc.):
+                                        adiciona folhinhas decorativas.
+   ---------------------------------------------------------------- */
+.magia-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.2;
+}
+.magia-tag .magia-tag-nome small {
+    opacity: 0.78;
+    font-weight: 600;
+    margin-left: 2px;
+}
+.magia-tag-badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+}
+.magia-tag-badge--reps {
+    background: rgba(118, 84, 124, 0.16);
+    color: var(--purple-dark);
+    border: 1px solid rgba(118, 84, 124, 0.32);
+}
+.magia-tag-badge--mod {
+    background: rgba(70, 140, 90, 0.18);
+    color: #1c5a30;
+    border: 1px solid rgba(70, 140, 90, 0.45);
+}
+
+/* ----- Tag de SINERGIA (reaprendida com benefício) -----
+   Visual diferenciado: gradiente verde→roxo, borda viva, brilho. */
+.magia-tag.magia-tag--sinergia {
+    position: relative;
+    background:
+        linear-gradient(135deg,
+            #5a3382 0%,
+            #4a4a8e 38%,
+            #3a7a4e 78%,
+            #2f6a44 100%);
+    color: #fff;
+    border: 2px solid rgba(180, 220, 160, 0.78);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        inset 0 -2px 6px rgba(0, 0, 0, 0.18),
+        0 0 0 2px rgba(118, 84, 124, 0.18),
+        0 6px 16px rgba(40, 70, 50, 0.32);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.magia-tag.magia-tag--sinergia:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        inset 0 -2px 6px rgba(0, 0, 0, 0.18),
+        0 0 0 2px rgba(180, 220, 160, 0.45),
+        0 8px 22px rgba(40, 70, 50, 0.45);
+}
+.magia-tag.magia-tag--sinergia .magia-tag-nome small {
+    opacity: 0.95;
+    color: #d8efc8;
+}
+.magia-tag.magia-tag--sinergia .magia-tag-badge--reps {
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+.magia-tag.magia-tag--sinergia .magia-tag-badge--mod {
+    background: linear-gradient(135deg, #b6e0a0, #84c878);
+    color: #1c3d22;
+    border-color: rgba(50, 95, 50, 0.55);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+/* Variante "natureza": folhinhas decorativas nos cantos.
+   Decoração leve via pseudo-elementos com unicode — sem assets externos. */
+.magia-tag.magia-tag--natureza::before,
+.magia-tag.magia-tag--natureza::after {
+    content: "🍃";
+    position: absolute;
+    font-size: 0.95rem;
+    line-height: 1;
+    pointer-events: none;
+    filter:
+        drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45))
+        saturate(1.15);
+}
+.magia-tag.magia-tag--natureza::before {
+    left: -8px;
+    top: -10px;
+    transform: rotate(-22deg);
+}
+.magia-tag.magia-tag--natureza::after {
+    right: -8px;
+    bottom: -10px;
+    transform: rotate(160deg);
+}
+
 /* "Aprender novamente" — sufixos visuais nas opções da ancestralidade
    e no painel de magias selecionadas. */
 .ancestralidade-magia-rep {
@@ -1643,6 +1756,10 @@ textarea {
 }
 .magia-modal-fontes strong { font-size: 0.92rem; }
 .magia-modal-fontes span { color: var(--muted); }
+.magia-modal-fontes-beneficio {
+    color: #1c5a30 !important;
+    font-weight: 700;
+}
 
 .magia-modal-custo {
     background: rgba(40, 110, 130, 0.08);

@@ -3362,36 +3362,73 @@ function renderizarMagiasSelecionadas(container, estado) {
         return;
     }
 
-    // Agrupa por id+origem para exibir uma única tag mesmo quando a
-    // magia foi aprendida mais de uma vez (mostramos "×N" + "−x PM").
+    // Consolida por ID da magia: cada magia aparece em UMA única tag,
+    // mesmo que tenha sido aprendida por múltiplas fontes (classe +
+    // ancestralidade, ou 2× pela mesma fonte). A tag agregada mostra
+    // ×N e modificadores, e ganha visual especial quando há benefício
+    // por reaprendizado.
     const exibidos = new Set();
     magiasSelecionadasFicha.forEach(entrada => {
-        const chave = entrada.id + "|" + entrada.origem;
-        if (exibidos.has(chave)) return;
-        exibidos.add(chave);
+        if (exibidos.has(entrada.id)) return;
+        exibidos.add(entrada.id);
 
         const magia = catalogoMagiasFicha.find(item => item.id === entrada.id);
         if (!magia) return;
 
-        const repsOrigem = getRepeticoesPorOrigem(entrada.id, entrada.origem);
-        const repsTotal  = getRepeticoesMagia(entrada.id);
-        const modCusto   = getModCustoMagia(entrada.id);
+        // Agrega todas as ocorrências dessa magia (independente de origem).
+        const ocorrencias = magiasSelecionadasFicha.filter(m => m.id === entrada.id);
+        const repsTotal = ocorrencias.length;
+        const origens = Array.from(new Set(ocorrencias.map(m => m.origem)));
+        const modCusto = getModCustoMagia(entrada.id);
+        const ehSinergia = repsTotal >= 2 && modCusto !== 0;
+        const ehAncestral = origens.includes("ancestralidade");
+        const tracoReap = tracoQueReaprende(entrada.id);
+        const naturezaTraco = tracoReap && tracoReap.traco
+            && /matar?|mata|natur|plant|madeira|cipo|raiz|verde|floresta/i.test(
+                String(tracoReap.traco.id || '') + ' ' + String(tracoReap.traco.nome || '')
+            );
+
+        // Origem "primária" para o modal (preferência: ancestralidade
+        // quando há, para mostrar bloco do traço; senão classe).
+        const origemPrimaria = ehAncestral ? "ancestralidade" : (origens[0] || "classe");
 
         const button = document.createElement("button");
         button.type = "button";
-        const classeOrigem = entrada.origem === "ancestralidade"
-            ? "magia-tag-ancestralidade"
-            : "magia-tag-selecionada";
-        button.className = `pindorama-tag ${classeOrigem}`;
+        const classes = ['pindorama-tag', 'magia-tag'];
+        if (ehSinergia) {
+            classes.push('magia-tag--sinergia');
+            if (naturezaTraco) classes.push('magia-tag--natureza');
+        } else if (ehAncestral) {
+            classes.push('magia-tag-ancestralidade');
+        } else {
+            classes.push('magia-tag-selecionada');
+        }
+        button.className = classes.join(' ');
 
-        const sufixos = [];
-        if (repsTotal > 1) sufixos.push(`×${repsTotal}`);
-        if (modCusto < 0) sufixos.push(`${modCusto} PM`);
+        // Conteúdo da tag: nome + círculo + badges de repetição/custo.
+        const partes = [];
+        partes.push(`<span class="magia-tag-nome">${escaparHtml(magia.nome)} <small>(${Number(magia.circulo) || 0}º)</small></span>`);
+        if (repsTotal > 1) {
+            partes.push(`<span class="magia-tag-badge magia-tag-badge--reps">×${repsTotal}</span>`);
+        }
+        if (modCusto < 0) {
+            partes.push(`<span class="magia-tag-badge magia-tag-badge--mod">${modCusto} PM</span>`);
+        }
+        button.innerHTML = partes.join('');
 
-        button.textContent = `${magia.nome} (${magia.circulo}º)`
-            + (sufixos.length ? ` — ${sufixos.join(', ')}` : '');
-        if (repsOrigem > 1) button.title = `Aprendida ${repsOrigem}× nesta fonte`;
-        button.addEventListener("click", () => abrirModalMagiaFicha(magia, entrada.origem));
+        // Tooltip — fontes textuais.
+        const fontesTxt = origens
+            .map(o => o === 'ancestralidade' ? 'Ancestralidade' : 'Classe')
+            .join(' + ');
+        if (ehSinergia) {
+            button.title = `Magia reaprendida (${repsTotal}×). Fontes: ${fontesTxt}. Custo modificado em ${modCusto} PM.`;
+        } else if (repsTotal > 1) {
+            button.title = `Aprendida ${repsTotal}×. Fontes: ${fontesTxt}.`;
+        } else {
+            button.title = `Aprendida por: ${fontesTxt}.`;
+        }
+
+        button.addEventListener("click", () => abrirModalMagiaFicha(magia, origemPrimaria));
         container.appendChild(button);
     });
 }
@@ -3617,13 +3654,34 @@ function renderizarBlocoFontesMagia(idMagia) {
     if (!fontes.length) return "";
     const reps = fontes.length;
     const linhas = ['<div class="magia-modal-fontes">'];
-    linhas.push(`<strong>Aprendida ${reps}×</strong>`);
+    if (reps > 1) {
+        linhas.push(`<strong>Esta magia foi aprendida ${reps}×.</strong>`);
+    } else {
+        linhas.push(`<strong>Aprendida 1×.</strong>`);
+    }
+
+    // Nomes legíveis de fontes — inclui o traço quando aplicável.
+    const dados = tracoQueReaprende(idMagia);
+    const tracoNome = (reps > 1 && dados && dados.traco) ? dados.traco.nome : null;
     const porOrigem = fontes.reduce((acc, m) => { acc[m.origem] = (acc[m.origem] || 0) + 1; return acc; }, {});
-    const partes = Object.entries(porOrigem).map(([origem, n]) => {
-        const rotulo = origem === 'ancestralidade' ? 'Ancestralidade' : 'Classe';
-        return n > 1 ? `${rotulo} (${n}×)` : rotulo;
-    });
-    linhas.push(`<span>Fontes: ${partes.join(' · ')}</span>`);
+    const partes = [];
+    if (porOrigem.ancestralidade) {
+        partes.push(tracoNome
+            ? `${tracoNome} (ancestralidade)${porOrigem.ancestralidade > 1 ? ` ×${porOrigem.ancestralidade}` : ''}`
+            : `Ancestralidade${porOrigem.ancestralidade > 1 ? ` ×${porOrigem.ancestralidade}` : ''}`);
+    }
+    if (porOrigem.classe) {
+        partes.push(`Classe / escolha por nível${porOrigem.classe > 1 ? ` ×${porOrigem.classe}` : ''}`);
+    }
+    linhas.push(`<span>Fontes: ${partes.join('; ')}.</span>`);
+
+    // Benefício aplicado (quando há modificador acumulado).
+    const mod = getModCustoMagia(idMagia);
+    if (mod < 0) {
+        linhas.push(`<span class="magia-modal-fontes-beneficio">Benefício aplicado: custo reduzido em ${mod} PM.</span>`);
+    } else if (mod > 0) {
+        linhas.push(`<span class="magia-modal-fontes-beneficio">Modificador aplicado: +${mod} PM.</span>`);
+    }
     linhas.push('</div>');
     return linhas.join("");
 }
