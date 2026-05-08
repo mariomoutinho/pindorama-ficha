@@ -2906,17 +2906,46 @@ body[data-papel="participante"] #cbRotateToken {
 .cb-terrain-cell {
     position: absolute;
     box-sizing: border-box;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+/* Terreno difícil — hachuras âmbar/marrom suaves. */
+.cb-terrain-cell--difficult {
     background:
         repeating-linear-gradient(
             45deg,
-            rgba(105, 67, 111, 0.55) 0px,
-            rgba(105, 67, 111, 0.55) 4px,
-            rgba(118, 84, 124, 0.25) 4px,
-            rgba(118, 84, 124, 0.25) 9px
+            rgba(165, 110, 50, 0.55) 0px,
+            rgba(165, 110, 50, 0.55) 4px,
+            rgba(200, 145, 70, 0.18) 4px,
+            rgba(200, 145, 70, 0.18) 9px
         );
-    border: 1px dashed rgba(59, 29, 67, 0.55);
-    border-radius: 4px;
-    pointer-events: none;
+    border: 1px dashed rgba(110, 60, 20, 0.55);
+}
+
+/* Barreira — cinza/roxo escuro com cruz central indicando bloqueio. */
+.cb-terrain-cell--barrier {
+    background: rgba(45, 25, 55, 0.62);
+    border: 2px solid rgba(15, 5, 25, 0.85);
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.45);
+}
+.cb-terrain-cell--barrier::before {
+    content: "";
+    position: absolute;
+    inset: 18%;
+    background:
+        linear-gradient(45deg, transparent calc(50% - 1.5px), rgba(255,255,255,0.55) calc(50% - 1.5px), rgba(255,255,255,0.55) calc(50% + 1.5px), transparent calc(50% + 1.5px)),
+        linear-gradient(-45deg, transparent calc(50% - 1.5px), rgba(255,255,255,0.55) calc(50% - 1.5px), rgba(255,255,255,0.55) calc(50% + 1.5px), transparent calc(50% + 1.5px));
+}
+
+/* Indicação de modo "barreira" (cursor diferente para feedback). */
+.cb-stage.is-marking-barrier { cursor: not-allowed; }
+
+/* Diferenciação no painel: alvo bloqueado por barreira aparece em
+   vermelho translúcido em vez do verde de alcance livre. */
+.cb-cell--alcance-blocked {
+    background: rgba(155, 37, 77, 0.22) !important;
+    box-shadow: inset 0 0 0 2px rgba(155, 37, 77, 0.45);
 }
 
 /* Modo de marcação: cursor crosshair em toda a stage */
@@ -2948,6 +2977,57 @@ body[data-papel="participante"] #cbRotateToken {
 .cb-terrain-controls-head small {
     font-size: 0.78rem;
     color: var(--muted);
+}
+
+.cb-terrain-types {
+    display: flex;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    flex-wrap: wrap;
+}
+.cb-terrain-types .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+.cb-terrain-type {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 8px;
+    border: 1.5px solid var(--purple-light);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--purple-dark);
+    transition: 0.15s ease;
+}
+.cb-terrain-type input { position: absolute; opacity: 0; pointer-events: none; }
+.cb-terrain-type:has(input:checked) {
+    background: var(--purple-dark);
+    color: #fff;
+    border-color: var(--purple-dark);
+}
+.cb-terrain-type small { font-size: 0.7rem; opacity: 0.75; font-weight: 500; }
+.cb-terrain-type--difficult:has(input:checked) {
+    background: linear-gradient(135deg, #b07335, #8a5421);
+    border-color: #8a5421;
+}
+.cb-terrain-type--barrier:has(input:checked) {
+    background: linear-gradient(135deg, #2d1937, #1a0c20);
+    border-color: #1a0c20;
 }
 .cb-terrain-toggle {
     border: 1.5px solid var(--purple-light);

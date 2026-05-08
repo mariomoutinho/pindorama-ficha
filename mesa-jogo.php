@@ -14,7 +14,7 @@ $papelUsuarioCB = papelGlobal() ?: 'participante';
 
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260503g" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508k" />
-    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260508l" />
+    <link rel="stylesheet" href="assets/css/campo-batalha.css?v=20260508m" />
 </head>
 <body class="cb-body" data-papel="<?= htmlspecialchars($papelUsuarioCB) ?>">
     <script>window.PINDORAMA_PAPEL = <?= json_encode($papelUsuarioCB) ?>;</script>
@@ -219,14 +219,28 @@ $papelUsuarioCB = papelGlobal() ?: 'participante';
 
                         <div class="cb-terrain-controls">
                             <header class="cb-terrain-controls-head">
-                                <strong>Terreno difícil</strong>
-                                <small id="cbTerrainCount">0 células marcadas</small>
+                                <strong>Marcar terreno</strong>
                             </header>
+
+                            <fieldset class="cb-terrain-types">
+                                <legend class="visually-hidden">Tipo de marcação</legend>
+                                <label class="cb-terrain-type cb-terrain-type--difficult">
+                                    <input type="radio" name="cbTerrainType" value="difficult" checked />
+                                    <span>Difícil</span>
+                                    <small id="cbTerrainCountDifficult">0 células</small>
+                                </label>
+                                <label class="cb-terrain-type cb-terrain-type--barrier">
+                                    <input type="radio" name="cbTerrainType" value="barrier" />
+                                    <span>Barreira</span>
+                                    <small id="cbTerrainCountBarrier">0 células</small>
+                                </label>
+                            </fieldset>
+
                             <button type="button" id="cbToggleTerrainMode" class="cb-terrain-toggle" aria-pressed="false">
-                                Marcar terreno difícil
+                                Marcar terreno
                             </button>
                             <button type="button" id="cbClearTerrain" class="cb-terrain-clear">Limpar marcações</button>
-                            <p class="cb-terrain-hint">Cada célula marcada custa o dobro de movimento (1 quadrado normal = 2; diagonal = 4).</p>
+                            <p class="cb-terrain-hint">Difícil aumenta custo de movimento. Barreiras bloqueiam linha de ataque à distância.</p>
                         </div>
                     </div>
                 </div>
@@ -483,6 +497,6 @@ $papelUsuarioCB = papelGlobal() ?: 'participante';
     </main>
 
     <script src="assets/js/regras-distancia.js?v=20260507a"></script>
-    <script src="assets/js/campo-batalha.js?v=20260508l"></script>
+    <script src="assets/js/campo-batalha.js?v=20260508m"></script>
 </body>
 </html>

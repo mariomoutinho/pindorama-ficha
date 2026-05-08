@@ -58,7 +58,9 @@
         tipo: '',                  // tipo da cena ativa: combate/cidade/taverna/...
         notasNarrador: '',         // anotações livres do narrador para a cena ativa
         terrainDifficult: new Set(), // células de terreno difícil ("col,row")
+        terrainBarriers:  new Set(), // células de barreira (bloqueiam linha de efeito de ataques à distância)
         terrainMarkingMode: false,   // toggle UI: clicar no board adiciona/remove marca
+        terrainMarkingType: 'difficult', // 'difficult' | 'barrier' — qual tipo está sendo marcado
         fichas: [],                // cache da lista de fichas
         fichasLoaded: false,
         bestiario: [],             // cache da lista de criaturas do bestiário
@@ -204,6 +206,9 @@
         toggleTerrainMode: document.getElementById('cbToggleTerrainMode'),
         clearTerrain: document.getElementById('cbClearTerrain'),
         terrainCount: document.getElementById('cbTerrainCount'),
+        terrainCountDifficult: document.getElementById('cbTerrainCountDifficult'),
+        terrainCountBarrier:  document.getElementById('cbTerrainCountBarrier'),
+        terrainTypeRadios: Array.from(document.querySelectorAll('input[name="cbTerrainType"]')),
         tokenEditorModal: document.getElementById('cbTokenEditorModal'),
         tokenEditorClose: document.getElementById('cbTokenEditorClose'),
         tokenEditorCancel: document.getElementById('cbTokenEditorCancel'),
@@ -611,6 +616,9 @@
             notasNarrador: typeof page.notasNarrador === 'string' ? page.notasNarrador : '',
             terrainDifficult: Array.isArray(page.terrainDifficult)
                 ? page.terrainDifficult.filter(s => typeof s === 'string' && /^\d+,\d+$/.test(s))
+                : [],
+            terrainBarriers: Array.isArray(page.terrainBarriers)
+                ? page.terrainBarriers.filter(s => typeof s === 'string' && /^\d+,\d+$/.test(s))
                 : []
         };
     }
@@ -674,6 +682,9 @@
         page.terrainDifficult = state.terrainDifficult instanceof Set
             ? Array.from(state.terrainDifficult)
             : [];
+        page.terrainBarriers = state.terrainBarriers instanceof Set
+            ? Array.from(state.terrainBarriers)
+            : [];
     }
 
     function loadPageIntoLive(page) {
@@ -693,8 +704,10 @@
         state.tipo = typeof page.tipo === 'string' ? page.tipo : '';
         state.notasNarrador = typeof page.notasNarrador === 'string' ? page.notasNarrador : '';
         state.terrainDifficult = new Set(Array.isArray(page.terrainDifficult) ? page.terrainDifficult : []);
+        state.terrainBarriers  = new Set(Array.isArray(page.terrainBarriers)  ? page.terrainBarriers  : []);
         // Sai do modo de marcação ao trocar de cena (segurança UX)
         state.terrainMarkingMode = false;
+        if (!state.terrainMarkingType) state.terrainMarkingType = 'difficult';
         state.selectedId = null;
         state.selectedSceneryId = null;
     }
@@ -815,6 +828,9 @@
                 cell.className = 'cb-cell' + (((r + c) % 2 === 0) ? ' is-even' : '');
                 if (isReachPreviewCell(c, r)) {
                     cell.classList.add('cb-cell--alcance');
+                    if (isReachPreviewCellBlocked(c, r)) {
+                        cell.classList.add('cb-cell--alcance-blocked');
+                    }
                     if (targetCells.has(occupiedKey(c, r))) {
                         cell.classList.add('cb-cell--target');
                     }
@@ -1171,11 +1187,31 @@
                 && state.reachPreview.action) {
                 const attacker = state.tokens.find(t => t.id === state.reachPreview.tokenId);
                 const target = state.tokens.find(t => t.id === clickedId);
-                if (attacker && target && isTokenInActionReach(target, attacker, state.reachPreview.action)) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    openAttackConfirmation(attacker, target, state.reachPreview.action);
-                    return;
+                if (attacker && target) {
+                    if (isTokenInActionReach(target, attacker, state.reachPreview.action)) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        openAttackConfirmation(attacker, target, state.reachPreview.action);
+                        return;
+                    }
+                    // Se está em alcance mas LoE bloqueada → aviso explícito.
+                    const action = state.reachPreview.action;
+                    const range = parseAlcanceAtaque(action.alcance);
+                    const reach = buildActionReachCells(attacker, action);
+                    const inRange = getTokenCells(target).some(c => reach.has(occupiedKey(c.col, c.row)));
+                    if (inRange && range > 1 && !isAreaAttack(action) && !tokenHasLineOfEffectTo(attacker, target)) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        showCbToast('Linha de ataque bloqueada por barreira.');
+                        addLog({ title: 'Ataque bloqueado', detail: `${attacker.name || 'Atacante'} → ${target.name || 'alvo'}: barreira no caminho.` });
+                        return;
+                    }
+                    if (!inRange) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        showCbToast('Alvo fora de alcance.');
+                        return;
+                    }
                 }
             }
 
@@ -1820,52 +1856,146 @@
         return state.terrainDifficult instanceof Set
             && state.terrainDifficult.has(terrainCellKey(col, row));
     }
+    function isTerrainBarrier(col, row) {
+        return state.terrainBarriers instanceof Set
+            && state.terrainBarriers.has(terrainCellKey(col, row));
+    }
+    // Alias do nome solicitado no plano da Parte 4.
+    function isCellBarrier(col, row) { return isTerrainBarrier(col, row); }
+
+    /**
+     * Lista de células atravessadas pela linha entre dois centros de
+     * células no grid. Aproximação supercover: amostra a linha em N
+     * pontos (N proporcional ao comprimento) e registra cada célula
+     * cruzada. Funciona bem para LoE em grid quadrado.
+     */
+    function getCellsBetween(col1, row1, col2, row2) {
+        const cells = [];
+        const x0 = col1 + 0.5, y0 = row1 + 0.5;
+        const x1 = col2 + 0.5, y1 = row2 + 0.5;
+        const dx = x1 - x0, dy = y1 - y0;
+        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+        const steps = Math.ceil(dist * 4) + 1; // 4 amostras por célula
+        let lastKey = '';
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const x = x0 + dx * t;
+            const y = y0 + dy * t;
+            const c = Math.floor(x);
+            const r = Math.floor(y);
+            const k = c + ',' + r;
+            if (k !== lastKey) {
+                cells.push({ col: c, row: r });
+                lastKey = k;
+            }
+        }
+        return cells;
+    }
+
+    /**
+     * Verifica se há linha de efeito livre entre duas células.
+     * Endpoints (atacante e alvo) NÃO bloqueiam — apenas células
+     * intermediárias marcadas como barreira.
+     */
+    function hasLineOfEffect(c1, r1, c2, r2) {
+        const cells = getCellsBetween(c1, r1, c2, r2);
+        for (const { col, row } of cells) {
+            if (col === c1 && row === r1) continue;
+            if (col === c2 && row === r2) continue;
+            if (isCellBarrier(col, row)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Linha de efeito de um TOKEN (que ocupa N células) até outro
+     * TOKEN. Considera linha livre se EXISTIR ao menos um par de
+     * células (atacante, alvo) sem barreira no meio.
+     */
+    function tokenHasLineOfEffectTo(attacker, target) {
+        const fromCells = getTokenCells(attacker);
+        const toCells = getTokenCells(target);
+        for (const fc of fromCells) {
+            for (const tc of toCells) {
+                if (hasLineOfEffect(fc.col, fc.row, tc.col, tc.row)) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Linha de efeito do TOKEN para uma CÉLULA arbitrária do tabuleiro
+     * (usado para destacar células de alcance bloqueadas pelo grid).
+     */
+    function tokenHasLineOfEffectToCell(attacker, col, row) {
+        const fromCells = getTokenCells(attacker);
+        for (const fc of fromCells) {
+            if (hasLineOfEffect(fc.col, fc.row, col, row)) return true;
+        }
+        return false;
+    }
 
     function renderTerrainOverlay() {
         if (!els.terrainLayer) return;
-        // Remove tudo e re-popula. Volume típico (poucas dezenas de células)
-        // torna isso barato; para mapas grandes podemos otimizar depois.
         els.terrainLayer.innerHTML = '';
-        if (!(state.terrainDifficult instanceof Set) || !state.terrainDifficult.size) return;
         const frag = document.createDocumentFragment();
-        for (const key of state.terrainDifficult) {
-            const m = /^(\d+),(\d+)$/.exec(key);
-            if (!m) continue;
-            const col = Number(m[1]);
-            const row = Number(m[2]);
-            if (col < 0 || row < 0 || col >= state.cols || row >= state.rows) continue;
-            const cell = document.createElement('div');
-            cell.className = 'cb-terrain-cell';
-            cell.style.left = (col * CELL_SIZE) + 'px';
-            cell.style.top = (row * CELL_SIZE) + 'px';
-            cell.style.width = CELL_SIZE + 'px';
-            cell.style.height = CELL_SIZE + 'px';
-            frag.appendChild(cell);
-        }
+
+        const renderSet = (set, cls) => {
+            if (!(set instanceof Set) || !set.size) return;
+            for (const key of set) {
+                const m = /^(\d+),(\d+)$/.exec(key);
+                if (!m) continue;
+                const col = Number(m[1]);
+                const row = Number(m[2]);
+                if (col < 0 || row < 0 || col >= state.cols || row >= state.rows) continue;
+                const cell = document.createElement('div');
+                cell.className = cls;
+                cell.style.left = (col * CELL_SIZE) + 'px';
+                cell.style.top = (row * CELL_SIZE) + 'px';
+                cell.style.width = CELL_SIZE + 'px';
+                cell.style.height = CELL_SIZE + 'px';
+                frag.appendChild(cell);
+            }
+        };
+        renderSet(state.terrainDifficult, 'cb-terrain-cell cb-terrain-cell--difficult');
+        renderSet(state.terrainBarriers,  'cb-terrain-cell cb-terrain-cell--barrier');
+
         els.terrainLayer.appendChild(frag);
     }
 
     function refreshTerrainUI() {
-        const count = state.terrainDifficult instanceof Set ? state.terrainDifficult.size : 0;
+        const cDif = state.terrainDifficult instanceof Set ? state.terrainDifficult.size : 0;
+        const cBar = state.terrainBarriers  instanceof Set ? state.terrainBarriers.size  : 0;
+        if (els.terrainCountDifficult) {
+            els.terrainCountDifficult.textContent = cDif === 1 ? '1 célula' : (cDif + ' células');
+        }
+        if (els.terrainCountBarrier) {
+            els.terrainCountBarrier.textContent = cBar === 1 ? '1 célula' : (cBar + ' células');
+        }
         if (els.terrainCount) {
-            els.terrainCount.textContent = count === 1
-                ? '1 célula marcada'
-                : (count + ' células marcadas');
+            // Compat com markup antigo, se ainda existir.
+            els.terrainCount.textContent = (cDif + cBar) + ' células marcadas';
         }
         if (els.toggleTerrainMode) {
             els.toggleTerrainMode.setAttribute('aria-pressed', state.terrainMarkingMode ? 'true' : 'false');
             els.toggleTerrainMode.textContent = state.terrainMarkingMode
                 ? 'Sair do modo de marcação'
-                : 'Marcar terreno difícil';
+                : 'Marcar terreno';
+        }
+        if (els.terrainTypeRadios) {
+            els.terrainTypeRadios.forEach(radio => {
+                radio.checked = (radio.value === state.terrainMarkingType);
+            });
         }
         if (els.stage) {
             els.stage.classList.toggle('is-marking-terrain', !!state.terrainMarkingMode);
+            els.stage.classList.toggle('is-marking-barrier',
+                !!state.terrainMarkingMode && state.terrainMarkingType === 'barrier');
         }
     }
 
     function setTerrainMarkingMode(active) {
         state.terrainMarkingMode = !!active;
-        // Limpa seleções para evitar UI confusa
         if (state.terrainMarkingMode) {
             selectToken(null);
             if (state.selectedSceneryId) selectScenery(null);
@@ -1873,23 +2003,44 @@
         refreshTerrainUI();
     }
 
+    function setTerrainMarkingType(type) {
+        state.terrainMarkingType = (type === 'barrier') ? 'barrier' : 'difficult';
+        refreshTerrainUI();
+    }
+
+    function getActiveTerrainSet() {
+        if (state.terrainMarkingType === 'barrier') {
+            if (!(state.terrainBarriers instanceof Set)) state.terrainBarriers = new Set();
+            return state.terrainBarriers;
+        }
+        if (!(state.terrainDifficult instanceof Set)) state.terrainDifficult = new Set();
+        return state.terrainDifficult;
+    }
+
     function toggleTerrainCellAt(col, row) {
         const key = terrainCellKey(col, row);
-        if (!(state.terrainDifficult instanceof Set)) state.terrainDifficult = new Set();
-        if (state.terrainDifficult.has(key)) state.terrainDifficult.delete(key);
-        else state.terrainDifficult.add(key);
+        const set = getActiveTerrainSet();
+        const tipo = state.terrainMarkingType === 'barrier' ? 'barreira' : 'terreno difícil';
+        const acao = set.has(key) ? 'remove' : 'marca';
+        pushUndo(`${acao} ${tipo} (${col+1},${row+1})`, null);
+        if (set.has(key)) set.delete(key);
+        else set.add(key);
         renderTerrainOverlay();
         refreshTerrainUI();
+        if (state.reachPreview) renderBoard();
         saveState();
     }
 
     function clearAllTerrain() {
-        const count = state.terrainDifficult instanceof Set ? state.terrainDifficult.size : 0;
-        if (!count) return;
-        if (!confirm('Remover todas as ' + count + ' marcações de terreno difícil desta cena?')) return;
+        const cDif = state.terrainDifficult instanceof Set ? state.terrainDifficult.size : 0;
+        const cBar = state.terrainBarriers  instanceof Set ? state.terrainBarriers.size  : 0;
+        if (!cDif && !cBar) return;
+        if (!confirm('Remover todas as ' + (cDif + cBar) + ' marcações de terreno desta cena?')) return;
         state.terrainDifficult = new Set();
+        state.terrainBarriers  = new Set();
         renderTerrainOverlay();
         refreshTerrainUI();
+        if (state.reachPreview) renderBoard();
         saveState();
     }
 
@@ -4627,6 +4778,24 @@
         return buildActionReachCells(token, state.reachPreview.action).has(occupiedKey(col, row));
     }
 
+    /**
+     * Para o preview ativo, devolve true se a célula está dentro do
+     * alcance MAS não tem linha de efeito livre (bloqueada por barreira).
+     * Ataques corpo a corpo e em área não são marcados como bloqueados.
+     */
+    function isReachPreviewCellBlocked(col, row) {
+        if (!state.reachPreview) return false;
+        const action = state.reachPreview.action;
+        if (!action) return false;
+        if (isAreaAttack(action)) return false;
+        const range = parseAlcanceAtaque(action.alcance);
+        if (range <= 1) return false;
+        const token = state.tokens.find(t => t.id === state.reachPreview.tokenId);
+        if (!token) return false;
+        if (!buildActionReachCells(token, action).has(occupiedKey(col, row))) return false;
+        return !tokenHasLineOfEffectToCell(token, col, row);
+    }
+
     function computeReachTargetCellSet() {
         const set = new Set();
         if (!state.reachPreview) return set;
@@ -5307,7 +5476,15 @@
 
     function isTokenInActionReach(target, attacker, action) {
         const reach = buildActionReachCells(attacker, action);
-        return getTokenCells(target).some(cell => reach.has(occupiedKey(cell.col, cell.row)));
+        const targetCells = getTokenCells(target);
+        const inRange = targetCells.some(cell => reach.has(occupiedKey(cell.col, cell.row)));
+        if (!inRange) return false;
+        // Para ataques à distância, exige linha de efeito livre.
+        // Corpo a corpo (alcance ≤ 1) e ataques em área não usam LoE aqui.
+        const range = parseAlcanceAtaque(action && action.alcance);
+        if (range <= 1) return true;
+        if (isAreaAttack(action)) return true;
+        return tokenHasLineOfEffectTo(attacker, target);
     }
 
     function buildActionReachCells(token, action) {
@@ -7746,7 +7923,9 @@
                 tokenId: state.reachPreview.tokenId,
                 actionKey: state.reachPreview.actionKey,
                 action: state.reachPreview.action
-            } : null
+            } : null,
+            terrainDifficult: state.terrainDifficult instanceof Set ? new Set(state.terrainDifficult) : null,
+            terrainBarriers:  state.terrainBarriers  instanceof Set ? new Set(state.terrainBarriers)  : null
         });
         if (_undoStack.length > UNDO_LIMIT) _undoStack.shift();
         refreshUndoButton();
@@ -7791,9 +7970,13 @@
         state.currentTurnIndex = snap.currentTurnIndex;
         state.currentRound = snap.currentRound;
         state.reachPreview = snap.reachPreview || null;
+        if (snap.terrainDifficult) state.terrainDifficult = snap.terrainDifficult;
+        if (snap.terrainBarriers)  state.terrainBarriers  = snap.terrainBarriers;
         addLog({ title: 'Desfeito', detail: snap.descricao });
         renderTokens();
         renderTurnList();
+        renderTerrainOverlay();
+        refreshTerrainUI();
         renderBoard();
         saveState();
         refreshUndoButton();
@@ -8258,6 +8441,13 @@
         }
         if (els.clearTerrain) {
             els.clearTerrain.addEventListener('click', clearAllTerrain);
+        }
+        if (els.terrainTypeRadios && els.terrainTypeRadios.length) {
+            els.terrainTypeRadios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    if (radio.checked) setTerrainMarkingType(radio.value);
+                });
+            });
         }
         // Tecla Esc sai do modo de marcação rapidamente
         document.addEventListener('keydown', (ev) => {
