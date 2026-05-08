@@ -1,39 +1,98 @@
 /**
- * Transições de página — fade-out ao clicar em link interno
- * antes de navegar.
+ * Transições de página — fade-out ao clicar em link interno antes de
+ * navegar, e GUARDA GLOBAL contra overlays/modais travados.
  *
- * Inclua nas páginas que tem links de navegação. Combina com
- * transitions.css.
+ * Estrutura: dois IIFEs.
+ *
+ *   1) Guard de overlay (sempre roda). Limpa classes residuais do
+ *      body, restaura overflow, e oferece window.closeAllOverlays().
+ *
+ *   2) Animação de transição (só se reduced-motion não estiver ligado).
  */
 
+/* =====================================================================
+   1) GUARD GLOBAL — sempre roda
+   ===================================================================== */
 (function () {
     'use strict';
 
-    // Respeita preferência de redução de movimento
+    // Classes que historicamente foram usadas em projetos PHP simples
+    // para sinalizar estado "aberto". Se sobrarem no body sem modal
+    // realmente aberto, viram bug visual (página travada/escurecida).
+    const STUCK_BODY_CLASSES = [
+        'page-leaving',
+        'modal-open',
+        'drawer-open',
+        'actions-open',
+        'overlay-active',
+        'is-loading',
+        'no-scroll'
+    ];
+
+    function temAlgumModalAberto() {
+        return !!document.querySelector(
+            '.cb-modal-backdrop:not([hidden]),' +
+            '.sheet-modal-backdrop:not([hidden]),' +
+            '.poder-modal-backdrop:not([hidden]),' +
+            '.dice-overlay.active,' +
+            '.cb-action-panel:not([hidden]),' +
+            '.anc-picker-backdrop:not([hidden])'
+        );
+    }
+
+    function closeAllOverlays() {
+        for (const cls of STUCK_BODY_CLASSES) {
+            document.body.classList.remove(cls);
+        }
+        document.querySelectorAll('a.is-leaving').forEach(a => a.classList.remove('is-leaving'));
+        if (document.body.style.overflow === 'hidden') document.body.style.overflow = '';
+        if (document.body.style.opacity) document.body.style.opacity = '';
+        if (document.body.style.filter)  document.body.style.filter  = '';
+    }
+
+    function limparSeNaoHaModal() {
+        if (!temAlgumModalAberto()) closeAllOverlays();
+    }
+
+    // Exposto para uso manual no console (debug) e por outros scripts.
+    window.closeAllOverlays = closeAllOverlays;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', limparSeNaoHaModal);
+    } else {
+        limparSeNaoHaModal();
+    }
+    window.addEventListener('pageshow',  limparSeNaoHaModal);
+    window.addEventListener('popstate',  limparSeNaoHaModal);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') limparSeNaoHaModal();
+    });
+
+    // ESC global: se NADA estiver aberto, garante body limpo. Páginas
+    // com handlers próprios de ESC (campo-batalha) não conflitam.
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (temAlgumModalAberto()) return;
+        closeAllOverlays();
+    });
+})();
+
+/* =====================================================================
+   2) ANIMAÇÃO DE TRANSIÇÃO — só se motion permitido
+   ===================================================================== */
+(function () {
+    'use strict';
+
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         return;
     }
 
     const FADE_OUT_MS = 220;
 
-    /* Limpeza paranoica: ao montar o DOM e ao voltar via histórico,
-       remove qualquer page-leaving residual (de bf-cache ou bug). */
-    function limparPageLeaving() {
-        document.body.classList.remove('page-leaving');
-        document.querySelectorAll('a.is-leaving').forEach(a => a.classList.remove('is-leaving'));
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', limparPageLeaving);
-    } else {
-        limparPageLeaving();
-    }
-
     document.addEventListener('click', (e) => {
         const link = e.target.closest('a[href]');
         if (!link) return;
 
-        // Modificadores → deixa o navegador abrir em nova aba/janela normalmente
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         if (e.button !== 0) return;
         if (link.target && link.target !== '_self') return;
@@ -41,7 +100,6 @@
 
         const href = link.getAttribute('href');
         if (!href) return;
-        // Pula âncoras / esquemas especiais
         if (href.startsWith('#') ||
             href.startsWith('javascript:') ||
             href.startsWith('mailto:') ||
@@ -50,13 +108,8 @@
         let url;
         try { url = new URL(href, window.location.href); } catch (_) { return; }
 
-        // Apenas mesma origem
         if (url.origin !== window.location.origin) return;
-
-        // Mesma URL exata? Deixa passar (recarrega normal)
         if (url.href === window.location.href) return;
-
-        // Mesma pathname/search e só mudou o hash → navegação interna
         if (url.pathname === window.location.pathname &&
             url.search === window.location.search &&
             url.hash) return;
@@ -65,25 +118,13 @@
         link.classList.add('is-leaving');
         document.body.classList.add('page-leaving');
 
-        // Failsafe: se a navegação não acontecer (popup blocker, erro,
-        // gesture-required iOS, etc.), limpa a classe após 1.5s pra não
-        // deixar a página presa.
-        const limpeza = setTimeout(limparPageLeaving, 1500);
+        // Failsafe duplo: se a navegação não acontecer (iOS gesture, popup
+        // blocker, erro de rede), volta a página ao normal em 1.5s.
+        const limpeza = setTimeout(() => window.closeAllOverlays(), 1500);
 
         setTimeout(() => {
             clearTimeout(limpeza);
             window.location.href = url.href;
         }, FADE_OUT_MS);
-    });
-
-    // Voltar/avançar via histórico → SEMPRE restaura visibilidade
-    // (alguns browsers não setam e.persisted=true mas reusam a página).
-    window.addEventListener('pageshow', limparPageLeaving);
-    window.addEventListener('popstate', limparPageLeaving);
-
-    // Extra: quando a aba volta a ser visível (ex.: usuário trocou de
-    // aba durante uma navegação que travou), também tira a classe.
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') limparPageLeaving();
     });
 })();

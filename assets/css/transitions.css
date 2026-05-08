@@ -34,7 +34,12 @@ body.page-leaving > main {
 body:not(.page-leaving) > main {
     opacity: 1 !important;
     filter: none !important;
+    transform: none !important;
 }
+
+/* Reforço: se por algum motivo o navegador ainda tentar aplicar opacity
+   <1 ou blur via animação interrompida, transitions.js (IIFE de guard)
+   limpa as classes residuais do body em todo `pageshow/visibilitychange`. */
 
 /* Importante: as keyframes finais usam `transform: none` e `filter: none`,
    não `translateY(0)`/`blur(0)`. Isso é deliberado: valores como
