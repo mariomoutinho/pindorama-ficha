@@ -66,6 +66,15 @@
         if (document.documentElement.style.overflow === 'hidden') document.documentElement.style.overflow = '';
         if (document.documentElement.style.filter) document.documentElement.style.filter = '';
 
+        // Limpa styles inline em <main> (filhos diretos do body) que
+        // possam ter ficado de uma animação antiga (opacity:0, blur).
+        const mains = document.body.querySelectorAll(':scope > main');
+        mains.forEach(m => {
+            if (m.style.opacity)   m.style.opacity   = '';
+            if (m.style.filter)    m.style.filter    = '';
+            if (m.style.transform) m.style.transform = '';
+        });
+
         // CURA: tira pointer-events inline de qualquer backdrop/modal
         // que tenha sido danificado pelo guard antigo. Não mexe em
         // classes de abertura nem em aria-hidden — esses são do módulo.
@@ -173,7 +182,18 @@
         return;
     }
 
-    const FADE_OUT_MS = 220;
+    // Como `body > main { opacity:1 !important }` força visibilidade total,
+    // o fade-out visual não é mais perceptível — o delay vira só atraso
+    // sem benefício. Mantemos um valor pequeno só para o glow do link
+    // (linkFlash) ser visto antes da navegação.
+    const FADE_OUT_MS = 60;
+
+    // Links que NUNCA devem usar a transição (fluxos críticos onde
+    // qualquer estado residual em body.page-leaving pode atrapalhar).
+    const NO_TRANSITION_PATHS = new Set([
+        '/logout.php',
+        'logout.php'
+    ]);
 
     document.addEventListener('click', (e) => {
         const link = e.target.closest('a[href]');
@@ -183,6 +203,7 @@
         if (e.button !== 0) return;
         if (link.target && link.target !== '_self') return;
         if (link.hasAttribute('download')) return;
+        if (link.hasAttribute('data-no-transition')) return;
 
         const href = link.getAttribute('href');
         if (!href) return;
@@ -199,6 +220,14 @@
         if (url.pathname === window.location.pathname &&
             url.search === window.location.search &&
             url.hash) return;
+
+        // Pula transição em fluxos críticos (logout etc.) — navegação
+        // direta evita qualquer chance de page-leaving residual em
+        // login.php/painel.php depois.
+        const path = url.pathname.split('/').pop() || '';
+        if (NO_TRANSITION_PATHS.has(path) || NO_TRANSITION_PATHS.has(url.pathname)) {
+            return;
+        }
 
         e.preventDefault();
         link.classList.add('is-leaving');

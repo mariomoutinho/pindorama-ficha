@@ -7,10 +7,10 @@
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
     <link rel="stylesheet" href="assets/css/classes.css?v=20260507c" />
-    <link rel="stylesheet" href="assets/css/transitions.css?v=20260508k" />
+    <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
 </head>
 <body>
-    <script src="assets/js/transitions.js?v=20260508o"></script>
+    <script src="assets/js/transitions.js?v=20260508u"></script>
 
     <main class="page-wrapper classes-page">
 
