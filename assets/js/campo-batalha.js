@@ -504,30 +504,48 @@
     }
 
     async function loadState() {
+        const tag = '[Mesa de Jogo]';
         try {
+            console.info(tag, 'Carregando estado de', SERVER_STATE_URL);
             const resp = await fetch(SERVER_STATE_URL, {
                 credentials: 'same-origin',
                 cache: 'no-store'
             });
+            console.info(tag, 'HTTP', resp.status, resp.statusText);
             if (resp.ok) {
                 const data = await resp.json();
-                if (data.success && data.state && applyStateSnapshot(data.state)) {
-                    return;
+                if (data.success && data.state) {
+                    const numPages = Array.isArray(data.state.pages) ? data.state.pages.length : 0;
+                    console.info(tag, `Estado recebido com ${numPages} cena${numPages === 1 ? '' : 's'}.`);
+                    if (applyStateSnapshot(data.state)) {
+                        console.info(tag, 'Estado aplicado. Cena ativa:', state.activePageId);
+                        return;
+                    }
+                    console.warn(tag, 'applyStateSnapshot falhou — usando fallback.');
+                } else if (data.success && !data.state) {
+                    console.info(tag, 'Servidor retornou estado vazio — vai criar cena padrão.');
+                } else {
+                    console.warn(tag, 'Resposta sem sucesso:', data);
                 }
+            } else {
+                console.warn(tag, 'Falha HTTP ao carregar estado.');
             }
         } catch (e) {
-            console.warn('Não foi possível carregar o Campo de Batalha do servidor.', e);
+            console.warn(tag, 'Erro na requisição de carregar estado:', e);
         }
 
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) {
+                console.info(tag, 'Sem fallback no localStorage. Criando cena padrão.');
                 ensureInitialPage();
                 return;
             }
             const snap = JSON.parse(raw);
+            console.info(tag, 'Recuperando estado do localStorage.');
             applyStateSnapshot(snap);
         } catch (e) {
+            console.warn(tag, 'Erro no fallback do localStorage:', e);
             ensureInitialPage();
         }
     }

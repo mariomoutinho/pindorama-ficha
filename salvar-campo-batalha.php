@@ -59,6 +59,35 @@ if (!is_writable($dataDir)) {
 }
 
 $stateFile = $dataDir . '/campo-batalha-state.json';
+
+// ---------------------------------------------------------------
+// Proteção contra overwrite acidental do estado:
+// se o estado novo está vazio (sem cenas, ou só com cena vazia
+// SEM tokens/scenery) MAS o arquivo atual contém dados reais,
+// recusar a gravação e responder com 409. Isso evita que um bug
+// no JS (ex.: state inicial não populado) zere as cenas salvas.
+// O Facilitador pode forçar com ?force=1 (raro, override consciente).
+// ---------------------------------------------------------------
+$forcar = isset($_GET['force']) && $_GET['force'] === '1';
+
+if (!$forcar && is_file($stateFile)) {
+    $existenteRaw = file_get_contents($stateFile);
+    $existente = $existenteRaw ? json_decode($existenteRaw, true) : null;
+    if (is_array($existente) && estadoTemConteudo($existente) && !estadoTemConteudo($state)) {
+        // Backup defensivo do existente — se eventualmente o usuário
+        // realmente quer sobrescrever, ele tem o snapshot daqui.
+        $backupName = 'campo-batalha-state.backup-' . date('Ymd-His') . '.json';
+        @copy($stateFile, $dataDir . '/' . $backupName);
+        http_response_code(409);
+        error_log('[mesa-jogo] Recusou overwrite vazio do state. Backup gerado: ' . $backupName);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Recusado: o novo estado está vazio mas o existente tem cenas com tokens. Backup criado em data/' . $backupName . '. Recarregue a página para tentar de novo, ou use ?force=1 se quiser realmente zerar.',
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
+
 $tmpFile = $stateFile . '.tmp';
 $state = materializarImagensDoCampo($state);
 $json = json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -76,6 +105,40 @@ if ($json === false || file_put_contents($tmpFile, $json, LOCK_EX) === false || 
 echo json_encode([
     'success' => true,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+/**
+ * Determina se um estado da Mesa de Jogo tem conteúdo significativo —
+ * ao menos uma cena com pelo menos um token, cenário, terreno marcado
+ * ou imagem de fundo.
+ */
+function estadoTemConteudo(array $state): bool
+{
+    if (empty($state['pages']) || !is_array($state['pages'])) {
+        return false;
+    }
+    foreach ($state['pages'] as $page) {
+        if (!is_array($page)) continue;
+        if (!empty($page['tokens']) && is_array($page['tokens']) && count($page['tokens']) > 0) {
+            return true;
+        }
+        if (!empty($page['scenery']) && is_array($page['scenery']) && count($page['scenery']) > 0) {
+            return true;
+        }
+        if (!empty($page['mapBackground'])) {
+            return true;
+        }
+        if (!empty($page['terrainDifficult']) && is_array($page['terrainDifficult']) && count($page['terrainDifficult']) > 0) {
+            return true;
+        }
+        if (!empty($page['terrainBarriers']) && is_array($page['terrainBarriers']) && count($page['terrainBarriers']) > 0) {
+            return true;
+        }
+        if (!empty($page['turns']) && is_array($page['turns']) && count($page['turns']) > 0) {
+            return true;
+        }
+    }
+    return false;
+}
 
 function materializarImagensDoCampo(array $state): array
 {
