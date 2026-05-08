@@ -153,7 +153,9 @@
           "concede_magias": {
             "limite": 2,
             "opcoes": ["controlar-plantas", "controlar-madeira"],
-            "regra_extra": "Caso aprenda novamente uma dessas magias, seu custo diminui em –1 PM."
+            "regra_extra": "Caso aprenda novamente uma dessas magias, seu custo diminui em –1 PM.",
+            "permite_reaprender": true,
+            "mod_pm_por_repeticao": -1
           }
         },
         {

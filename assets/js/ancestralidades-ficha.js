@@ -51,26 +51,51 @@
         if (campo) campo.value = JSON.stringify(arr);
     }
 
-    function magiaTemSelecaoAncestralidade(idMagia) {
-        return lerMagiasSelecionadas().some(m =>
+    function contarMagiaAncestralidade(idMagia) {
+        return lerMagiasSelecionadas().filter(m =>
             (typeof m === 'object' ? m.id === idMagia && m.origem === 'ancestralidade' : false)
-        );
+        ).length;
     }
 
-    function alternarMagiaAncestralidade(idMagia, limite) {
+    function magiaTemSelecaoAncestralidade(idMagia) {
+        return contarMagiaAncestralidade(idMagia) > 0;
+    }
+
+    /**
+     * Alterna seleção de uma magia da ancestralidade, com suporte a
+     * "aprender novamente" quando o traço habilita (`permite_reaprender:
+     * true` em `concede_magias`).
+     *
+     * Fluxo de clique:
+     *   - 0 cópias  → adiciona 1 (se houver slot dentro do limite).
+     *   - 1 cópia + reaprendizado permitido + slot livre → adiciona 2ª (reaprendido).
+     *   - 1 cópia sem reaprendizado OU sem slot → remove (toggle clássico).
+     *   - 2+ cópias → remove tudo daquela magia (zera).
+     */
+    function alternarMagiaAncestralidade(idMagia, limite, opts) {
+        const permiteReaprender = !!(opts && opts.permiteReaprender);
         let magias = lerMagiasSelecionadas();
-        const indice = magias.findIndex(m =>
+
+        const totalAncestralidade = magias.filter(m =>
+            typeof m === 'object' && m.origem === 'ancestralidade'
+        ).length;
+        const copiasMagia = magias.filter(m =>
             typeof m === 'object' && m.id === idMagia && m.origem === 'ancestralidade'
-        );
-        if (indice >= 0) {
-            magias.splice(indice, 1);
-        } else {
-            const totalAncestralidade = magias.filter(m =>
-                typeof m === 'object' && m.origem === 'ancestralidade'
-            ).length;
+        ).length;
+
+        if (copiasMagia === 0) {
             if (totalAncestralidade >= limite) return false;
             magias.push({ id: idMagia, origem: 'ancestralidade' });
+        } else if (copiasMagia === 1 && permiteReaprender && totalAncestralidade < limite) {
+            // Reaprende — adiciona 2ª cópia consumindo outro slot.
+            magias.push({ id: idMagia, origem: 'ancestralidade' });
+        } else {
+            // Remove TODAS as cópias dessa magia nessa origem.
+            magias = magias.filter(m =>
+                !(typeof m === 'object' && m.id === idMagia && m.origem === 'ancestralidade')
+            );
         }
+
         escreverMagiasSelecionadas(magias);
         if (window.PindoramaAtualizarMagias) window.PindoramaAtualizarMagias();
         return true;
@@ -108,14 +133,26 @@
             typeof m === 'object' && m.origem === 'ancestralidade' && idsValidos.has(m.id)
         ).length;
 
+        const permiteReaprender = !!cfg.permite_reaprender;
         const opcoesHtml = opcoes.map(magia => {
-            const escolhida = magiaTemSelecaoAncestralidade(magia.id);
-            const sufixo = magia.circulo ? ` <small>(${magia.circulo}\u00ba)</small>` : '';
+            const copias = contarMagiaAncestralidade(magia.id);
+            const escolhida = copias > 0;
+            const sufixoCirc = magia.circulo ? ` <small>(${magia.circulo}\u00ba)</small>` : '';
+            // Indica visualmente quantas vezes foi aprendida e o estado de "reaprender".
+            let extra = '';
+            if (copias >= 2) {
+                extra = ` <span class="ancestralidade-magia-rep">\u00d7${copias}</span>`;
+            } else if (copias === 1 && permiteReaprender && totalEscolhidas < limite) {
+                extra = ' <span class="ancestralidade-magia-rep">+ reaprender</span>';
+            }
+            const titleAttr = permiteReaprender
+                ? 'title="Clique para escolher; clique novamente para reaprender (se houver slot)."'
+                : '';
             return `
-                <button type="button"
-                    class="ancestralidade-magia-opcao${escolhida ? ' escolhida' : ''}"
+                <button type="button" ${titleAttr}
+                    class="ancestralidade-magia-opcao${escolhida ? ' escolhida' : ''}${copias >= 2 ? ' reaprendida' : ''}"
                     data-magia-ancestralidade="${escaparHtml(magia.id)}">
-                    ${escaparHtml(magia.nome || magia.id)}${sufixo}
+                    ${escaparHtml(magia.nome || magia.id)}${sufixoCirc}${extra}
                 </button>
             `;
         }).join('');
@@ -260,7 +297,9 @@
         body.querySelectorAll('[data-magia-ancestralidade]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const idMagia = btn.dataset.magiaAncestralidade;
-                if (alternarMagiaAncestralidade(idMagia, traco.concede_magias?.limite || 0)) {
+                const cm = traco.concede_magias || {};
+                const opts = { permiteReaprender: !!cm.permite_reaprender };
+                if (alternarMagiaAncestralidade(idMagia, cm.limite || 0, opts)) {
                     abrirModalTraco(traco, ancoraModalTraco);
                 }
             });

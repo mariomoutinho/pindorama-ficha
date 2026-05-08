@@ -3136,7 +3136,10 @@ async function configurarMagiasFicha() {
 function normalizarMagiasSalvas(valor) {
     if (!Array.isArray(valor)) return [];
 
-    const vistas = new Set();
+    // Modelo: array de { id, origem }. Aceita-se mais de uma entrada
+    // com o mesmo (id, origem) quando o traço/regra permite reaprender
+    // a mesma magia (ex.: "Lâmina da Mata"). A contagem de repetições
+    // determina o modificador de custo aplicado.
     const resultado = [];
     valor.forEach(item => {
         let id, origem;
@@ -3150,12 +3153,56 @@ function normalizarMagiasSalvas(valor) {
             return;
         }
         if (!id) return;
-        const chave = id + "|" + origem;
-        if (vistas.has(chave)) return;
-        vistas.add(chave);
         resultado.push({ id, origem });
     });
     return resultado;
+}
+
+// ---- Reaprendizado de magia (regra de "aprender novamente") ----
+
+function getRepeticoesMagia(idMagia) {
+    return magiasSelecionadasFicha.filter(m => m.id === idMagia).length;
+}
+
+function getRepeticoesPorOrigem(idMagia, origem) {
+    return magiasSelecionadasFicha.filter(m => m.id === idMagia && m.origem === origem).length;
+}
+
+/**
+ * Encontra o primeiro traço da ancestralidade do personagem que
+ * permite reaprender (`permite_reaprender: true`) a magia indicada.
+ * Devolve { traco, ancestralidade } ou null.
+ */
+function tracoQueReaprende(idMagia) {
+    if (!window.AncestralidadesPindorama || typeof window.AncestralidadesPindorama.getAncestralidadeAtual !== "function") {
+        return null;
+    }
+    const ancestralidade = window.AncestralidadesPindorama.getAncestralidadeAtual();
+    if (!ancestralidade) return null;
+
+    for (const traco of (ancestralidade.tracos || [])) {
+        const cm = traco.concede_magias;
+        if (!cm || !cm.permite_reaprender) continue;
+        if (Array.isArray(cm.opcoes) && cm.opcoes.includes(idMagia)) {
+            return { traco, ancestralidade };
+        }
+    }
+    return null;
+}
+
+/**
+ * Calcula o modificador de PM acumulado para uma magia, somando
+ * `mod_pm_por_repeticao` × (repetições - 1) de cada traço aplicável.
+ * Reduções são números negativos; o resultado nunca passa o custo
+ * para negativo (clamp em 0 quando aplicável é tarefa do consumidor).
+ */
+function getModCustoMagia(idMagia) {
+    const reps = getRepeticoesMagia(idMagia);
+    if (reps <= 1) return 0;
+    const dados = tracoQueReaprende(idMagia);
+    if (!dados) return 0;
+    const mod = Number(dados.traco.concede_magias.mod_pm_por_repeticao) || 0;
+    return mod * (reps - 1);
 }
 
 function magiasIdsClasse() {
@@ -3315,9 +3362,20 @@ function renderizarMagiasSelecionadas(container, estado) {
         return;
     }
 
+    // Agrupa por id+origem para exibir uma única tag mesmo quando a
+    // magia foi aprendida mais de uma vez (mostramos "×N" + "−x PM").
+    const exibidos = new Set();
     magiasSelecionadasFicha.forEach(entrada => {
+        const chave = entrada.id + "|" + entrada.origem;
+        if (exibidos.has(chave)) return;
+        exibidos.add(chave);
+
         const magia = catalogoMagiasFicha.find(item => item.id === entrada.id);
         if (!magia) return;
+
+        const repsOrigem = getRepeticoesPorOrigem(entrada.id, entrada.origem);
+        const repsTotal  = getRepeticoesMagia(entrada.id);
+        const modCusto   = getModCustoMagia(entrada.id);
 
         const button = document.createElement("button");
         button.type = "button";
@@ -3325,7 +3383,14 @@ function renderizarMagiasSelecionadas(container, estado) {
             ? "magia-tag-ancestralidade"
             : "magia-tag-selecionada";
         button.className = `pindorama-tag ${classeOrigem}`;
-        button.textContent = `${magia.nome} (${magia.circulo}º)`;
+
+        const sufixos = [];
+        if (repsTotal > 1) sufixos.push(`×${repsTotal}`);
+        if (modCusto < 0) sufixos.push(`${modCusto} PM`);
+
+        button.textContent = `${magia.nome} (${magia.circulo}º)`
+            + (sufixos.length ? ` — ${sufixos.join(', ')}` : '');
+        if (repsOrigem > 1) button.title = `Aprendida ${repsOrigem}× nesta fonte`;
         button.addEventListener("click", () => abrirModalMagiaFicha(magia, entrada.origem));
         container.appendChild(button);
     });
@@ -3474,14 +3539,30 @@ function abrirModalMagiaFicha(magia, origem = "classe") {
     const totalNaOrigem = origem === "classe" ? magiasIdsClasse().length : magiasIdsAncestralidade().length;
     const limiteOrigem = origem === "classe" ? estado.limite : Infinity;
     const limiteAtingido = totalNaOrigem >= limiteOrigem;
+    const repsOrigem = getRepeticoesPorOrigem(magia.id, origem);
+    const repsTotal  = getRepeticoesMagia(magia.id);
+    const modCusto   = getModCustoMagia(magia.id);
+    const dadosReap  = tracoQueReaprende(magia.id);
+
+    // Pode "aprender novamente" se: o traço atual permite, é origem
+    // ancestralidade e há slot disponível.
+    const podeReaprender = !!dadosReap
+        && origem === "ancestralidade"
+        && repsTotal >= 1
+        && totalNaOrigem < limiteOrigem;
 
     if (titulo) titulo.textContent = magia.nome;
     if (body) {
         const blocoAncestral = origem === "ancestralidade"
             ? renderizarBlocoTracoAncestralOrigem(magia.id)
             : "";
+        const blocoFontes = repsTotal > 0 ? renderizarBlocoFontesMagia(magia.id) : "";
+        const custoBase = magia.custo_pm != null ? Number(magia.custo_pm) : null;
+        const blocoCusto = (modCusto !== 0 || custoBase != null) ? renderizarBlocoCustoMagia(custoBase, modCusto) : "";
         body.innerHTML = `
             ${blocoAncestral}
+            ${blocoFontes}
+            ${blocoCusto}
             <div class="magia-modal-meta">
                 <span>${escaparHtml(magia.tipo)}</span>
                 <span>${Number(magia.circulo || 0)} circulo</span>
@@ -3500,18 +3581,69 @@ function abrirModalMagiaFicha(magia, origem = "classe") {
     }
 
     if (escolher) {
-        escolher.hidden = escolhida;
-        escolher.disabled = !escolhida && limiteAtingido;
-        escolher.textContent = limiteAtingido ? "Limite atingido" : "Escolher magia";
+        if (!escolhida) {
+            escolher.hidden = false;
+            escolher.disabled = limiteAtingido;
+            escolher.textContent = limiteAtingido ? "Limite atingido" : "Escolher magia";
+            escolher.dataset.acao = "escolher";
+        } else if (podeReaprender) {
+            escolher.hidden = false;
+            escolher.disabled = false;
+            const modTxt = dadosReap.traco.concede_magias.mod_pm_por_repeticao;
+            escolher.textContent = modTxt
+                ? `Aprender novamente (${modTxt} PM)`
+                : 'Aprender novamente';
+            escolher.dataset.acao = "reaprender";
+        } else {
+            escolher.hidden = true;
+            escolher.dataset.acao = "";
+        }
     }
 
     if (remover) {
         remover.hidden = !escolhida;
+        remover.textContent = repsOrigem > 1
+            ? `Remover desta fonte (${repsOrigem}×)`
+            : 'Remover magia';
     }
 
     if (modal) {
         modal.hidden = false;
     }
+}
+
+function renderizarBlocoFontesMagia(idMagia) {
+    const fontes = magiasSelecionadasFicha.filter(m => m.id === idMagia);
+    if (!fontes.length) return "";
+    const reps = fontes.length;
+    const linhas = ['<div class="magia-modal-fontes">'];
+    linhas.push(`<strong>Aprendida ${reps}×</strong>`);
+    const porOrigem = fontes.reduce((acc, m) => { acc[m.origem] = (acc[m.origem] || 0) + 1; return acc; }, {});
+    const partes = Object.entries(porOrigem).map(([origem, n]) => {
+        const rotulo = origem === 'ancestralidade' ? 'Ancestralidade' : 'Classe';
+        return n > 1 ? `${rotulo} (${n}×)` : rotulo;
+    });
+    linhas.push(`<span>Fontes: ${partes.join(' · ')}</span>`);
+    linhas.push('</div>');
+    return linhas.join("");
+}
+
+function renderizarBlocoCustoMagia(custoBase, modCusto) {
+    const linhas = ['<div class="magia-modal-custo">'];
+    if (custoBase != null) {
+        if (modCusto !== 0) {
+            const final = Math.max(0, custoBase + modCusto);
+            const sinal = modCusto > 0 ? `+${modCusto}` : `${modCusto}`;
+            linhas.push(`<strong>Custo:</strong> ${custoBase} PM ${sinal} = <em>${final} PM</em>`);
+        } else {
+            linhas.push(`<strong>Custo:</strong> ${custoBase} PM`);
+        }
+    } else if (modCusto !== 0) {
+        const sinal = modCusto > 0 ? `+${modCusto}` : `${modCusto}`;
+        linhas.push(`<strong>Modificador de custo:</strong> ${sinal} PM`);
+    }
+    linhas.push('</div>');
+    return linhas.join("");
 }
 
 function linhaMagiaModal(rotulo, valor) {
@@ -3536,10 +3668,20 @@ function escolherMagiaModal() {
     if (!magiaModalAtual) return;
     const { magia, origem } = magiaModalAtual;
 
-    if (!temMagiaSelecionada(magia.id, origem)) {
+    const escolhida = temMagiaSelecionada(magia.id, origem);
+
+    if (!escolhida) {
         if (origem === "classe") {
             const estado = getMagiasPermitidas();
             if (magiasIdsClasse().length >= estado.limite) return;
+        }
+        magiasSelecionadasFicha.push({ id: magia.id, origem });
+    } else {
+        // Reaprendizado: só permite quando origem é ancestralidade e
+        // o traço atual permite (`permite_reaprender`). Botão só fica
+        // habilitado nessa condição (ver abrirModalMagiaFicha).
+        if (origem !== "ancestralidade" || !tracoQueReaprende(magia.id)) {
+            return;
         }
         magiasSelecionadasFicha.push({ id: magia.id, origem });
     }
@@ -3553,6 +3695,9 @@ function removerMagiaModal() {
     if (!magiaModalAtual) return;
     const { magia, origem } = magiaModalAtual;
 
+    // Remove TODAS as cópias dessa magia nessa origem (preserva fontes
+    // de outras origens, ex.: classe permanece se a remoção foi via
+    // botão da ancestralidade).
     magiasSelecionadasFicha = magiasSelecionadasFicha.filter(m =>
         !(m.id === magia.id && m.origem === origem)
     );
