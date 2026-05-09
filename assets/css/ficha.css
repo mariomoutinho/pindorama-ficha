@@ -3076,9 +3076,10 @@ max-width: 160px;
     box-shadow: 0 0 0 3px rgba(105, 67, 111, 0.12);
 }
 
-.class-summary-field {
-    grid-column: span 2;
-}
+/* Bloco fixo "Resumo da Classe" foi substituído pelo tooltip flutuante
+   .class-preview-card. Mantido escondido por segurança caso algum cache
+   antigo de markup ainda contenha esses nós. */
+.class-summary-field { display: none !important; }
 
 .class-summary-inner {
     display: grid;
@@ -3179,5 +3180,219 @@ max-width: 160px;
     .class-summary-inner {
         grid-template-columns: 96px 1fr;
         gap: 10px;
+    }
+}
+
+/* =====================================================
+   PRÉVIA FLUTUANTE DA CLASSE (tooltip)
+   Substitui o antigo bloco fixo "Resumo da Classe".
+   Singleton anexado a document.body (evita corte por
+   overflow/transform/contain de ancestrais).
+===================================================== */
+
+/* Botão ⓘ ao lado do label da classe (touch + acessibilidade).
+   Posicionado sobre o canto superior-direito do .field, fora da área do
+   trigger do picker — não conflita com a seta do dropdown. */
+.field .class-preview-info-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1.5px solid rgba(105, 67, 111, 0.45);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--purple, #69436f);
+    font-size: 0.88rem;
+    font-weight: 800;
+    line-height: 1;
+    cursor: help;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.15s ease;
+    z-index: 2;
+}
+.field .class-preview-info-btn:hover,
+.field .class-preview-info-btn:focus-visible {
+    background: var(--purple, #69436f);
+    color: #fff;
+    border-color: var(--purple, #69436f);
+    outline: none;
+    box-shadow: 0 2px 8px rgba(105, 67, 111, 0.30);
+}
+.field .class-preview-info-btn[aria-expanded="true"] {
+    background: var(--purple, #69436f);
+    color: #fff;
+}
+/* O .field que contém #classeSelect precisa ser anchor relativo p/ o ⓘ. */
+.field:has(#classeSelect) {
+    position: relative;
+}
+
+.class-preview-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 9000;
+    width: min(420px, calc(100vw - 24px));
+    padding: 14px;
+    border: 2px solid rgba(105, 67, 111, 0.55);
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at top left, rgba(245, 220, 180, 0.18) 0%, transparent 45%),
+        rgba(255, 252, 247, 0.98);
+    box-shadow:
+        0 18px 40px rgba(43, 18, 50, 0.32),
+        0 0 0 1px rgba(216, 162, 58, 0.18);
+    color: var(--purple-dark, #3b1d43);
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 160ms ease, transform 160ms ease;
+    pointer-events: none;
+    display: grid;
+    grid-template-columns: 132px 1fr;
+    gap: 14px;
+    align-items: start;
+}
+.class-preview-card[hidden] { display: none; }
+.class-preview-card.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+.class-preview-card.is-empty-state {
+    grid-template-columns: 1fr;
+}
+.class-preview-empty {
+    color: var(--muted, #91739a);
+    font-style: italic;
+    font-size: 0.94rem;
+    text-align: center;
+    padding: 8px 4px;
+}
+
+.class-preview-image {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1.5px solid rgba(105, 67, 111, 0.30);
+    background:
+        radial-gradient(circle at 50% 30%, rgba(245, 220, 180, 0.18) 0%, transparent 55%),
+        radial-gradient(circle at 50% 80%, rgba(43, 18, 50, 0.65) 0%, rgba(43, 18, 50, 0.92) 100%);
+    box-shadow: inset 0 0 0 1px rgba(216, 162, 58, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.class-preview-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center bottom;
+    padding: 4px 4px 0;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.32));
+}
+.class-preview-image.is-empty {
+    background:
+        repeating-linear-gradient(45deg,
+            rgba(105, 67, 111, 0.12) 0,
+            rgba(105, 67, 111, 0.12) 8px,
+            rgba(105, 67, 111, 0.04) 8px,
+            rgba(105, 67, 111, 0.04) 16px);
+    box-shadow: none;
+    border-color: rgba(105, 67, 111, 0.20);
+}
+.class-preview-image.is-empty .class-illustration-glyph {
+    font-size: 2.6rem;
+    color: rgba(105, 67, 111, 0.55);
+}
+
+.class-preview-text {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+.class-preview-name {
+    margin: 0;
+    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    font-size: 1.45rem;
+    color: var(--purple-dark, #3b1d43);
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+}
+.class-preview-desc {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: var(--purple-dark, #3b1d43);
+}
+.class-preview-dl {
+    margin: 4px 0 0;
+    display: grid;
+    gap: 4px;
+    font-size: 0.88rem;
+    line-height: 1.4;
+}
+.class-preview-dl > div {
+    display: grid;
+    grid-template-columns: minmax(96px, auto) 1fr;
+    gap: 8px;
+}
+.class-preview-dl dt {
+    margin: 0;
+    color: var(--purple, #69436f);
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 0.74rem;
+    letter-spacing: 0.6px;
+    align-self: center;
+}
+.class-preview-dl dd {
+    margin: 0;
+    color: var(--purple-dark, #3b1d43);
+}
+.class-preview-link {
+    margin-top: 6px;
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 6px 10px;
+    border: 1.5px solid var(--purple, #69436f);
+    border-radius: 10px;
+    color: var(--purple, #69436f);
+    background: rgba(255, 255, 255, 0.82);
+    text-decoration: none;
+    font-size: 0.84rem;
+    font-weight: 800;
+    transition: 0.15s ease;
+}
+.class-preview-link:hover,
+.class-preview-link:focus-visible {
+    background: var(--purple, #69436f);
+    color: #fff;
+    outline: none;
+}
+
+@media (max-width: 720px) {
+    .class-preview-card {
+        grid-template-columns: 1fr;
+        width: min(360px, calc(100vw - 24px));
+        padding: 12px;
+        gap: 10px;
+    }
+    .class-preview-image {
+        max-width: 200px;
+        margin: 0 auto;
+        width: 100%;
+    }
+    .class-preview-name {
+        font-size: 1.3rem;
+        text-align: center;
+    }
+    .class-preview-dl > div {
+        grid-template-columns: minmax(82px, auto) 1fr;
     }
 }

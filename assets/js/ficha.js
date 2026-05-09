@@ -4393,6 +4393,7 @@ function configurarClasseDinamica() {
         atualizarMagiasFicha();
     });
 
+    setupClassPreviewTooltip();
     atualizarResumoClasse();
     atualizarRecursosPorClasse();
     aplicarProficienciasDaClasse();
@@ -4422,41 +4423,12 @@ function getClassSlugDoCampo(classeCampo) {
         .replace(/^-+|-+$/g, "");
 }
 
-function aplicarClassIllustration(slug) {
-    const box = document.getElementById("classSummaryIllustration");
-    if (!box) return;
+// Cache da prévia da classe atualmente selecionada. Lido pelo tooltip
+// flutuante; atualizado por atualizarResumoClasse() a cada change.
+let _classePreviewData = null;
 
-    if (!slug) {
-        box.classList.add("is-empty");
-        box.innerHTML = '<span class="class-illustration-glyph">&#9884;</span>';
-        return;
-    }
-
-    const tryUrls = [
-        `assets/img/classes/${slug}.png`,
-        `assets/img/classes/${slug}.webp`,
-    ];
-
-    box.classList.remove("is-empty");
-    box.innerHTML = "";
-    const img = document.createElement("img");
-    img.className = "class-summary-illustration-img";
-    img.alt = `Ilustração da classe ${slug}`;
-    img.loading = "lazy";
-
-    let idx = 0;
-    img.addEventListener("error", () => {
-        idx += 1;
-        if (idx < tryUrls.length) {
-            img.src = tryUrls[idx];
-            return;
-        }
-        // Sem ilustração disponível: mostra placeholder elegante.
-        box.classList.add("is-empty");
-        box.innerHTML = '<span class="class-illustration-glyph">&#9884;</span>';
-    });
-    img.src = tryUrls[0];
-    box.appendChild(img);
+function getClassePreviewData() {
+    return _classePreviewData;
 }
 
 function atualizarResumoClasse() {
@@ -4464,41 +4436,313 @@ function atualizarResumoClasse() {
         document.getElementById("classeSelect") ||
         document.querySelector('[name="classe"]');
 
-    const summaryBox = document.getElementById("classSummaryBox");
-    const classPageLink = document.getElementById("classPageLink");
-
-    if (!classeCampo || !summaryBox) return;
-
-    const nomeClasse = getNomeClassePorCampo(classeCampo);
-    const classe = getDadosClassePorCampo(classeCampo);
-
-    if (!classe) {
-        summaryBox.innerHTML = `<span>Selecione uma classe para ver PV, PM, atributo-chave e perícias.</span>`;
-
-        if (classPageLink) {
-            classPageLink.hidden = true;
-            classPageLink.removeAttribute("href");
-        }
-
-        aplicarClassIllustration("");
+    if (!classeCampo) {
+        _classePreviewData = null;
+        if (typeof refreshClassPreviewTooltip === "function") refreshClassPreviewTooltip();
         return;
     }
 
-    summaryBox.innerHTML = `
-        <strong>${nomeClasse}</strong><br>
-        ${classe.descricao}<br>
-        <strong>Atributo-chave:</strong> ${classe.atributo}<br>
-        <strong>PV:</strong> ${classe.pvInicial} + Constituição no 1º nível; depois ${classe.pvPorNivel} + Constituição por nível.<br>
-        <strong>PM:</strong> ${classe.pmPorNivel} por nível.<br>
-        <strong>Perícias:</strong> ${classe.pericias}
-    `;
+    const nomeClasse = getNomeClassePorCampo(classeCampo);
+    const classe = getDadosClassePorCampo(classeCampo);
+    const slug = getClassSlugDoCampo(classeCampo);
 
-    if (classPageLink) {
-        classPageLink.hidden = false;
-        classPageLink.href = classe.slug;
+    if (!classe) {
+        _classePreviewData = null;
+    } else {
+        _classePreviewData = {
+            nome: nomeClasse || classe.slug || slug,
+            slug,
+            descricao: classe.descricao || "",
+            atributo: classe.atributo || "",
+            pvInicial: classe.pvInicial,
+            pvPorNivel: classe.pvPorNivel,
+            pmPorNivel: classe.pmPorNivel,
+            pericias: classe.pericias || "",
+            pageHref: classe.slug || "",
+            imagemUrls: slug
+                ? [`assets/img/classes/${slug}.png`, `assets/img/classes/${slug}.webp`]
+                : [],
+        };
     }
 
-    aplicarClassIllustration(getClassSlugDoCampo(classeCampo));
+    if (typeof refreshClassPreviewTooltip === "function") refreshClassPreviewTooltip();
+}
+
+/* ============================================================
+ * Tooltip flutuante de prévia da classe selecionada.
+ * Substitui o antigo bloco fixo "Resumo da Classe". Aparece ao
+ * passar mouse / focar / clicar no botão ⓘ ao lado do trigger
+ * da Classe. Singleton em document.body p/ não ser cortado.
+ * ============================================================ */
+let refreshClassPreviewTooltip = function () {};
+
+function setupClassPreviewTooltip() {
+    const classeCampo = document.getElementById("classeSelect");
+    if (!classeCampo) return;
+    const fieldWrap = classeCampo.closest(".field") || classeCampo.parentElement;
+    if (!fieldWrap) return;
+
+    // Card flutuante (singleton em body, fora de qualquer container com
+    // overflow hidden / transform / contain).
+    const card = document.createElement("div");
+    card.className = "class-preview-card";
+    card.setAttribute("role", "tooltip");
+    card.id = "classePreviewCard";
+    card.hidden = true;
+    document.body.appendChild(card);
+
+    // Botão ⓘ — usado em touch/mobile para abrir o card sem conflitar com
+    // o clique do trigger (que abre o modal de seleção). Em desktop o
+    // hover já dá conta; o botão fica visível mas discreto.
+    const infoBtn = document.createElement("button");
+    infoBtn.type = "button";
+    infoBtn.className = "class-preview-info-btn";
+    infoBtn.setAttribute("aria-label", "Ver detalhes da classe selecionada");
+    infoBtn.setAttribute("aria-expanded", "false");
+    infoBtn.setAttribute("aria-controls", "classePreviewCard");
+    infoBtn.textContent = "ⓘ";
+    fieldWrap.appendChild(infoBtn);
+
+    let openTimer = null;
+    let closeTimer = null;
+    let isOpen = false;
+    let isPinned = false; // aberto via clique/toque/Esc — só fecha por gesto explícito
+
+    function pickTrigger() {
+        // Prefere o gatilho do entity-picker quando montado; senão o select nativo.
+        return fieldWrap.querySelector(".anc-picker-trigger") || classeCampo;
+    }
+
+    function buildCardContent(data) {
+        if (!data) {
+            return (
+                '<div class="class-preview-empty">' +
+                "Selecione uma classe para ver PV, PM, atributo-chave e perícias." +
+                "</div>"
+            );
+        }
+        const nome = escapeForCard(data.nome);
+        const desc = escapeForCard(data.descricao);
+        const atributo = escapeForCard(data.atributo);
+        const pericias = escapeForCard(data.pericias);
+        const pv =
+            data.pvInicial != null && data.pvPorNivel != null
+                ? `${data.pvInicial} + Constituição no 1º; depois ${data.pvPorNivel} + Constituição por nível`
+                : "—";
+        const pm = data.pmPorNivel != null ? `${data.pmPorNivel} por nível` : "—";
+        const pageHref = escapeForCard(data.pageHref || "");
+        const linkHtml = pageHref
+            ? `<a class="class-preview-link" href="${pageHref}">Abrir página da classe</a>`
+            : "";
+
+        const hasImg = Array.isArray(data.imagemUrls) && data.imagemUrls.length;
+        const imgHtml = hasImg
+            ? `<div class="class-preview-image">
+                   <img alt="Ilustração da classe ${nome}" loading="lazy" />
+               </div>`
+            : `<div class="class-preview-image is-empty" aria-hidden="true">
+                   <span class="class-illustration-glyph">⚜</span>
+               </div>`;
+
+        return `
+            ${imgHtml}
+            <div class="class-preview-text">
+                <h3 class="class-preview-name">${nome}</h3>
+                <p class="class-preview-desc">${desc}</p>
+                <dl class="class-preview-dl">
+                    <div><dt>Atributo-chave</dt><dd>${atributo || "—"}</dd></div>
+                    <div><dt>PV</dt><dd>${pv}</dd></div>
+                    <div><dt>PM</dt><dd>${pm}</dd></div>
+                    <div><dt>Perícias</dt><dd>${pericias || "—"}</dd></div>
+                </dl>
+                ${linkHtml}
+            </div>
+        `;
+    }
+
+    function escapeForCard(value) {
+        if (value == null) return "";
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function attachImageChain(data) {
+        if (!data || !Array.isArray(data.imagemUrls) || !data.imagemUrls.length) return;
+        const img = card.querySelector(".class-preview-image img");
+        const wrap = card.querySelector(".class-preview-image");
+        if (!img || !wrap) return;
+        let idx = 0;
+        img.addEventListener("error", () => {
+            idx += 1;
+            if (idx < data.imagemUrls.length) {
+                img.src = data.imagemUrls[idx];
+                return;
+            }
+            // Falhou tudo: mostra placeholder sem quebrar layout.
+            wrap.classList.add("is-empty");
+            wrap.innerHTML = '<span class="class-illustration-glyph">⚜</span>';
+        });
+        img.src = data.imagemUrls[0];
+    }
+
+    function renderCard() {
+        const data = getClassePreviewData();
+        card.classList.toggle("is-empty-state", !data);
+        card.innerHTML = buildCardContent(data);
+        attachImageChain(data);
+    }
+
+    function position() {
+        const trigger = pickTrigger();
+        if (!trigger) return;
+        const r = trigger.getBoundingClientRect();
+        const margin = 8;
+        const cardW = card.offsetWidth || 360;
+        const cardH = card.offsetHeight || 200;
+
+        // Padrão: abaixo do trigger, alinhado à esquerda.
+        let top = r.bottom + window.scrollY + 8;
+        let left = r.left + window.scrollX;
+
+        // Se estourar à direita, alinha à direita do trigger.
+        const overflowRight = left + cardW - window.scrollX > window.innerWidth - margin;
+        if (overflowRight) {
+            left = Math.max(window.scrollX + margin, r.right + window.scrollX - cardW);
+        }
+        // Se estourar embaixo (perto do fim da viewport), tenta acima do trigger.
+        const overflowBottom = top + cardH - window.scrollY > window.innerHeight - margin;
+        if (overflowBottom) {
+            const altTop = r.top + window.scrollY - cardH - 8;
+            if (altTop >= window.scrollY + margin) top = altTop;
+        }
+
+        card.style.top = top + "px";
+        card.style.left = left + "px";
+    }
+
+    function show({ pin = false } = {}) {
+        if (isPinned && !pin && isOpen) return;
+        clearTimeout(closeTimer);
+        closeTimer = null;
+
+        const data = getClassePreviewData();
+        // Sem classe selecionada: não exibe (evita ruído).
+        if (!data) {
+            hide({ force: true });
+            return;
+        }
+
+        renderCard();
+        card.hidden = false;
+        // Força reflow para a transição de opacidade rodar.
+        // eslint-disable-next-line no-unused-expressions
+        card.offsetWidth;
+        card.classList.add("is-visible");
+        position();
+        isOpen = true;
+        isPinned = pin;
+        infoBtn.setAttribute("aria-expanded", "true");
+    }
+
+    function hide({ force = false } = {}) {
+        if (isPinned && !force) return;
+        clearTimeout(openTimer);
+        openTimer = null;
+        card.classList.remove("is-visible");
+        isOpen = false;
+        isPinned = false;
+        infoBtn.setAttribute("aria-expanded", "false");
+        closeTimer = setTimeout(() => {
+            card.hidden = true;
+        }, 180);
+    }
+
+    function scheduleOpen() {
+        if (isOpen) return;
+        clearTimeout(openTimer);
+        openTimer = setTimeout(() => show(), 350);
+    }
+    function scheduleClose() {
+        if (!isOpen || isPinned) {
+            clearTimeout(openTimer);
+            openTimer = null;
+            return;
+        }
+        clearTimeout(closeTimer);
+        closeTimer = setTimeout(() => hide(), 200);
+    }
+
+    // Hover do field/trigger
+    fieldWrap.addEventListener("mouseenter", scheduleOpen);
+    fieldWrap.addEventListener("mouseleave", scheduleClose);
+
+    // Hover do próprio card mantém aberto.
+    card.addEventListener("mouseenter", () => {
+        clearTimeout(closeTimer);
+    });
+    card.addEventListener("mouseleave", scheduleClose);
+
+    // Foco via teclado: abre quando o trigger ou o select recebe foco.
+    fieldWrap.addEventListener("focusin", (ev) => {
+        // Não abre se o foco for no botão ⓘ (que tem toggle próprio).
+        if (ev.target === infoBtn) return;
+        scheduleOpen();
+    });
+    fieldWrap.addEventListener("focusout", (ev) => {
+        // Pequeno delay p/ permitir mover foco para o card sem fechar.
+        setTimeout(() => {
+            if (card.contains(document.activeElement)) return;
+            if (fieldWrap.contains(document.activeElement)) return;
+            scheduleClose();
+        }, 0);
+    });
+
+    // Toggle por clique/toque no botão ⓘ — não dispara o picker.
+    infoBtn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (isOpen && isPinned) {
+            hide({ force: true });
+        } else {
+            show({ pin: true });
+        }
+    });
+
+    // Esc fecha card pinado/aberto.
+    document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && isOpen) {
+            hide({ force: true });
+        }
+    });
+
+    // Clique fora fecha (apenas quando pinado por click/touch).
+    document.addEventListener("click", (ev) => {
+        if (!isOpen || !isPinned) return;
+        if (card.contains(ev.target)) return;
+        if (fieldWrap.contains(ev.target)) return;
+        hide({ force: true });
+    });
+
+    // Reposiciona ao rolar/redimensionar enquanto aberto.
+    window.addEventListener("scroll", () => { if (isOpen) position(); }, { passive: true });
+    window.addEventListener("resize", () => { if (isOpen) position(); });
+
+    // Permite o caller atualizar o conteúdo após troca de classe.
+    refreshClassPreviewTooltip = function () {
+        if (isOpen) {
+            const data = getClassePreviewData();
+            if (!data) {
+                hide({ force: true });
+                return;
+            }
+            renderCard();
+            position();
+        }
+    };
 }
 
 function atualizarRecursosPorClasse() {
