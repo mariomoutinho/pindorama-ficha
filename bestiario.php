@@ -1,12 +1,31 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/permissions.php';
+require_once __DIR__ . '/includes/aventuras-helpers.php';
 iniciarSessao();
 
 $dadosBestiario = json_decode(file_get_contents(__DIR__ . '/data/bestiario.json'), true);
 $filtrosBestiario = $dadosBestiario['filtros'] ?? [];
 
 $bestiarioPodeEditar = isFacilitador();
+
+// Anexa NPCs criados dentro das aventuras do usuário (tabela aventura_npcs).
+// Aparecem misturados às criaturas do JSON estático sem precisar mexer
+// em bestiario.js — basta engrossar window.BESTIARIO_BASE.criaturas.
+$usuarioBestiario = usuarioLogado();
+if ($usuarioBestiario && isFacilitador()) {
+    try {
+        $npcsAventura = aventuraNpcsDoUsuario((int) $usuarioBestiario['id']);
+        if (!isset($dadosBestiario['criaturas']) || !is_array($dadosBestiario['criaturas'])) {
+            $dadosBestiario['criaturas'] = [];
+        }
+        foreach ($npcsAventura as $npc) {
+            $dadosBestiario['criaturas'][] = npcAventuraParaCriatura($npc);
+        }
+    } catch (Throwable $e) {
+        error_log('[bestiario] Falha ao anexar NPCs de aventura: ' . $e->getMessage());
+    }
+}
 
 function bestiarioOptions(array $valores): string
 {

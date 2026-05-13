@@ -845,3 +845,123 @@
         font-size: clamp(1.55rem, 2.2vw, 2rem);
     }
 }
+
+/* =====================================================
+   Seções extras no editor da aventura: Cenas e NPCs
+===================================================== */
+.aventura-secao {
+    margin-top: 26px;
+    border: 1.5px solid rgba(118, 84, 124, 0.30);
+    border-radius: 14px;
+    background: rgba(255, 252, 247, 0.98);
+    padding: 18px 20px;
+    box-shadow: 0 6px 18px rgba(43, 18, 50, 0.10);
+}
+.aventura-secao-head h2 {
+    margin: 0 0 4px;
+    font-family: var(--aventura-titulo-font);
+    color: var(--purple-dark, #3b1d43);
+    font-size: 1.4rem;
+    letter-spacing: 0.4px;
+    word-break: break-word;
+}
+.aventura-secao-head p {
+    margin: 0 0 14px;
+    color: var(--muted, #91739a);
+    font-size: 0.92rem;
+}
+.aventura-secao-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.aventura-secao-vazio {
+    color: var(--muted, #91739a);
+    font-style: italic;
+}
+
+/* Cenas */
+.aventura-cenas-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+}
+.aventura-cenas-lista li {
+    padding: 10px 12px;
+    border: 1px solid rgba(118, 84, 124, 0.22);
+    border-radius: 10px;
+    background: linear-gradient(135deg, #fff, rgba(245, 235, 250, 0.55));
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    align-items: baseline;
+}
+.aventura-cena-meta {
+    color: var(--muted, #91739a);
+    font-size: 0.86rem;
+}
+
+/* NPCs */
+.aventura-npc-form {
+    background: rgba(118, 84, 124, 0.06);
+    border: 1.5px dashed rgba(118, 84, 124, 0.35);
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+.aventura-npc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+}
+.aventura-npc-grid .field.wide { grid-column: 1 / -1; }
+.aventura-npc-form-actions {
+    margin-top: 10px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.aventura-npcs-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+}
+.aventura-npc-card {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border: 1px solid rgba(118, 84, 124, 0.26);
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fff, rgba(245, 235, 250, 0.42));
+}
+.aventura-npc-info { flex: 1; min-width: 0; }
+.aventura-npc-info strong {
+    display: block;
+    font-family: var(--aventura-titulo-font);
+    font-size: 1.1rem;
+    color: var(--purple-dark, #3b1d43);
+}
+.aventura-npc-meta {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--muted, #91739a);
+    margin-top: 2px;
+}
+.aventura-npc-desc {
+    margin: 6px 0 0;
+    font-size: 0.92rem;
+    color: var(--purple-dark, #3b1d43);
+}
+.aventura-npc-delete { margin: 0; }
+
+@media (max-width: 720px) {
+    .aventura-npc-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

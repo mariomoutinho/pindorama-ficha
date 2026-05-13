@@ -2,8 +2,23 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
-exigirLogin();
+$usuarioSCB = exigirLogin();
 require_once __DIR__ . '/includes/permissions.php';
+require_once __DIR__ . '/includes/aventuras-helpers.php';
+
+// Contexto opcional: ?aventura_id=N rota o save para a pasta da aventura
+// em vez do estado global. Só dono pode gravar.
+$aventuraIdSCB = isset($_GET['aventura_id']) ? (int) $_GET['aventura_id'] : 0;
+$avSCB = null;
+if ($aventuraIdSCB > 0) {
+    $avSCB = carregarAventura($aventuraIdSCB);
+    if (!$avSCB || (int) $avSCB['usuario_id'] !== (int) $usuarioSCB['id']) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Aventura inválida ou não pertence a você.'],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -58,7 +73,13 @@ if (!is_writable($dataDir)) {
     exit;
 }
 
-$stateFile = $dataDir . '/campo-batalha-state.json';
+if ($avSCB) {
+    // Aventura: usa pasta dedicada e cria se necessário.
+    aventuraGarantirPastaCenas((int) $avSCB['id']);
+    $stateFile = aventuraCenasFile((int) $avSCB['id']);
+} else {
+    $stateFile = $dataDir . '/campo-batalha-state.json';
+}
 
 // ---------------------------------------------------------------
 // Proteção contra overwrite acidental do estado:

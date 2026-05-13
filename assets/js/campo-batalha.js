@@ -12,8 +12,17 @@
     // ----------------------------------------------------------------
 
     const STORAGE_KEY = 'pindorama:campo-batalha:v1';
-    const SERVER_STATE_URL = 'carregar-campo-batalha.php';
-    const SERVER_SAVE_URL = 'salvar-campo-batalha.php';
+    // Quando a Mesa de Jogo é aberta com ?aventura_id=N, o backend
+    // roteia carregar/salvar para data/aventuras/<id>/cenas.json — basta
+    // anexar o parâmetro às URLs. Sem contexto, segue o estado global.
+    const AVENTURA_ID = (typeof window !== 'undefined' && window.PINDORAMA_AVENTURA_ID) || null;
+    function withAventuraParam(url) {
+        if (!AVENTURA_ID) return url;
+        const sep = url.indexOf('?') >= 0 ? '&' : '?';
+        return url + sep + 'aventura_id=' + encodeURIComponent(AVENTURA_ID);
+    }
+    const SERVER_STATE_URL = withAventuraParam('carregar-campo-batalha.php');
+    const SERVER_SAVE_URL  = withAventuraParam('salvar-campo-batalha.php');
     const SERVER_IMAGE_UPLOAD_URL = 'salvar-imagem-campo-batalha.php';
     const CLIENT_UPLOAD_TARGET_BYTES = 4700 * 1024;
     const BESTIARIO_STORAGE_KEY = 'pindorama.bestiario.criaturas';

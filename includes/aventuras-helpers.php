@@ -277,3 +277,226 @@ function formatarTextoIntegralAventura(?string $texto): string
     // Mantém parágrafos e quebras de linha sem permitir HTML.
     return nl2br(htmlspecialchars($texto, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
 }
+
+/* ============================================================
+ * CENAS DE AVENTURA (reaproveita o formato da Mesa de Jogo)
+ *
+ * Cada aventura ganha um arquivo dedicado em
+ * data/aventuras/<aventura_id>/cenas.json com o mesmo schema do
+ * data/campo-batalha-state.json global (pages, activePageId, etc.).
+ *
+ * Os endpoints carregar-campo-batalha.php e salvar-campo-batalha.php
+ * reaproveitam esse arquivo automaticamente quando recebem
+ * ?aventura_id=N e o usuário é dono da aventura — sem duplicar a
+ * Mesa de Jogo. O JS também detecta window.PINDORAMA_AVENTURA_ID.
+ * ============================================================ */
+
+function aventuraCenasDir(int $aventuraId): string
+{
+    return __DIR__ . '/../data/aventuras/' . $aventuraId;
+}
+
+function aventuraCenasFile(int $aventuraId): string
+{
+    return aventuraCenasDir($aventuraId) . '/cenas.json';
+}
+
+function aventuraGarantirPastaCenas(int $aventuraId): void
+{
+    $dir = aventuraCenasDir($aventuraId);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+}
+
+/**
+ * Lê o estado de cenas (pages) de uma aventura. Retorna array ou null
+ * quando ainda não há cenas salvas.
+ */
+function aventuraCarregarCenas(int $aventuraId): ?array
+{
+    $f = aventuraCenasFile($aventuraId);
+    if (!is_file($f)) return null;
+    $raw = file_get_contents($f);
+    if ($raw === false || trim($raw) === '') return null;
+    $state = json_decode($raw, true);
+    return is_array($state) ? $state : null;
+}
+
+/**
+ * Resumo (id + nome) de cada cena da aventura, para listagem.
+ */
+function aventuraListarCenas(int $aventuraId): array
+{
+    $state = aventuraCarregarCenas($aventuraId);
+    if (!$state || !is_array($state['pages'] ?? null)) return [];
+    $out = [];
+    foreach ($state['pages'] as $p) {
+        $out[] = [
+            'id'    => (string) ($p['id'] ?? ''),
+            'name'  => (string) ($p['name'] ?? 'Cena sem nome'),
+            'tipo'  => (string) ($p['tipo'] ?? ''),
+            'tokens'   => is_array($p['tokens'] ?? null)   ? count($p['tokens'])   : 0,
+            'scenery'  => is_array($p['scenery'] ?? null)  ? count($p['scenery'])  : 0,
+        ];
+    }
+    return $out;
+}
+
+/* ============================================================
+ * NPCs DE AVENTURA — tabela aventura_npcs.
+ *
+ * NPCs criados aqui ficam server-side e são injetados no Bestiário
+ * do usuário (bestiario.php anexa ao $dadosBestiario['criaturas']
+ * antes de exportar pra window.BESTIARIO_BASE). Não duplicam o JSON
+ * estático nem o localStorage do cliente.
+ * ============================================================ */
+
+function aventuraListarNpcs(int $aventuraId): array
+{
+    global $pdo;
+    $stmt = $pdo->prepare(
+        "SELECT * FROM aventura_npcs WHERE aventura_id = :id
+         ORDER BY updated_at DESC, id DESC"
+    );
+    $stmt->execute(['id' => $aventuraId]);
+    return $stmt->fetchAll();
+}
+
+function aventuraNpcsDoUsuario(int $usuarioId): array
+{
+    global $pdo;
+    $stmt = $pdo->prepare(
+        "SELECT n.*, a.titulo AS aventura_titulo
+         FROM aventura_npcs n
+         INNER JOIN aventuras a ON a.id = n.aventura_id
+         WHERE n.usuario_id = :uid
+         ORDER BY n.updated_at DESC, n.id DESC"
+    );
+    $stmt->execute(['uid' => $usuarioId]);
+    return $stmt->fetchAll();
+}
+
+function aventuraCarregarNpc(int $npcId): ?array
+{
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT * FROM aventura_npcs WHERE id = :id LIMIT 1");
+    $stmt->execute(['id' => $npcId]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+function aventuraMontarNpcInput(array $post): array
+{
+    $cap = static function ($v, $max) {
+        $s = trim((string) ($v ?? ''));
+        return $s === '' ? null : mb_substr($s, 0, $max);
+    };
+    $intOrNull = static function ($v) {
+        if ($v === null || $v === '') return null;
+        $n = (int) $v;
+        return $n;
+    };
+    return [
+        'nome'         => $cap($post['nome'] ?? '', 180) ?? '',
+        'tipo'         => $cap($post['tipo'] ?? '', 60),
+        'nd'           => $cap($post['nd'] ?? '', 20),
+        'tamanho'      => $cap($post['tamanho'] ?? '', 40),
+        'bioma'        => $cap($post['bioma'] ?? '', 80),
+        'papel_tatico' => $cap($post['papel_tatico'] ?? '', 80),
+        'pv_max'       => $intOrNull($post['pv_max'] ?? null),
+        'defesa'       => $intOrNull($post['defesa'] ?? null),
+        'deslocamento' => $cap($post['deslocamento'] ?? '', 40),
+        'descricao'    => $cap($post['descricao'] ?? '', 4000),
+        'habilidades'  => $cap($post['habilidades'] ?? '', 4000),
+        'imagem'       => $cap($post['imagem'] ?? '', 255),
+    ];
+}
+
+function aventuraCriarNpc(int $aventuraId, int $usuarioId, array $dados): int
+{
+    global $pdo;
+    $stmt = $pdo->prepare(
+        "INSERT INTO aventura_npcs
+           (aventura_id, usuario_id, nome, tipo, nd, tamanho, bioma,
+            papel_tatico, pv_max, defesa, deslocamento, descricao,
+            habilidades, imagem)
+         VALUES
+           (:aid, :uid, :nome, :tipo, :nd, :tam, :bioma,
+            :papel, :pv, :def, :desl, :desc, :hab, :img)"
+    );
+    $stmt->execute([
+        'aid'   => $aventuraId,
+        'uid'   => $usuarioId,
+        'nome'  => $dados['nome'],
+        'tipo'  => $dados['tipo'],
+        'nd'    => $dados['nd'],
+        'tam'   => $dados['tamanho'],
+        'bioma' => $dados['bioma'],
+        'papel' => $dados['papel_tatico'],
+        'pv'    => $dados['pv_max'],
+        'def'   => $dados['defesa'],
+        'desl'  => $dados['deslocamento'],
+        'desc'  => $dados['descricao'],
+        'hab'   => $dados['habilidades'],
+        'img'   => $dados['imagem'],
+    ]);
+    return (int) $pdo->lastInsertId();
+}
+
+function aventuraAtualizarNpc(int $npcId, array $dados): void
+{
+    global $pdo;
+    $stmt = $pdo->prepare(
+        "UPDATE aventura_npcs SET
+            nome = :nome, tipo = :tipo, nd = :nd, tamanho = :tam,
+            bioma = :bioma, papel_tatico = :papel, pv_max = :pv,
+            defesa = :def, deslocamento = :desl, descricao = :desc,
+            habilidades = :hab, imagem = :img
+         WHERE id = :id"
+    );
+    $stmt->execute([
+        'nome' => $dados['nome'], 'tipo' => $dados['tipo'], 'nd' => $dados['nd'],
+        'tam' => $dados['tamanho'], 'bioma' => $dados['bioma'],
+        'papel' => $dados['papel_tatico'], 'pv' => $dados['pv_max'],
+        'def' => $dados['defesa'], 'desl' => $dados['deslocamento'],
+        'desc' => $dados['descricao'], 'hab' => $dados['habilidades'],
+        'img' => $dados['imagem'], 'id' => $npcId,
+    ]);
+}
+
+function aventuraExcluirNpc(int $npcId): bool
+{
+    global $pdo;
+    $stmt = $pdo->prepare("DELETE FROM aventura_npcs WHERE id = :id");
+    $stmt->execute(['id' => $npcId]);
+    return $stmt->rowCount() > 0;
+}
+
+/**
+ * Converte uma linha de aventura_npcs no formato esperado pelo
+ * Bestiário (mesma forma das criaturas no JSON estático).
+ */
+function npcAventuraParaCriatura(array $row): array
+{
+    return [
+        'id'           => 'npc-aventura-' . (int) $row['id'],
+        'nome'         => (string) $row['nome'],
+        'fraseImpacto' => '',
+        'nd'           => isset($row['nd']) && $row['nd'] !== '' ? $row['nd'] : 0,
+        'tipo'         => (string) ($row['tipo'] ?? ''),
+        'tamanho'      => (string) ($row['tamanho'] ?? ''),
+        'bioma'        => (string) ($row['bioma'] ?? ''),
+        'habitat'      => '',
+        'papelTatico'  => (string) ($row['papel_tatico'] ?? ''),
+        'imagem'       => (string) ($row['imagem'] ?? ''),
+        'pvMax'        => isset($row['pv_max']) && $row['pv_max'] !== null ? (int) $row['pv_max'] : 0,
+        'defesa'       => isset($row['defesa']) && $row['defesa'] !== null ? (int) $row['defesa'] : 0,
+        'deslocamento' => (string) ($row['deslocamento'] ?? ''),
+        'descricao'    => (string) ($row['descricao'] ?? ''),
+        'habilidades'  => (string) ($row['habilidades'] ?? ''),
+        'origemAventura'   => true,
+        'aventuraId'       => (int) $row['aventura_id'],
+        'aventuraTitulo'   => (string) ($row['aventura_titulo'] ?? ''),
+    ];
+}

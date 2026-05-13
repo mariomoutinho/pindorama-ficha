@@ -2,8 +2,25 @@
 require_once __DIR__ . '/includes/auth.php';
 exigirLogin();
 require_once __DIR__ . '/includes/permissions.php';
+require_once __DIR__ . '/includes/aventuras-helpers.php';
 
 $papelUsuarioCB = papelGlobal() ?: 'participante';
+
+// Contexto opcional de Aventura. Se a Mesa de Jogo for aberta com
+// ?aventura_id=N, as cenas (pages) são carregadas/salvas no arquivo
+// data/aventuras/<id>/cenas.json em vez do estado global. Só funciona
+// para o facilitador dono daquela aventura.
+$aventuraCtxId = isset($_GET['aventura_id']) ? (int) $_GET['aventura_id'] : 0;
+$aventuraCtx   = null;
+if ($aventuraCtxId > 0) {
+    $usuarioMJ = usuarioLogado();
+    $cand = carregarAventura($aventuraCtxId);
+    if ($cand && $usuarioMJ && (int) $cand['usuario_id'] === (int) $usuarioMJ['id']) {
+        $aventuraCtx = $cand;
+    } else {
+        $aventuraCtxId = 0;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -22,14 +39,25 @@ $papelUsuarioCB = papelGlobal() ?: 'participante';
     <div id="cbJsAlive" style="position:fixed;top:8px;left:8px;z-index:9999;background:#9b254d;color:#fff;padding:6px 12px;border-radius:8px;font-family:sans-serif;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.3)">
         ⚠ JS NÃO INICIADO — abra DevTools (F12) e veja Console
     </div>
-    <script>window.PINDORAMA_PAPEL = <?= json_encode($papelUsuarioCB) ?>;</script>
+    <script>
+        window.PINDORAMA_PAPEL = <?= json_encode($papelUsuarioCB) ?>;
+        window.PINDORAMA_AVENTURA_ID = <?= $aventuraCtxId ?: 'null' ?>;
+        window.PINDORAMA_AVENTURA_TITULO = <?= $aventuraCtx ? json_encode($aventuraCtx['titulo']) : 'null' ?>;
+    </script>
     <script src="assets/js/transitions.js?v=20260508u"></script>
 
     <main class="cb-page">
 
         <header class="cb-topbar cb-topbar--mini">
-            <a href="index.php" class="cb-back" title="Voltar ao menu" aria-label="Voltar ao menu">←</a>
-            <h1 class="cb-topbar-title">Mesa de Jogo</h1>
+            <?php if ($aventuraCtx): ?>
+                <a href="aventura-editor.php?id=<?= (int) $aventuraCtx['id'] ?>"
+                   class="cb-back" title="Voltar para a edição da aventura"
+                   aria-label="Voltar para a aventura">←</a>
+                <h1 class="cb-topbar-title">Cenas — <?= htmlspecialchars($aventuraCtx['titulo']) ?></h1>
+            <?php else: ?>
+                <a href="index.php" class="cb-back" title="Voltar ao menu" aria-label="Voltar ao menu">←</a>
+                <h1 class="cb-topbar-title">Mesa de Jogo</h1>
+            <?php endif; ?>
             <div class="cb-mode-switch" role="tablist" aria-label="Modo da mesa">
                 <button type="button" id="cbModeEdit" class="cb-mode-btn is-active"
                         data-mode="edit" role="tab" aria-selected="true"
@@ -557,6 +585,6 @@ $papelUsuarioCB = papelGlobal() ?: 'participante';
     </main>
 
     <script src="assets/js/regras-distancia.js?v=20260507a"></script>
-    <script src="assets/js/campo-batalha.js?v=20260509a"></script>
+    <script src="assets/js/campo-batalha.js?v=20260513a"></script>
 </body>
 </html>

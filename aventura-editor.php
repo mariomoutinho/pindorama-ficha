@@ -32,6 +32,10 @@ $texto     = htmlspecialchars($aventura['texto_integral'] ?? '');
 $obs       = htmlspecialchars($aventura['observacoes_facilitador'] ?? '');
 $status    = $aventura['status'] ?? 'rascunho';
 $capaUrl   = $aventura && !empty($aventura['capa_path']) ? $aventura['capa_path'] : '';
+
+// Cenas e NPCs só aparecem quando a aventura já tem id (após primeira gravação).
+$cenasAventura = $aventura ? aventuraListarCenas((int) $aventura['id']) : [];
+$npcsAventura  = $aventura ? aventuraListarNpcs((int) $aventura['id'])  : [];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -44,7 +48,7 @@ $capaUrl   = $aventura && !empty($aventura['capa_path']) ? $aventura['capa_path'
     <link rel="stylesheet" href="assets/css/auth.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
     <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260508a" />
-    <link rel="stylesheet" href="assets/css/aventuras.css?v=20260513e" />
+    <link rel="stylesheet" href="assets/css/aventuras.css?v=20260513f" />
 </head>
 <body class="home-body aventuras-page">
     <script src="assets/js/transitions.js?v=20260508u"></script>
@@ -150,8 +154,171 @@ $capaUrl   = $aventura && !empty($aventura['capa_path']) ? $aventura['capa_path'
                 </button>
             </footer>
         </form>
+
+        <?php if ($aventura): ?>
+            <!-- =====================================================
+                 Cenas da aventura (reaproveita Mesa de Jogo)
+                 ===================================================== -->
+            <section class="aventura-secao" aria-labelledby="aventuraCenasTitulo">
+                <header class="aventura-secao-head">
+                    <h2 id="aventuraCenasTitulo">Cenas da aventura</h2>
+                    <p>Monte cenas próprias usando a mesma mecânica da Mesa de Jogo — tokens, grid, terreno, iniciativa, ataque e movimento.</p>
+                </header>
+                <div class="aventura-secao-body">
+                    <a class="aventuras-btn aventuras-btn--primary"
+                       href="mesa-jogo.php?aventura_id=<?= (int) $aventura['id'] ?>">
+                        Abrir Mesa de Jogo desta aventura
+                    </a>
+                    <?php if (!empty($cenasAventura)): ?>
+                        <ul class="aventura-cenas-lista">
+                            <?php foreach ($cenasAventura as $c): ?>
+                                <li>
+                                    <strong><?= htmlspecialchars($c['name']) ?></strong>
+                                    <span class="aventura-cena-meta">
+                                        <?= (int) $c['tokens']  ?> tokens
+                                        · <?= (int) $c['scenery'] ?> cenários
+                                        <?= $c['tipo'] !== '' ? ' · ' . htmlspecialchars($c['tipo']) : '' ?>
+                                    </span>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php else: ?>
+                        <p class="aventura-secao-vazio">
+                            Nenhuma cena salva ainda. Clique em <em>Abrir Mesa de Jogo</em>
+                            para começar — todas as cenas que você salvar lá ficam vinculadas
+                            apenas a esta aventura.
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </section>
+
+            <!-- =====================================================
+                 NPCs da aventura (server-side, integra Bestiário)
+                 ===================================================== -->
+            <section class="aventura-secao" aria-labelledby="aventuraNpcsTitulo">
+                <header class="aventura-secao-head">
+                    <h2 id="aventuraNpcsTitulo">NPCs da aventura</h2>
+                    <p>Cadastre NPCs próprios da aventura. Eles também aparecem no Bestiário do facilitador.</p>
+                </header>
+                <div class="aventura-secao-body">
+                    <form method="post" action="salvar-aventura-npc.php" class="aventura-npc-form">
+                        <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>" />
+                        <input type="hidden" name="aventura_id" value="<?= (int) $aventura['id'] ?>" />
+                        <div class="aventura-npc-grid">
+                            <label class="field">
+                                <span>Nome *</span>
+                                <input type="text" name="nome" required maxlength="180" placeholder="Ex.: Capitão das Brumas" />
+                            </label>
+                            <label class="field">
+                                <span>Tipo</span>
+                                <select name="tipo">
+                                    <option value="">—</option>
+                                    <?php foreach (['humanoide','animal','monstro','planta','espírito','morto-vivo','construto','outro'] as $t): ?>
+                                        <option value="<?= $t ?>"><?= $t ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>ND</span>
+                                <input type="text" name="nd" maxlength="20" placeholder="ex.: 3" />
+                            </label>
+                            <label class="field">
+                                <span>Tamanho</span>
+                                <select name="tamanho">
+                                    <option value="">—</option>
+                                    <?php foreach (['Minúsculo','Pequeno','Médio','Grande','Enorme','Colossal'] as $t): ?>
+                                        <option value="<?= $t ?>"><?= $t ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Bioma</span>
+                                <input type="text" name="bioma" maxlength="80" placeholder="ex.: Caatinga" />
+                            </label>
+                            <label class="field">
+                                <span>Papel tático</span>
+                                <input type="text" name="papel_tatico" maxlength="80" placeholder="ex.: emboscador" />
+                            </label>
+                            <label class="field">
+                                <span>PV máx.</span>
+                                <input type="number" name="pv_max" min="0" />
+                            </label>
+                            <label class="field">
+                                <span>Defesa</span>
+                                <input type="number" name="defesa" min="0" />
+                            </label>
+                            <label class="field">
+                                <span>Deslocamento</span>
+                                <input type="text" name="deslocamento" maxlength="40" placeholder="ex.: 6m" />
+                            </label>
+                            <label class="field">
+                                <span>Imagem (URL)</span>
+                                <input type="text" name="imagem" maxlength="255" placeholder="assets/img/bestiario/..." />
+                            </label>
+                            <label class="field wide">
+                                <span>Descrição</span>
+                                <textarea name="descricao" rows="2" maxlength="4000"></textarea>
+                            </label>
+                            <label class="field wide">
+                                <span>Habilidades</span>
+                                <textarea name="habilidades" rows="2" maxlength="4000"></textarea>
+                            </label>
+                        </div>
+                        <div class="aventura-npc-form-actions">
+                            <button type="submit" class="aventuras-btn aventuras-btn--primary">Adicionar NPC</button>
+                        </div>
+                    </form>
+
+                    <?php if (!empty($npcsAventura)): ?>
+                        <ul class="aventura-npcs-lista">
+                            <?php foreach ($npcsAventura as $n): ?>
+                                <li class="aventura-npc-card">
+                                    <div class="aventura-npc-info">
+                                        <strong><?= htmlspecialchars($n['nome']) ?></strong>
+                                        <span class="aventura-npc-meta">
+                                            <?= $n['tipo']    ? htmlspecialchars($n['tipo']) . ' · ' : '' ?>
+                                            <?= $n['nd']      ? 'ND ' . htmlspecialchars($n['nd']) . ' · ' : '' ?>
+                                            <?= $n['tamanho'] ? htmlspecialchars($n['tamanho']) : '' ?>
+                                            <?= $n['bioma']   ? ' · ' . htmlspecialchars($n['bioma']) : '' ?>
+                                        </span>
+                                        <?php if (!empty($n['descricao'])): ?>
+                                            <p class="aventura-npc-desc"><?= htmlspecialchars(mb_substr((string) $n['descricao'], 0, 240)) ?><?= mb_strlen((string) $n['descricao']) > 240 ? '…' : '' ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <form method="post" action="excluir-aventura-npc.php"
+                                          class="aventura-npc-delete"
+                                          data-confirm="Remover o NPC «<?= htmlspecialchars($n['nome']) ?>» desta aventura? Ele sairá do Bestiário também."
+                                          onsubmit="return confirmarExclusaoAventura(event);">
+                                        <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>" />
+                                        <input type="hidden" name="id" value="<?= (int) $n['id'] ?>" />
+                                        <button type="submit" class="aventuras-btn aventuras-btn--danger">Remover</button>
+                                    </form>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php else: ?>
+                        <p class="aventura-secao-vazio">Nenhum NPC cadastrado ainda nesta aventura.</p>
+                    <?php endif; ?>
+                </div>
+            </section>
+
+            <!-- Modal de confirmação visual (reaproveita o de aventuras.php) -->
+            <div class="aventuras-confirm-backdrop" id="aventurasConfirm" hidden>
+                <div class="aventuras-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="aventurasConfirmTitle">
+                    <header>
+                        <h3 id="aventurasConfirmTitle">Confirmar</h3>
+                        <button type="button" class="aventuras-confirm-x" aria-label="Cancelar">&times;</button>
+                    </header>
+                    <div class="aventuras-confirm-body" id="aventurasConfirmBody"></div>
+                    <footer>
+                        <button type="button" class="aventuras-btn aventuras-confirm-cancel">Cancelar</button>
+                        <button type="button" class="aventuras-btn aventuras-btn--danger aventuras-confirm-ok">Confirmar</button>
+                    </footer>
+                </div>
+            </div>
+        <?php endif; ?>
     </main>
 
-    <script src="assets/js/aventuras.js?v=20260512a"></script>
+    <script src="assets/js/aventuras.js?v=20260513a"></script>
 </body>
 </html>
