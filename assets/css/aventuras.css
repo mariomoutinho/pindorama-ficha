@@ -965,3 +965,162 @@
         align-items: stretch;
     }
 }
+
+/* =====================================================
+   Editor de aventura — composição desktop
+   Mobile (<=1023px) mantém o layout estreito já aprovado.
+   Em telas maiores, o shell ganha respiro horizontal e os
+   formulários distribuem melhor seus campos.
+===================================================== */
+@media (min-width: 1024px) {
+    .aventura-editor-shell {
+        width: min(1180px, 100%);
+        max-width: 1180px;
+    }
+    /* Hero do editor (título + subtítulo) — apenas centralização limpa. */
+    .aventura-editor-shell > .home-hero { text-align: left; align-items: flex-start; }
+    .aventura-editor-shell > .home-hero .home-back { left: 0; }
+
+    /* Form principal: capa e dados lado a lado, com o textarea de texto
+       integral em coluna única ocupando toda a largura abaixo. */
+    .aventura-form-grid {
+        grid-template-columns: 280px 1fr;
+        gap: 24px;
+    }
+    #aventuraTextoIntegral {
+        min-height: 420px;
+        font-size: 1.02rem;
+        line-height: 1.6;
+    }
+
+    /* Seções extras (Cenas/NPCs) — distribuem bem em desktop. */
+    .aventura-secao {
+        padding: 24px 28px;
+    }
+    .aventura-secao-head h2 {
+        font-size: 1.75rem;
+    }
+    .aventura-npc-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .aventura-npc-grid .field.wide { grid-column: 1 / -1; }
+}
+@media (min-width: 1366px) {
+    .aventura-editor-shell { max-width: 1280px; width: min(1280px, 100%); }
+    .aventura-form-grid { grid-template-columns: 320px 1fr; gap: 30px; }
+}
+
+/* =====================================================
+   Painel "Cenas da aventura" — quadro imersivo
+   --aventura-cenas-bg vem do inline style do PHP (capa).
+   Sem capa: fallback gradient temático + glifo decorativo.
+===================================================== */
+.aventura-cenas-painel {
+    position: relative;
+    overflow: hidden;
+    border: 1.5px solid rgba(216, 162, 58, 0.32);
+    background-color: #2b1232;          /* base p/ enquanto carrega */
+    color: #fff7e6;
+    isolation: isolate;
+}
+
+/* Camada da imagem de fundo (capa). object-fit por background-size. */
+.aventura-cenas-painel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--aventura-cenas-bg, none);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 0;
+    /* Leve dessaturação + brilho controlado para o texto vencer o fundo. */
+    filter: saturate(0.85) brightness(0.55);
+    transform: scale(1.03); /* esconde bordas duras quando o filtro borra um pouco */
+}
+
+/* Overlay translúcido — gradient vinho→roxo escuro para contraste,
+   mais escurecedor inferior para os botões e a lista de cenas. */
+.aventura-cenas-painel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse at top right, rgba(216, 162, 58, 0.20), transparent 55%),
+        linear-gradient(160deg, rgba(43, 18, 50, 0.78) 0%, rgba(43, 18, 50, 0.92) 70%, rgba(15, 5, 25, 0.96) 100%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Fallback sem capa: pinta o ::before com gradient temático. */
+.aventura-cenas-painel.is-no-bg::before {
+    background:
+        radial-gradient(circle at 80% 10%, rgba(216, 162, 58, 0.22), transparent 55%),
+        radial-gradient(circle at 10% 90%, rgba(122, 32, 48, 0.32), transparent 60%),
+        linear-gradient(135deg, #2b1232 0%, #3b1d43 55%, #6b3a2b 100%);
+    filter: none;
+}
+/* Glifo decorativo de cordel no canto, sutil. */
+.aventura-cenas-painel.is-no-bg::after {
+    background:
+        linear-gradient(160deg, rgba(43, 18, 50, 0.55) 0%, rgba(43, 18, 50, 0.78) 100%);
+}
+
+/* Conteúdo em primeiro plano. */
+.aventura-cenas-painel > * {
+    position: relative;
+    z-index: 2;
+}
+
+/* Tipografia/labels invertidos para o fundo escuro. */
+.aventura-cenas-painel .aventura-secao-head h2 {
+    color: #fff7e6;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+.aventura-cenas-painel .aventura-secao-head p {
+    color: rgba(255, 247, 230, 0.82);
+}
+.aventura-cenas-painel .aventura-secao-vazio {
+    color: rgba(255, 247, 230, 0.78);
+}
+
+/* Lista de cenas: cards translúcidos sobre o overlay. */
+.aventura-cenas-painel .aventura-cenas-lista li {
+    background: rgba(255, 252, 247, 0.10);
+    border-color: rgba(216, 162, 58, 0.40);
+    color: #fff7e6;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+.aventura-cenas-painel .aventura-cenas-lista li strong {
+    color: #fff7e6;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+.aventura-cenas-painel .aventura-cena-meta {
+    color: rgba(255, 247, 230, 0.78);
+}
+
+/* Botão "Abrir Mesa de Jogo" ganha um pouco mais de presença sobre
+   o fundo escuro — usa âmbar dourado. */
+.aventura-cenas-painel .aventuras-btn--primary {
+    background: linear-gradient(135deg, #d8a23a 0%, #b34935 60%, #8b1f2e 100%);
+    color: #fff7e6;
+    border-color: rgba(216, 162, 58, 0.85);
+    box-shadow:
+        0 6px 18px rgba(216, 162, 58, 0.28),
+        0 2px 8px rgba(43, 18, 50, 0.40);
+    align-self: flex-start;
+}
+.aventura-cenas-painel .aventuras-btn--primary:hover {
+    filter: brightness(1.08);
+}
+
+@media (min-width: 1024px) {
+    .aventura-cenas-painel {
+        padding: 32px 36px;
+        min-height: 240px;
+    }
+    .aventura-cenas-painel .aventura-secao-body {
+        gap: 18px;
+    }
+}

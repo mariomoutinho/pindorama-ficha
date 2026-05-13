@@ -48,12 +48,12 @@ $npcsAventura  = $aventura ? aventuraListarNpcs((int) $aventura['id'])  : [];
     <link rel="stylesheet" href="assets/css/auth.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
     <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260508a" />
-    <link rel="stylesheet" href="assets/css/aventuras.css?v=20260513f" />
+    <link rel="stylesheet" href="assets/css/aventuras.css?v=20260513g" />
 </head>
 <body class="home-body aventuras-page">
     <script src="assets/js/transitions.js?v=20260508u"></script>
 
-    <main class="home-shell painel-shell">
+    <main class="home-shell painel-shell aventura-editor-shell">
         <header class="home-hero home-hero-compact">
             <a href="aventuras.php" class="home-back" aria-label="Voltar para a lista">&larr;</a>
             <h1 class="home-title"><?= $aventura ? 'Editar aventura' : 'Nova aventura' ?></h1>
@@ -157,9 +157,14 @@ $npcsAventura  = $aventura ? aventuraListarNpcs((int) $aventura['id'])  : [];
 
         <?php if ($aventura): ?>
             <!-- =====================================================
-                 Cenas da aventura (reaproveita Mesa de Jogo)
+                 Cenas da aventura (reaproveita Mesa de Jogo).
+                 Quando há capa da aventura, vira um painel imersivo com
+                 a capa no fundo + overlay para contraste. Fallback:
+                 gradient roxo/vinho/dourado da paleta do projeto.
                  ===================================================== -->
-            <section class="aventura-secao" aria-labelledby="aventuraCenasTitulo">
+            <?php $cenasBgStyle = $capaUrl !== '' ? ' style="--aventura-cenas-bg:url(\'' . htmlspecialchars($capaUrl) . '\')"' : ''; ?>
+            <section class="aventura-secao aventura-cenas-painel<?= $capaUrl !== '' ? '' : ' is-no-bg' ?>"
+                     aria-labelledby="aventuraCenasTitulo"<?= $cenasBgStyle ?>>
                 <header class="aventura-secao-head">
                     <h2 id="aventuraCenasTitulo">Cenas da aventura</h2>
                     <p>Monte cenas próprias usando a mesma mecânica da Mesa de Jogo — tokens, grid, terreno, iniciativa, ataque e movimento.</p>
