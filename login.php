@@ -4,7 +4,7 @@ require_once __DIR__ . '/includes/auth.php';
 iniciarSessao();
 
 if (usuarioLogado()) {
-    header('Location: painel.php');
+    header('Location: index.php');
     exit;
 }
 
@@ -20,10 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!validarCsrf($tokenEnviado)) {
         $erro = 'Sessão expirada. Recarregue a página e tente novamente.';
     } elseif (autenticar($emailPreenchido, $senha)) {
-        $destino = $next !== '' && substr($next, 0, 1) === '/' ? $next : 'painel.php';
+        $destino = $next !== '' && substr($next, 0, 1) === '/' ? $next : 'index.php';
         // Evita open redirect: só aceitamos paths internos relativos.
         if (preg_match('#^https?://#i', $destino)) {
-            $destino = 'painel.php';
+            $destino = 'index.php';
         }
         header('Location: ' . $destino);
         exit;
@@ -42,7 +42,7 @@ $csrf = tokenCsrf();
     <title>Entrar — Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/home.css?v=20260513g" />
+    <link rel="stylesheet" href="assets/css/home.css?v=20260513h" />
     <link rel="stylesheet" href="assets/css/auth.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
 </head>

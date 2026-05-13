@@ -274,7 +274,7 @@ function paginaErroAcessoNegado(): string
         . '</header>'
         . '<div class="home-list-footer">'
         . '<a class="home-btn home-btn-ghost" href="index.php">Voltar ao menu</a>'
-        . '<a class="home-btn" href="painel.php">Meu painel</a>'
+
         . '</div>'
         . '</main></body></html>';
 }

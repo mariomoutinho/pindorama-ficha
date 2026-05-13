@@ -431,6 +431,26 @@
     background-color: #c8b6dc;
 }
 
+/* Cards do Facilitador unificados no index. Sem arte dedicada ainda —
+   gradient lilás/dourado coerente com a paleta do projeto serve como
+   base. Para personalizar com uma imagem por card no futuro, é só
+   adicionar background-image: url('../img/home-buttons/<slug>-bg.png')
+   na regra específica. */
+.home-card-home.home-card-minhas-mesas,
+.home-card-home.home-card-participantes,
+.home-card-home.home-card-fichas-participantes,
+.home-card-home.home-card-npcs,
+.home-card-home.home-card-bestiario,
+.home-card-home.home-card-magias-poderes,
+.home-card-home.home-card-narrativas,
+.home-card-home.home-card-mapas-cenas,
+.home-card-home.home-card-conteudos-liberados {
+    background-color: #c8b6dc;
+    background-image: linear-gradient(135deg,
+        rgba(216, 162, 58, 0.18) 0%,
+        rgba(118, 84, 124, 0.22) 100%);
+}
+
 /* Mobile: cards ficam mais largos, mas mantém a leitura */
 @media (max-width: 600px) {
     .home-grid-home {

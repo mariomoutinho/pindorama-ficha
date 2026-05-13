@@ -53,7 +53,7 @@ $tituloPagina = $visFiltro ? 'Conteúdos liberados' : ($rotuloTipo . ($tipo === 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><?= htmlspecialchars($tituloPagina) ?> — Pindorama RPG</title>
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/home.css?v=20260513g" />
+    <link rel="stylesheet" href="assets/css/home.css?v=20260513h" />
     <link rel="stylesheet" href="assets/css/auth.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
     <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260508a" />
@@ -63,7 +63,7 @@ $tituloPagina = $visFiltro ? 'Conteúdos liberados' : ($rotuloTipo . ($tipo === 
 
     <main class="home-shell painel-shell">
         <header class="home-hero home-hero-compact">
-            <a href="painel.php" class="home-back" aria-label="Voltar ao painel">&larr;</a>
+            <a href="index.php" class="home-back" aria-label="Voltar ao menu">&larr;</a>
             <h1 class="home-title"><?= htmlspecialchars($tituloPagina) ?></h1>
             <p class="home-subtitle">
                 <?php if ($visFiltro): ?>
@@ -190,7 +190,7 @@ $tituloPagina = $visFiltro ? 'Conteúdos liberados' : ($rotuloTipo . ($tipo === 
         </section>
 
         <div class="home-list-footer auth-footer">
-            <a class="home-btn home-btn-ghost" href="painel.php">Voltar ao painel</a>
+            <a class="home-btn home-btn-ghost" href="index.php">Voltar ao menu</a>
         </div>
     </main>
 </body>

@@ -18,7 +18,7 @@ $lista = listarAventurasDoUsuario((int) $usuario['id']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aventuras — Pindorama RPG</title>
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/home.css?v=20260513g" />
+    <link rel="stylesheet" href="assets/css/home.css?v=20260513h" />
     <link rel="stylesheet" href="assets/css/auth.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
     <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260508a" />
@@ -29,7 +29,7 @@ $lista = listarAventurasDoUsuario((int) $usuario['id']);
 
     <main class="home-shell painel-shell aventuras-listagem-shell">
         <header class="home-hero home-hero-compact">
-            <a href="painel.php" class="home-back" aria-label="Voltar ao painel">&larr;</a>
+            <a href="index.php" class="home-back" aria-label="Voltar ao menu">&larr;</a>
             <h1 class="home-title">Aventuras</h1>
             <p class="home-subtitle">Crie e narre aventuras prontas. Visíveis apenas para você.</p>
             <div class="aventuras-topbar-actions">

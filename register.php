@@ -4,7 +4,7 @@ require_once __DIR__ . '/includes/auth.php';
 iniciarSessao();
 
 if (usuarioLogado()) {
-    header('Location: painel.php');
+    header('Location: index.php');
     exit;
 }
 
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $erro = 'Não foi possível criar a conta. Verifique se o email já está em uso.';
         } else {
             autenticar($emailPreenchido, $senha);
-            header('Location: painel.php');
+            header('Location: index.php');
             exit;
         }
     }
@@ -53,7 +53,7 @@ $csrf = tokenCsrf();
     <title>Criar conta — Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/home.css?v=20260513g" />
+    <link rel="stylesheet" href="assets/css/home.css?v=20260513h" />
     <link rel="stylesheet" href="assets/css/auth.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
 </head>
