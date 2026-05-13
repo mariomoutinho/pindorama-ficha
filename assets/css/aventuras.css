@@ -4,6 +4,24 @@
    coerente com a paleta roxa/dourada e cards já usados.
 ===================================================== */
 
+/* Fonte temática "Cordelina" — substitui a anterior porque possui
+   suporte adequado aos caracteres do português (ç, â, ê, õ, etc.).
+   Carregamento progressivo: tenta woff2 (mais leve), cai para ttf.
+   O fallback abaixo garante que, se o arquivo da fonte ainda não
+   tiver sido colocado em assets/fonts/, o texto continua legível em
+   Eldes Cordel/Georgia até o asset ser adicionado. */
+@font-face {
+    font-family: 'Cordelina';
+    src: url('../fonts/Cordelina-Regular.woff2') format('woff2'),
+         url('../fonts/Cordelina-Regular.ttf')   format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+:root {
+    --aventura-titulo-font: 'Cordelina', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+}
+
 .aventuras-page {
     color: var(--purple-dark, #3b1d43);
 }
@@ -98,7 +116,7 @@
 }
 .aventuras-empty-card h2 {
     margin: 0 0 6px;
-    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    font-family: var(--aventura-titulo-font);
     color: var(--purple-dark, #3b1d43);
 }
 .aventuras-empty-card p {
@@ -159,7 +177,7 @@
 }
 .aventura-card-head h3.aventura-card-title {
     margin: 0;
-    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    font-family: var(--aventura-titulo-font);
     color: var(--purple-dark, #3b1d43);
     font-size: 1.25rem;
     line-height: 1.15;
@@ -249,7 +267,7 @@
 .aventuras-confirm-card header h3 {
     margin: 0;
     font-size: 1.05rem;
-    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    font-family: var(--aventura-titulo-font);
     letter-spacing: 0.4px;
 }
 .aventuras-confirm-x {
@@ -325,7 +343,7 @@
     color: rgba(255, 247, 230, 0.75);
     text-align: center;
     font-size: 1.8rem;
-    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    font-family: var(--aventura-titulo-font);
 }
 .aventura-cover-placeholder small {
     display: block;
@@ -505,7 +523,7 @@
 }
 .aventura-leitura-title {
     margin: 0;
-    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    font-family: var(--aventura-titulo-font);
     font-size: clamp(1.8rem, 4vw, 2.6rem);
     line-height: 1.05;
     letter-spacing: 0.6px;
@@ -547,7 +565,7 @@
 .aventura-leitura-corpo h2,
 .aventura-leitura-obs h2 {
     margin: 0 0 10px;
-    font-family: 'Pindorama Cordel', 'Eldes Cordel', Georgia, "Times New Roman", serif;
+    font-family: var(--aventura-titulo-font);
     color: var(--purple-dark, #3b1d43);
     border-bottom: 1px solid rgba(118, 84, 124, 0.28);
     padding-bottom: 6px;
@@ -636,12 +654,175 @@
     }
 }
 
-/* Notebook+ — leitura confortável sem esticar parágrafos demais. */
-@media (min-width: 1200px) {
+/* =====================================================
+   Composição DESKTOP dedicada (>= 1024 px)
+   Mobile/tablet seguem intactos; aqui montamos um hero
+   em duas colunas (poster + ficha), tipografia maior,
+   ornamentos sutis nos h2 e drop cap no texto integral.
+===================================================== */
+@media (min-width: 1024px) {
+    .aventura-leitura-shell {
+        width: min(1200px, 100%);
+        max-width: 1200px;
+        gap: 26px;
+    }
+
+    /* HERO em grid: poster da capa + painel de identidade.
+       Fundo do hero em gradiente roxo-vinho com pontos quentes,
+       para a capa se sustentar visualmente mesmo se não houver
+       imagem definida. O <img> da capa fica relativo dentro da
+       coluna, não mais "atrás" como background. */
     .aventura-leitura-hero {
-        min-height: 380px;
+        display: grid;
+        grid-template-columns: minmax(280px, 340px) 1fr;
+        align-items: stretch;
+        gap: 28px;
+        min-height: 460px;
+        padding: 28px;
+        background:
+            radial-gradient(circle at 80% 10%, rgba(216, 162, 58, 0.20), transparent 55%),
+            radial-gradient(circle at 10% 90%, rgba(122, 32, 48, 0.30), transparent 60%),
+            linear-gradient(135deg, #2b1232 0%, #3b1d43 55%, #6b3a2b 100%);
+        border: 1px solid rgba(216, 162, 58, 0.30);
+    }
+    .aventura-leitura-hero.is-no-cover {
+        grid-template-columns: 1fr;
+    }
+
+    /* Capa vira um poster com proporção 3:4 e sombra dramática. */
+    .aventura-leitura-hero-bg {
+        position: relative;
+        inset: auto;
+        height: auto;
+        width: 100%;
+        aspect-ratio: 3 / 4;
+        object-fit: cover;
+        object-position: center;
+        border-radius: 12px;
+        border: 1px solid rgba(216, 162, 58, 0.35);
+        box-shadow:
+            0 22px 44px rgba(0, 0, 0, 0.55),
+            0 0 0 1px rgba(216, 162, 58, 0.18);
+    }
+
+    /* Overlay deixa de ser uma "cortina" sobre a imagem — agora é a
+       coluna direita do hero, com transparência e respiro. */
+    .aventura-leitura-hero-overlay {
+        background: transparent;
+        padding: 6px 4px 4px;
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 12px;
+    }
+    .aventura-leitura-back {
+        top: -16px;
+        left: -16px;
+    }
+    .aventura-leitura-status {
+        align-self: flex-start;
+    }
+    .aventura-leitura-title {
+        font-size: clamp(2.4rem, 3.2vw, 3.4rem);
+        line-height: 1.0;
+        letter-spacing: 1px;
+        margin-top: 4px;
+    }
+    .aventura-leitura-subtitle {
+        font-size: 1.15rem;
+        opacity: 0.95;
+    }
+    .aventura-leitura-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 22px;
+        margin-top: 10px;
+        font-size: 1rem;
+    }
+    .aventura-leitura-meta span {
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(255, 247, 230, 0.10);
+        border: 1px solid rgba(216, 162, 58, 0.30);
+    }
+    .aventura-leitura-actions {
+        margin-top: 14px;
+    }
+
+    /* Sinopse, corpo e observações ganham padding e tipografia maior. */
+    .aventura-leitura-sinopse,
+    .aventura-leitura-corpo,
+    .aventura-leitura-obs {
+        padding: 28px 34px;
+        border-radius: 16px;
+    }
+    .aventura-leitura-sinopse h2,
+    .aventura-leitura-corpo h2,
+    .aventura-leitura-obs h2 {
+        font-size: 1.55rem;
+        padding-bottom: 8px;
+    }
+    /* Pequeno ornamento ao final do h2 (diamante dourado). */
+    .aventura-leitura-sinopse h2::after,
+    .aventura-leitura-corpo h2::after,
+    .aventura-leitura-obs h2::after {
+        content: "\2756";
+        margin-left: 10px;
+        color: rgba(216, 162, 58, 0.85);
+        font-size: 0.85em;
+        vertical-align: middle;
+    }
+
+    /* Sinopse como bloco de destaque "biblioteca". */
+    .aventura-leitura-sinopse {
+        background:
+            radial-gradient(circle at top right, rgba(216, 162, 58, 0.10), transparent 55%),
+            rgba(255, 252, 247, 0.98);
+        border-left: 6px solid rgba(216, 162, 58, 0.65);
+    }
+    .aventura-leitura-sinopse p {
+        font-size: 1.12rem;
+        line-height: 1.6;
+        font-style: italic;
+        color: var(--purple-dark, #3b1d43);
+        margin: 0;
+    }
+
+    /* Texto integral em coluna confortável + drop cap na primeira letra. */
+    .aventura-leitura-corpo {
+        padding: 32px 48px;
     }
     .aventura-leitura-texto {
-        max-width: 78ch;
+        max-width: 70ch;
+        margin: 0 auto;
+        font-size: 1.08rem;
+        line-height: 1.75;
+    }
+    .aventura-leitura-texto::first-letter {
+        font-family: var(--aventura-titulo-font);
+        float: left;
+        font-size: 3.4rem;
+        line-height: 0.95;
+        padding: 4px 10px 0 0;
+        color: var(--purple-dark, #3b1d43);
+        text-shadow: 0 1px 0 rgba(216, 162, 58, 0.45);
+    }
+}
+
+/* Notebook-grande (>= 1366px): respiros levemente maiores. */
+@media (min-width: 1366px) {
+    .aventura-leitura-shell {
+        gap: 30px;
+    }
+    .aventura-leitura-hero {
+        grid-template-columns: minmax(300px, 380px) 1fr;
+        min-height: 520px;
+        padding: 34px;
+        gap: 34px;
+    }
+    .aventura-leitura-corpo {
+        padding: 40px 56px;
     }
 }
