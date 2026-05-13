@@ -1154,13 +1154,16 @@
 .aventura-cena-card::before {
     content: "";
     position: absolute;
-    inset: 0;
+    /* Estende além das bordas para o blur não criar halo nas extremidades. */
+    inset: -12px;
     z-index: 0;
     background-image: var(--cena-cover, none);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    filter: saturate(0.9) brightness(0.75);
+    /* Desfoque suave + leve dessaturação + escurecimento para o texto vencer. */
+    filter: blur(6px) saturate(0.9) brightness(0.72);
+    transform: scale(1.06);
     transition: transform 240ms ease, filter 240ms ease;
 }
 .aventura-cena-card::after {
@@ -1178,8 +1181,8 @@
     box-shadow: 0 10px 26px rgba(0, 0, 0, 0.42);
 }
 .aventura-cena-card:hover::before {
-    transform: scale(1.04);
-    filter: saturate(1) brightness(0.85);
+    transform: scale(1.08);
+    filter: blur(3px) saturate(1) brightness(0.85);
 }
 
 /* Fallback sem imagem: gradient temático + glifo "❖" no canto. */

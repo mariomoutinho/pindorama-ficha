@@ -352,6 +352,14 @@ function aventuraListarCenas(int $aventuraId): array
 /**
  * Decide a imagem representativa de uma cena (page) — reaproveita o que
  * já está persistido pela Mesa de Jogo, sem duplicar armazenamento.
+ *
+ * Regra (em ordem de prioridade):
+ *   1) page.mapBackground  — fundo do mapa salvo na Mesa de Jogo;
+ *   2) primeiro item de page.scenery com layer === 'scenery' (visível);
+ *   3) primeiro item de page.scenery visível em qualquer camada (último
+ *      recurso, p/ retrocompatibilidade com cenas que ainda não usam
+ *      a camada nomeada);
+ *   4) string vazia → fallback temático no CSS.
  */
 function aventuraExtrairImagemDaCena(array $page): string
 {
@@ -359,6 +367,16 @@ function aventuraExtrairImagemDaCena(array $page): string
     if ($bg !== '') return $bg;
 
     if (is_array($page['scenery'] ?? null)) {
+        // 2) Preferir itens explicitamente na camada de cenário.
+        foreach ($page['scenery'] as $sc) {
+            if (!is_array($sc)) continue;
+            if (!empty($sc['hidden'])) continue;
+            $layer = strtolower((string) ($sc['layer'] ?? ''));
+            if ($layer !== 'scenery') continue;
+            $src = trim((string) ($sc['src'] ?? ''));
+            if ($src !== '') return $src;
+        }
+        // 3) Fallback retrocompat: qualquer imagem visível.
         foreach ($page['scenery'] as $sc) {
             if (!is_array($sc)) continue;
             if (!empty($sc['hidden'])) continue;
