@@ -1334,3 +1334,24 @@
     color: var(--muted, #91739a);
     font-size: 0.78rem;
 }
+
+/* =====================================================
+   Página de leitura — padronização de largura
+   Garante que TODOS os blocos principais (hero, sinopse,
+   cenas, corpo, observações) tenham a mesma largura
+   externa do shell, sem variações por margem/padding.
+===================================================== */
+.aventura-leitura-bloco {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+/* Painel de cenas dentro da leitura ganha o mesmo arredondamento e
+   sombra dos outros blocos para conviver bem entre Sinopse e Corpo. */
+.aventura-leitura-shell .aventura-cenas-painel.aventura-leitura-bloco {
+    margin-top: 0;
+    border-radius: 14px;
+}
