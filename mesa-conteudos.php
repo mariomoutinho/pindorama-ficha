@@ -54,9 +54,9 @@ $tituloPagina = $visFiltro ? 'Conteúdos liberados' : ($rotuloTipo . ($tipo === 
     <title><?= htmlspecialchars($tituloPagina) ?> — Pindorama RPG</title>
     <link rel="stylesheet" href="assets/css/ficha.css" />
     <link rel="stylesheet" href="assets/css/home.css?v=20260513h" />
-    <link rel="stylesheet" href="assets/css/auth.css?v=20260507a" />
+    <link rel="stylesheet" href="assets/css/auth.css?v=20260513i" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
-    <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260508a" />
+    <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260513b" />
 </head>
 <body class="home-body">
     <script src="assets/js/transitions.js?v=20260508u"></script>

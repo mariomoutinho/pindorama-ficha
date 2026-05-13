@@ -246,3 +246,127 @@
     background: rgba(118, 84, 124, 0.18);
     color: var(--purple-dark, #2b1232);
 }
+
+/* =====================================================
+   Cards de participantes da mesa (com avatar + nick + email)
+===================================================== */
+.participantes-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+}
+.participante-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1.5px solid rgba(118, 84, 124, 0.28);
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fff, rgba(245, 235, 250, 0.45));
+    box-shadow: 0 2px 6px rgba(43, 18, 50, 0.06);
+    position: relative;
+}
+.participante-card--selecionavel { padding: 0; }
+.participante-card--selecionavel:has(input:checked) {
+    border-color: var(--purple, #69436f);
+    background: linear-gradient(135deg, rgba(118, 84, 124, 0.12), rgba(216, 162, 58, 0.10));
+    box-shadow: 0 4px 12px rgba(43, 18, 50, 0.18);
+}
+.participante-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    cursor: pointer;
+}
+.participante-checkbox > input[type="checkbox"] {
+    accent-color: var(--purple, #69436f);
+    width: 18px; height: 18px;
+    flex: 0 0 18px;
+}
+.participante-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--purple, #69436f), var(--purple-dark, #3b1d43));
+    color: #fff7e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: 0.6px;
+    flex: 0 0 44px;
+    border: 1.5px solid rgba(216, 162, 58, 0.45);
+    box-shadow: 0 2px 6px rgba(43, 18, 50, 0.18);
+}
+.participante-avatar img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.participante-avatar.is-empty { font-family: Georgia, "Times New Roman", serif; }
+.participante-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+}
+.participante-info strong {
+    font-family: Georgia, "Times New Roman", serif;
+    color: var(--purple-dark, #2b1232);
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.participante-email {
+    color: var(--muted, #91739a);
+    font-size: 0.82rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.participante-papel {
+    display: inline-block;
+    margin-top: 2px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    background: rgba(118, 84, 124, 0.14);
+    color: var(--purple-dark, #2b1232);
+    border: 1px solid rgba(118, 84, 124, 0.30);
+    width: max-content;
+}
+.participante-papel--facilitador {
+    background: rgba(216, 162, 58, 0.22);
+    color: #7a4b00;
+    border-color: rgba(216, 162, 58, 0.55);
+}
+.participante-remove { margin-left: auto; }
+
+.participantes-vincular-form .painel-form-actions {
+    margin-top: 10px;
+    justify-content: flex-end;
+}
+.participantes-vincular-email {
+    margin-top: 14px;
+    background: rgba(118, 84, 124, 0.05);
+    border: 1px dashed rgba(118, 84, 124, 0.30);
+    border-radius: 10px;
+    padding: 8px 12px;
+}
+.participantes-vincular-email summary {
+    cursor: pointer;
+    color: var(--purple-dark, #2b1232);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+.participantes-vincular-email[open] summary { margin-bottom: 8px; }

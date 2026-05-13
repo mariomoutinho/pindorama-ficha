@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/foto-usuario.php';
 
 iniciarSessao();
 
@@ -32,13 +33,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!in_array($rolePreenchido, ['facilitador', 'participante'], true)) {
         $erro = 'Perfil inválido.';
     } else {
-        $novoId = registrarUsuario($nomePreenchido, $emailPreenchido, $senha, $rolePreenchido);
-        if ($novoId === null) {
-            $erro = 'Não foi possível criar a conta. Verifique se o email já está em uso.';
+        // Foto é opcional. Se enviada e inválida, abortamos antes do INSERT.
+        $erroFoto = null;
+        $fotoPath = processarUploadFotoUsuario($_FILES['foto'] ?? null, $erroFoto);
+        if ($erroFoto) {
+            $erro = $erroFoto;
         } else {
-            autenticar($emailPreenchido, $senha);
-            header('Location: index.php');
-            exit;
+            $novoId = registrarUsuario($nomePreenchido, $emailPreenchido, $senha, $rolePreenchido);
+            if ($novoId === null) {
+                $erro = 'Não foi possível criar a conta. Verifique se o email já está em uso.';
+                // Se o INSERT falhou e já tínhamos salvo o arquivo, removemos.
+                if ($fotoPath !== null) excluirArquivoFotoUsuario($fotoPath);
+            } else {
+                if ($fotoPath !== null) {
+                    $stmt = $pdo->prepare("UPDATE usuarios SET foto_path = :p WHERE id = :id");
+                    $stmt->execute(['p' => $fotoPath, 'id' => $novoId]);
+                }
+                autenticar($emailPreenchido, $senha);
+                header('Location: index.php');
+                exit;
+            }
         }
     }
 }
@@ -54,7 +68,7 @@ $csrf = tokenCsrf();
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
     <link rel="stylesheet" href="assets/css/home.css?v=20260513h" />
-    <link rel="stylesheet" href="assets/css/auth.css?v=20260507a" />
+    <link rel="stylesheet" href="assets/css/auth.css?v=20260513i" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
 </head>
 <body class="home-body register-page">
@@ -71,7 +85,7 @@ $csrf = tokenCsrf();
             <div class="auth-alert" role="alert"><?= htmlspecialchars($erro) ?></div>
         <?php endif; ?>
 
-        <form class="auth-form" method="POST" action="register.php" novalidate>
+        <form class="auth-form" method="POST" action="register.php" enctype="multipart/form-data" novalidate>
             <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>" />
 
             <label class="auth-field">
@@ -79,6 +93,19 @@ $csrf = tokenCsrf();
                 <input type="text" name="nome" required maxlength="150"
                        value="<?= htmlspecialchars($nomePreenchido) ?>" />
             </label>
+
+            <div class="auth-field auth-foto-field">
+                <span>Foto de perfil <small>(opcional)</small></span>
+                <div class="auth-foto-row">
+                    <div class="auth-foto-preview is-empty" id="authFotoPreview" aria-hidden="true">?</div>
+                    <label class="home-btn home-btn-ghost auth-foto-btn">
+                        <input type="file" name="foto" id="authFotoInput"
+                               accept="image/jpeg,image/png,image/webp" hidden />
+                        <span>Escolher imagem</span>
+                    </label>
+                </div>
+                <small class="auth-foto-hint">JPG, PNG ou WebP — até 5&nbsp;MB.</small>
+            </div>
 
             <label class="auth-field">
                 <span>Email</span>
@@ -118,5 +145,46 @@ $csrf = tokenCsrf();
             <a class="home-btn" href="login.php">Já tenho conta</a>
         </div>
     </main>
+
+    <script>
+        // Preview imediato da foto. Validação real no backend; aqui é só UX.
+        (function () {
+            var input   = document.getElementById('authFotoInput');
+            var preview = document.getElementById('authFotoPreview');
+            var hint    = document.querySelector('.auth-foto-hint');
+            if (!input || !preview) return;
+            var hintBase = hint ? hint.textContent : '';
+            input.addEventListener('change', function () {
+                var file = input.files && input.files[0];
+                if (!file) {
+                    preview.classList.add('is-empty');
+                    preview.style.backgroundImage = '';
+                    preview.textContent = '?';
+                    if (hint) hint.textContent = hintBase;
+                    return;
+                }
+                var okMime = ['image/jpeg','image/png','image/webp'].includes(file.type);
+                var okSize = file.size <= 5 * 1024 * 1024;
+                if (!okMime || !okSize) {
+                    input.value = '';
+                    preview.classList.add('is-empty');
+                    preview.style.backgroundImage = '';
+                    preview.textContent = '?';
+                    if (hint) hint.textContent = !okMime
+                        ? 'Use JPG, PNG ou WebP.'
+                        : 'A foto excede 5 MB.';
+                    return;
+                }
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.classList.remove('is-empty');
+                    preview.textContent = '';
+                    preview.style.backgroundImage = "url('" + e.target.result + "')";
+                    if (hint) hint.textContent = hintBase;
+                };
+                reader.readAsDataURL(file);
+            });
+        })();
+    </script>
 </body>
 </html>

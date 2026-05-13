@@ -36,7 +36,7 @@ function listarParticipantesDaMesa(int $mesaId): array
 {
     global $pdo;
     $stmt = $pdo->prepare(
-        "SELECT mp.id AS vinculo_id, mp.papel, u.id, u.nome, u.email
+        "SELECT mp.id AS vinculo_id, mp.papel, u.id, u.nome, u.email, u.foto_path
          FROM mesa_participantes mp
          JOIN usuarios u ON u.id = mp.usuario_id
          WHERE mp.mesa_id = :mesa
@@ -44,6 +44,53 @@ function listarParticipantesDaMesa(int $mesaId): array
     );
     $stmt->execute(['mesa' => $mesaId]);
     return $stmt->fetchAll();
+}
+
+/**
+ * Lista todos os usuários com role 'participante' marcando quem já está
+ * vinculado à mesa. Para a UI de "Vincular jogadores" da página de mesas.
+ * Retorna [{id, nome, email, foto_path, is_vinculado(bool), vinculo_id?}].
+ */
+function listarParticipantesDisponiveisParaMesa(int $mesaId): array
+{
+    global $pdo;
+    $stmt = $pdo->prepare(
+        "SELECT u.id, u.nome, u.email, u.foto_path,
+                mp.id AS vinculo_id, mp.papel
+         FROM usuarios u
+         LEFT JOIN mesa_participantes mp
+             ON mp.usuario_id = u.id AND mp.mesa_id = :mesa
+         WHERE u.role = 'participante'
+         ORDER BY u.nome"
+    );
+    $stmt->execute(['mesa' => $mesaId]);
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$r) {
+        $r['is_vinculado'] = !empty($r['vinculo_id']);
+    }
+    return $rows;
+}
+
+/**
+ * URL útil para o avatar do usuário. Aceita o caminho persistido em
+ * usuarios.foto_path; vazio → string vazia (template usa placeholder CSS).
+ */
+function urlAvatarUsuario(?string $relPath): string
+{
+    return $relPath && trim($relPath) !== '' ? $relPath : '';
+}
+
+/**
+ * Iniciais (até 2 letras) para o placeholder de avatar quando não há
+ * imagem cadastrada. Compatível com nicks vazios — devolve '?'.
+ */
+function inicialAvatarUsuario(?string $nome): string
+{
+    $nome = trim((string) $nome);
+    if ($nome === '') return '?';
+    $partes = preg_split('/\s+/u', $nome);
+    if (count($partes) === 1) return mb_strtoupper(mb_substr($partes[0], 0, 1));
+    return mb_strtoupper(mb_substr($partes[0], 0, 1) . mb_substr(end($partes), 0, 1));
 }
 
 /**

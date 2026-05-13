@@ -13,11 +13,13 @@ $flashType = $_GET['type'] ?? 'info';
 $selecionadaId = isset($_GET['id']) ? (int) $_GET['id'] : null;
 $mesaSelecionada = null;
 $participantes = [];
+$participantesDisp = [];
 $fichasDisponiveis = [];
 if ($selecionadaId) {
     $mesaSelecionada = carregarMesa($selecionadaId);
     if ($mesaSelecionada && (int) $mesaSelecionada['facilitador_id'] === (int) $usuario['id']) {
         $participantes = listarParticipantesDaMesa($selecionadaId);
+        $participantesDisp = listarParticipantesDisponiveisParaMesa($selecionadaId);
         $fichasDisponiveis = listarFichasSemDono();
     } else {
         $mesaSelecionada = null;
@@ -35,9 +37,9 @@ $csrf = tokenCsrf();
     <title>Minhas Mesas — Pindorama RPG</title>
     <link rel="stylesheet" href="assets/css/ficha.css" />
     <link rel="stylesheet" href="assets/css/home.css?v=20260513h" />
-    <link rel="stylesheet" href="assets/css/auth.css?v=20260507a" />
+    <link rel="stylesheet" href="assets/css/auth.css?v=20260513i" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
-    <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260508a" />
+    <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260513b" />
 </head>
 <body class="home-body">
     <script src="assets/js/transitions.js?v=20260508u"></script>
@@ -120,36 +122,89 @@ $csrf = tokenCsrf();
                 <article class="painel-card painel-card--wide">
                     <h2>Participantes desta mesa</h2>
                     <?php if (empty($participantes)): ?>
-                        <p class="painel-empty">Nenhum participante vinculado ainda.</p>
+                        <p class="painel-empty">Nenhum participante vinculado ainda. Marque jogadores abaixo para vincular.</p>
                     <?php else: ?>
-                        <ul class="painel-list">
-                            <?php foreach ($participantes as $p): ?>
-                                <li class="painel-item painel-item--row">
-                                    <div>
-                                        <strong><?= htmlspecialchars($p['nome']) ?></strong>
-                                        <span class="painel-item-meta">
-                                            <?= htmlspecialchars($p['email']) ?> · <?= htmlspecialchars($p['papel']) ?>
-                                        </span>
+                        <ul class="participantes-grid">
+                            <?php foreach ($participantes as $p):
+                                $av = urlAvatarUsuario($p['foto_path'] ?? null);
+                            ?>
+                                <li class="participante-card">
+                                    <div class="participante-avatar<?= $av === '' ? ' is-empty' : '' ?>">
+                                        <?php if ($av !== ''): ?>
+                                            <img src="<?= htmlspecialchars($av) ?>" alt="" loading="lazy"
+                                                 onerror="this.remove();this.closest('.participante-avatar').classList.add('is-empty');this.closest('.participante-avatar').textContent='<?= htmlspecialchars(inicialAvatarUsuario($p['nome'])) ?>';" />
+                                        <?php else: ?>
+                                            <?= htmlspecialchars(inicialAvatarUsuario($p['nome'])) ?>
+                                        <?php endif; ?>
                                     </div>
-                                    <form method="post" action="remover-participante.php"
-                                          onsubmit="return confirm('Remover <?= htmlspecialchars($p['nome']) ?> da mesa?');">
-                                        <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>" />
-                                        <input type="hidden" name="vinculo_id" value="<?= (int) $p['vinculo_id'] ?>" />
-                                        <input type="hidden" name="mesa_id" value="<?= (int) $mesaSelecionada['id'] ?>" />
-                                        <button type="submit" class="painel-mini-btn painel-mini-btn--danger" title="Remover da mesa">×</button>
-                                    </form>
+                                    <div class="participante-info">
+                                        <strong><?= htmlspecialchars($p['nome']) ?></strong>
+                                        <span class="participante-email"><?= htmlspecialchars($p['email']) ?></span>
+                                        <span class="participante-papel participante-papel--<?= htmlspecialchars($p['papel']) ?>"><?= htmlspecialchars($p['papel']) ?></span>
+                                    </div>
+                                    <?php if ($p['papel'] !== 'facilitador'): ?>
+                                        <form method="post" action="remover-participante.php" class="participante-remove">
+                                            <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>" />
+                                            <input type="hidden" name="vinculo_id" value="<?= (int) $p['vinculo_id'] ?>" />
+                                            <input type="hidden" name="mesa_id" value="<?= (int) $mesaSelecionada['id'] ?>" />
+                                            <button type="submit" class="painel-mini-btn painel-mini-btn--danger" title="Remover da mesa">Remover</button>
+                                        </form>
+                                    <?php endif; ?>
                                 </li>
                             <?php endforeach; ?>
                         </ul>
                     <?php endif; ?>
 
-                    <h3>Adicionar participante por email</h3>
-                    <form method="post" action="adicionar-participante.php" class="painel-form-row">
-                        <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>" />
-                        <input type="hidden" name="mesa_id" value="<?= (int) $mesaSelecionada['id'] ?>" />
-                        <input type="email" name="email" placeholder="email@exemplo.com" required />
-                        <button type="submit" class="home-btn">Adicionar</button>
-                    </form>
+                    <h3>Vincular jogadores</h3>
+                    <?php
+                        $vinculaveis = array_filter($participantesDisp, fn($p) => !$p['is_vinculado']);
+                    ?>
+                    <?php if (empty($participantesDisp)): ?>
+                        <p class="painel-empty">Ainda não há contas com papel "participante". Convide os jogadores a se cadastrarem.</p>
+                    <?php elseif (empty($vinculaveis)): ?>
+                        <p class="painel-empty">Todos os participantes cadastrados já estão nesta mesa.</p>
+                    <?php else: ?>
+                        <form method="post" action="adicionar-participante.php" class="participantes-vincular-form">
+                            <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>" />
+                            <input type="hidden" name="mesa_id" value="<?= (int) $mesaSelecionada['id'] ?>" />
+                            <ul class="participantes-grid">
+                                <?php foreach ($vinculaveis as $p):
+                                    $av = urlAvatarUsuario($p['foto_path'] ?? null);
+                                ?>
+                                    <li class="participante-card participante-card--selecionavel">
+                                        <label class="participante-checkbox">
+                                            <input type="checkbox" name="participantes[]" value="<?= (int) $p['id'] ?>" />
+                                            <div class="participante-avatar<?= $av === '' ? ' is-empty' : '' ?>">
+                                                <?php if ($av !== ''): ?>
+                                                    <img src="<?= htmlspecialchars($av) ?>" alt="" loading="lazy"
+                                                         onerror="this.remove();this.closest('.participante-avatar').classList.add('is-empty');this.closest('.participante-avatar').textContent='<?= htmlspecialchars(inicialAvatarUsuario($p['nome'])) ?>';" />
+                                                <?php else: ?>
+                                                    <?= htmlspecialchars(inicialAvatarUsuario($p['nome'])) ?>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="participante-info">
+                                                <strong><?= htmlspecialchars($p['nome']) ?></strong>
+                                                <span class="participante-email"><?= htmlspecialchars($p['email']) ?></span>
+                                            </div>
+                                        </label>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                            <div class="painel-form-actions">
+                                <button type="submit" class="home-btn">Vincular selecionados</button>
+                            </div>
+                        </form>
+                    <?php endif; ?>
+
+                    <details class="participantes-vincular-email">
+                        <summary>Adicionar por e-mail (caso o jogador ainda não esteja na lista)</summary>
+                        <form method="post" action="adicionar-participante.php" class="painel-form-row">
+                            <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>" />
+                            <input type="hidden" name="mesa_id" value="<?= (int) $mesaSelecionada['id'] ?>" />
+                            <input type="email" name="email" placeholder="email@exemplo.com" required />
+                            <button type="submit" class="home-btn">Adicionar</button>
+                        </form>
+                    </details>
 
                     <?php if (!empty($participantes) && !empty($fichasDisponiveis)): ?>
                         <h3>Vincular ficha existente a um participante</h3>

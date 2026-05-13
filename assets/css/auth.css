@@ -151,3 +151,55 @@
     color: var(--purple-dark);
     border-color: var(--purple);
 }
+
+/* Foto de perfil opcional no register: preview + botão de upload. */
+.auth-foto-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.auth-foto-field > span small {
+    color: var(--muted, #91739a);
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+}
+.auth-foto-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.auth-foto-preview {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    background-color: linear-gradient(135deg, var(--purple, #69436f), var(--purple-dark, #3b1d43));
+    background-image: linear-gradient(135deg, rgba(118, 84, 124, 0.85), rgba(43, 18, 50, 0.95));
+    color: #fff7e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.4rem;
+    border: 2px solid rgba(216, 162, 58, 0.55);
+    box-shadow: 0 4px 12px rgba(43, 18, 50, 0.30);
+    flex: 0 0 72px;
+}
+.auth-foto-preview.is-empty {
+    /* mantém o gradiente base como background-image; quando o usuário
+       escolhe um arquivo, JS substitui pela url(data:...) e remove
+       .is-empty. */
+}
+.auth-foto-btn {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.auth-foto-hint {
+    color: var(--muted, #91739a);
+    font-size: 0.82rem;
+}
