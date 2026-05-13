@@ -338,9 +338,35 @@ function aventuraListarCenas(int $aventuraId): array
             'tipo'  => (string) ($p['tipo'] ?? ''),
             'tokens'   => is_array($p['tokens'] ?? null)   ? count($p['tokens'])   : 0,
             'scenery'  => is_array($p['scenery'] ?? null)  ? count($p['scenery'])  : 0,
+            // Imagem representativa do card da cena. Regra:
+            //   1) page.mapBackground (fundo do mapa salvo na Mesa de Jogo);
+            //   2) caso contrário, primeira imagem da camada `scenery`
+            //      que não esteja oculta;
+            //   3) string vazia → fallback temático aplicado pelo CSS.
+            'coverImage' => aventuraExtrairImagemDaCena($p),
         ];
     }
     return $out;
+}
+
+/**
+ * Decide a imagem representativa de uma cena (page) — reaproveita o que
+ * já está persistido pela Mesa de Jogo, sem duplicar armazenamento.
+ */
+function aventuraExtrairImagemDaCena(array $page): string
+{
+    $bg = trim((string) ($page['mapBackground'] ?? ''));
+    if ($bg !== '') return $bg;
+
+    if (is_array($page['scenery'] ?? null)) {
+        foreach ($page['scenery'] as $sc) {
+            if (!is_array($sc)) continue;
+            if (!empty($sc['hidden'])) continue;
+            $src = trim((string) ($sc['src'] ?? ''));
+            if ($src !== '') return $src;
+        }
+    }
+    return '';
 }
 
 /* ============================================================
