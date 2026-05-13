@@ -6,14 +6,13 @@
 
 /* Fonte temática "Cordelina" — substitui a anterior porque possui
    suporte adequado aos caracteres do português (ç, â, ê, õ, etc.).
-   Carregamento progressivo: tenta woff2 (mais leve), cai para ttf.
-   O fallback abaixo garante que, se o arquivo da fonte ainda não
-   tiver sido colocado em assets/fonts/, o texto continua legível em
-   Eldes Cordel/Georgia até o asset ser adicionado. */
+   Cordelina é um tipo "woodcut" de Samuel de Angelis Albuquerque que
+   homenageia J. Borges e a tradição do Cordel — gratuita para uso
+   pessoal/educacional (uso comercial: samuelangelis@gmail.com).
+   Distribuída em OTF; carregamento direto. */
 @font-face {
     font-family: 'Cordelina';
-    src: url('../fonts/Cordelina-Regular.woff2') format('woff2'),
-         url('../fonts/Cordelina-Regular.ttf')   format('truetype');
+    src: url('../fonts/Cordelina-Regular.otf') format('opentype');
     font-weight: normal;
     font-style: normal;
     font-display: swap;
