@@ -40,15 +40,20 @@ $obsHtml   = formatarTextoIntegralAventura($aventura['observacoes_facilitador'])
     <link rel="stylesheet" href="assets/css/auth.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
     <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260508a" />
-    <link rel="stylesheet" href="assets/css/aventuras.css?v=20260512a" />
+    <link rel="stylesheet" href="assets/css/aventuras.css?v=20260513a" />
 </head>
 <body class="home-body aventuras-page aventura-leitura-page">
     <script src="assets/js/transitions.js?v=20260508u"></script>
 
     <main class="home-shell painel-shell aventura-leitura-shell">
 
-        <header class="aventura-leitura-hero<?= $temCapa ? '' : ' is-no-cover' ?>"
-                <?= $temCapa ? 'style="background-image: url(\''.htmlspecialchars($capaUrl).'\');"' : '' ?>>
+        <header class="aventura-leitura-hero<?= $temCapa ? '' : ' is-no-cover' ?>">
+            <?php if ($temCapa): ?>
+                <img class="aventura-leitura-hero-bg"
+                     src="<?= htmlspecialchars($capaUrl) ?>"
+                     alt="Capa da aventura"
+                     loading="eager" />
+            <?php endif; ?>
             <div class="aventura-leitura-hero-overlay">
                 <a href="aventuras.php" class="aventura-leitura-back" aria-label="Voltar para a lista">&larr;</a>
                 <span class="aventura-leitura-status aventura-meta-status--<?= htmlspecialchars($aventura['status']) ?>"><?= $statusRot ?></span>

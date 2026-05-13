@@ -422,30 +422,52 @@
 }
 
 /* ---------- Página de leitura ---------- */
+/* Larguras maiores no desktop sem perder centralização.
+   .home-shell impõe width: min(440px, 100%) — aqui sobrescrevemos com
+   um width maior para a tela de leitura ficar confortável no notebook
+   e no monitor grande, mantendo respiro lateral em ambos. */
 .aventura-leitura-shell {
+    width: min(1080px, 100%);
+    max-width: 1080px;
     gap: 18px;
 }
 .aventura-leitura-hero {
     position: relative;
-    min-height: 320px;
     border-radius: 18px;
     overflow: hidden;
     background: linear-gradient(160deg, rgba(43, 18, 50, 0.85) 0%, rgba(43, 18, 50, 0.95) 100%);
-    background-size: cover;
-    background-position: center;
     box-shadow: 0 16px 36px rgba(43, 18, 50, 0.36);
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
 }
 .aventura-leitura-hero.is-no-cover {
     min-height: 200px;
 }
+
+/* Capa como elemento real — controle preciso de cover/contain por
+   breakpoint, sem corte agressivo em telas pequenas. */
+.aventura-leitura-hero-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    z-index: 0;
+}
+
 .aventura-leitura-hero-overlay {
     position: relative;
+    z-index: 1;
     padding: 30px 28px 26px;
     background: linear-gradient(180deg,
         rgba(15, 5, 25, 0.10) 0%,
         rgba(15, 5, 25, 0.55) 60%,
         rgba(15, 5, 25, 0.85) 100%);
     color: #fff7e6;
+    flex: 1;
     min-height: inherit;
     display: flex;
     flex-direction: column;
@@ -570,7 +592,56 @@
     .aventura-card-actions {
         gap: 6px;
     }
+
+    /* No mobile: capa íntegra (object-fit: contain). A capa deixa de
+       ficar atrás do texto — passa a ocupar o topo do hero, e o overlay
+       de título/metadados desce para logo abaixo da arte. */
+    .aventura-leitura-hero {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    .aventura-leitura-hero-bg {
+        position: relative;
+        inset: auto;
+        height: auto;
+        max-height: 60vh;
+        object-fit: contain;
+        background: rgba(15, 5, 25, 0.92);
+    }
     .aventura-leitura-hero-overlay {
-        padding: 22px 18px 18px;
+        background: linear-gradient(180deg,
+            rgba(15, 5, 25, 0.85) 0%,
+            rgba(15, 5, 25, 0.92) 100%);
+        padding: 18px 18px 18px;
+        min-height: 0;
+    }
+    /* O botão "Voltar" sai do canto absoluto e entra no fluxo, antes do
+       título, para não pousar em cima da imagem da capa. */
+    .aventura-leitura-back {
+        position: relative;
+        top: auto;
+        left: auto;
+        align-self: flex-start;
+    }
+    /* Mantém o título e meta legíveis em telas estreitas. */
+    .aventura-leitura-meta {
+        gap: 8px 14px;
+        font-size: 0.86rem;
+    }
+    .aventura-leitura-sinopse,
+    .aventura-leitura-corpo,
+    .aventura-leitura-obs {
+        padding: 16px 16px;
+    }
+}
+
+/* Notebook+ — leitura confortável sem esticar parágrafos demais. */
+@media (min-width: 1200px) {
+    .aventura-leitura-hero {
+        min-height: 380px;
+    }
+    .aventura-leitura-texto {
+        max-width: 78ch;
     }
 }
