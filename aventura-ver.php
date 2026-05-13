@@ -40,7 +40,7 @@ $obsHtml   = formatarTextoIntegralAventura($aventura['observacoes_facilitador'])
     <link rel="stylesheet" href="assets/css/auth.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
     <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260508a" />
-    <link rel="stylesheet" href="assets/css/aventuras.css?v=20260513d" />
+    <link rel="stylesheet" href="assets/css/aventuras.css?v=20260513e" />
 </head>
 <body class="home-body aventuras-page aventura-leitura-page">
     <script src="assets/js/transitions.js?v=20260508u"></script>
@@ -82,8 +82,17 @@ $obsHtml   = formatarTextoIntegralAventura($aventura['observacoes_facilitador'])
             </section>
         <?php endif; ?>
 
+        <?php
+            // Cabeçalho artístico do corpo: junta título + subtítulo
+            // quando há subtítulo, separados por ": ". Mantém os campos
+            // separados no banco/hero; aqui é só composição visual.
+            $tituloCompleto = $titulo;
+            if ($subtitulo !== '') {
+                $tituloCompleto .= ': ' . $subtitulo;
+            }
+        ?>
         <article class="aventura-leitura-corpo" aria-label="Conteúdo da aventura">
-            <h2 class="aventura-leitura-corpo-title"><?= $titulo ?></h2>
+            <h2 class="aventura-leitura-corpo-title"><?= $tituloCompleto ?></h2>
             <?php if ($textoHtml !== ''): ?>
                 <div class="aventura-leitura-texto"><?= $textoHtml ?></div>
             <?php else: ?>
