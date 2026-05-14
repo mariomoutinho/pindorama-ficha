@@ -12,7 +12,7 @@ $usuario = usuarioLogado();
     <title>Pindorama RPG</title>
 
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/home.css?v=20260513h" />
+    <link rel="stylesheet" href="assets/css/home.css?v=20260513i" />
     <link rel="stylesheet" href="assets/css/auth.css?v=20260513i" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
 </head>
@@ -42,7 +42,9 @@ $usuario = usuarioLogado();
             <?php endif; ?>
         </div>
 
-        <nav class="home-grid-ref home-grid-home" aria-label="Menu principal">
+        <?php if ($ehFacilitador): ?>
+        <!-- ============ Menu do FACILITADOR ============ -->
+        <nav class="home-grid-ref home-grid-home" aria-label="Menu do facilitador">
             <a class="home-card-ref home-card-home home-card-nova-ficha" href="ficha.php">
                 <strong>Nova Ficha</strong>
                 <span>Crie um novo personagem.</span>
@@ -55,7 +57,6 @@ $usuario = usuarioLogado();
                 <strong>Mesa de Jogo</strong>
                 <span>Cenas em grid, mapas e tokens.</span>
             </a>
-            <?php if ($ehFacilitador): ?>
             <a class="home-card-ref home-card-home home-card-aventuras" href="aventuras.php">
                 <strong>Aventuras</strong>
                 <span>Crie e narre aventuras prontas.</span>
@@ -96,12 +97,58 @@ $usuario = usuarioLogado();
                 <strong>Conteúdos Liberados</strong>
                 <span>O que os Participantes já podem ver.</span>
             </a>
-            <?php endif; ?>
             <a class="home-card-ref home-card-home home-card-acervo" href="referencia.php">
                 <strong>Acervo</strong>
                 <span>Catálogos e regras do sistema.</span>
             </a>
         </nav>
+        <?php elseif ($usuario): ?>
+        <!-- ============ Menu do JOGADOR / PARTICIPANTE ============
+             Sem acessos administrativos. As páginas de admin de mesa
+             continuam protegidas por exigirFacilitador(). -->
+        <nav class="home-grid-ref home-grid-home" aria-label="Menu do jogador">
+            <a class="home-card-ref home-card-home home-card-minhas-mesas" href="minhas-mesas.php">
+                <strong>Minhas Mesas</strong>
+                <span>As campanhas em que você joga.</span>
+            </a>
+            <a class="home-card-ref home-card-home home-card-nova-ficha" href="ficha.php">
+                <strong>Nova Ficha</strong>
+                <span>Crie um novo personagem.</span>
+            </a>
+            <a class="home-card-ref home-card-home home-card-listar-fichas" href="fichas.php">
+                <strong>Listar Fichas</strong>
+                <span>Veja seus personagens salvos.</span>
+            </a>
+            <a class="home-card-ref home-card-home home-card-conteudos-liberados" href="meus-conteudos.php">
+                <strong>Conteúdos Liberados</strong>
+                <span>O que os facilitadores liberaram para você.</span>
+            </a>
+            <a class="home-card-ref home-card-home home-card-acervo" href="referencia.php">
+                <strong>Acervo</strong>
+                <span>Catálogos e regras do sistema.</span>
+            </a>
+        </nav>
+        <?php else: ?>
+        <!-- ============ Visitante deslogado ============ -->
+        <nav class="home-grid-ref home-grid-home" aria-label="Menu principal">
+            <a class="home-card-ref home-card-home home-card-nova-ficha" href="ficha.php">
+                <strong>Nova Ficha</strong>
+                <span>Crie um novo personagem.</span>
+            </a>
+            <a class="home-card-ref home-card-home home-card-listar-fichas" href="fichas.php">
+                <strong>Listar Fichas</strong>
+                <span>Veja personagens salvos.</span>
+            </a>
+            <a class="home-card-ref home-card-home home-card-campo-batalha" href="mesa-jogo.php">
+                <strong>Mesa de Jogo</strong>
+                <span>Cenas em grid, mapas e tokens.</span>
+            </a>
+            <a class="home-card-ref home-card-home home-card-acervo" href="referencia.php">
+                <strong>Acervo</strong>
+                <span>Catálogos e regras do sistema.</span>
+            </a>
+        </nav>
+        <?php endif; ?>
 
     </main>
 

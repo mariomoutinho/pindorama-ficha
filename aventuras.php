@@ -18,10 +18,10 @@ $lista = listarAventurasDoUsuario((int) $usuario['id']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aventuras — Pindorama RPG</title>
     <link rel="stylesheet" href="assets/css/ficha.css" />
-    <link rel="stylesheet" href="assets/css/home.css?v=20260513h" />
+    <link rel="stylesheet" href="assets/css/home.css?v=20260513i" />
     <link rel="stylesheet" href="assets/css/auth.css?v=20260513i" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />
-    <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260513c" />
+    <link rel="stylesheet" href="assets/css/painel-facilitador.css?v=20260513d" />
     <link rel="stylesheet" href="assets/css/aventuras.css?v=20260513q" />
 </head>
 <body class="home-body aventuras-page">

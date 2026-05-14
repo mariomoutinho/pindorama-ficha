@@ -440,3 +440,63 @@
     .mesa-aventura-item { flex-direction: column; align-items: stretch; }
     .mesa-aventura-remove { align-self: flex-end; }
 }
+
+/* =====================================================
+   Visão do JOGADOR — lista de mesas vinculadas
+===================================================== */
+.mesa-jogador-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+}
+.mesa-jogador-item {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border: 1.5px solid rgba(118, 84, 124, 0.28);
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fff, rgba(245, 235, 250, 0.45));
+    box-shadow: 0 2px 6px rgba(43, 18, 50, 0.06);
+}
+.mesa-jogador-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.mesa-jogador-nome {
+    font-family: 'Cordelina', Georgia, "Times New Roman", serif;
+    color: var(--purple-dark, #2b1232);
+    font-size: 1.1rem;
+    letter-spacing: 0.3px;
+}
+.mesa-jogador-meta { color: var(--muted, #91739a); font-size: 0.85rem; }
+.mesa-jogador-meta strong { color: var(--purple, #69436f); }
+.mesa-jogador-desc {
+    margin: 4px 0 2px;
+    color: var(--purple-dark, #2b1232);
+    font-size: 0.86rem;
+    line-height: 1.4;
+}
+.mesa-jogador-status {
+    align-self: flex-start;
+    display: inline-block;
+    margin-top: 2px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    background: rgba(118, 84, 124, 0.14);
+    color: var(--purple-dark, #2b1232);
+    border: 1px solid rgba(118, 84, 124, 0.30);
+}
+.mesa-jogador-status--ativa     { background: rgba(80, 160, 90, 0.18);  color: #1f5d2c; border-color: rgba(80, 160, 90, 0.50); }
+.mesa-jogador-status--rascunho  { background: rgba(216, 162, 58, 0.18); color: #7a4b00; border-color: rgba(216, 162, 58, 0.45); }
+.mesa-jogador-status--arquivada { background: rgba(118, 84, 124, 0.18); color: var(--purple-dark, #2b1232); border-color: rgba(118, 84, 124, 0.40); }
+.mesa-jogador-acoes { flex-shrink: 0; }
+
+@media (max-width: 640px) {
+    .mesa-jogador-item { flex-direction: column; align-items: stretch; }
+    .mesa-jogador-acoes { align-self: flex-end; }
+}

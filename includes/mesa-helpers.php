@@ -270,3 +270,83 @@ function desvincularAventuraDaMesa(int $mesaId, int $aventuraId): bool
     $stmt->execute(['mesa' => $mesaId, 'aid' => $aventuraId]);
     return $stmt->rowCount() > 0;
 }
+
+/* ============================================================
+ * Experiência do JOGADOR/PARTICIPANTE.
+ * O facilitador administra mesas via mesas.php (exigirFacilitador);
+ * o jogador apenas visualiza as mesas em que foi vinculado.
+ * ============================================================ */
+
+/**
+ * Mesas em que o usuário participa (qualquer papel em mesa_participantes).
+ * Traz nome do facilitador responsável e status, para a listagem do
+ * jogador em minhas-mesas.php.
+ */
+function listarMesasDoParticipante(int $usuarioId): array
+{
+    global $pdo;
+    $stmt = $pdo->prepare(
+        "SELECT m.id, m.nome, m.descricao, m.status,
+                mp.papel AS meu_papel,
+                f.nome AS facilitador_nome
+         FROM mesa_participantes mp
+         JOIN mesas m   ON m.id = mp.mesa_id
+         JOIN usuarios f ON f.id = m.facilitador_id
+         WHERE mp.usuario_id = :uid
+         ORDER BY m.updated_at DESC, m.nome"
+    );
+    $stmt->execute(['uid' => $usuarioId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Carrega uma mesa garantindo que o usuário está vinculada a ela
+ * (como participante OU facilitador). Devolve null se não houver
+ * vínculo — usado por mesa-ver.php para bloquear acesso indevido.
+ */
+function carregarMesaSeParticipante(int $mesaId, int $usuarioId): ?array
+{
+    global $pdo;
+    $stmt = $pdo->prepare(
+        "SELECT m.*, f.nome AS facilitador_nome, mp.papel AS meu_papel
+         FROM mesa_participantes mp
+         JOIN mesas m    ON m.id = mp.mesa_id
+         JOIN usuarios f ON f.id = m.facilitador_id
+         WHERE mp.mesa_id = :mesa AND mp.usuario_id = :uid
+         LIMIT 1"
+    );
+    $stmt->execute(['mesa' => $mesaId, 'uid' => $usuarioId]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+function rotuloStatusMesa(string $status): string
+{
+    return [
+        'rascunho'  => 'Rascunho',
+        'ativa'     => 'Ativa',
+        'arquivada' => 'Arquivada',
+    ][$status] ?? ucfirst($status);
+}
+
+/**
+ * Conteúdos liberados ao participante: itens de mesa_conteudos das
+ * mesas em que ele está vinculado, com visibilidade 'participantes'
+ * ou 'publico' (nunca 'privado'). Para a página meus-conteudos.php.
+ */
+function listarConteudosLiberadosParaParticipante(int $usuarioId): array
+{
+    global $pdo;
+    $stmt = $pdo->prepare(
+        "SELECT c.id, c.tipo, c.titulo, c.descricao, c.visibilidade,
+                c.updated_at, m.nome AS mesa_nome
+         FROM mesa_conteudos c
+         JOIN mesas m ON m.id = c.mesa_id
+         JOIN mesa_participantes mp ON mp.mesa_id = c.mesa_id
+         WHERE mp.usuario_id = :uid
+           AND c.visibilidade IN ('participantes','publico')
+         ORDER BY c.updated_at DESC"
+    );
+    $stmt->execute(['uid' => $usuarioId]);
+    return $stmt->fetchAll();
+}
