@@ -357,6 +357,20 @@ function dispararEventosCampo(campo) {
     campo.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
+function resetarCampoSelecao(id, valor = "") {
+    const campo = document.getElementById(id);
+    if (!campo) return;
+    campo.value = valor;
+    dispararEventosCampo(campo);
+}
+
+function resetarSelecoesFicha() {
+    resetarCampoSelecao("ancestralidadeSelect");
+    resetarCampoSelecao("origemSelect");
+    resetarCampoSelecao("classeSelect");
+    resetarCampoSelecao("divindadeSelect");
+}
+
 function anexarModaisFichaAoBody() {
     ["fichasSalvasModal", "fichaNoticeModal"].forEach(id => {
         const modal = document.getElementById(id);
@@ -4250,6 +4264,7 @@ function novaFicha() {
     }
 
     limparBonusAncestralidadeAplicados();
+    resetarSelecoesFicha();
 
     const fichaId = document.getElementById("fichaId");
     const imagemAtual = document.getElementById("imagemAtual");
@@ -4324,6 +4339,10 @@ function novaFicha() {
 
     if (window.AncestralidadesPindorama) {
         window.AncestralidadesPindorama.atualizarPainel();
+    }
+
+    if (window.DivindadesPindorama) {
+        window.DivindadesPindorama.carregarDivindade('');
     }
 
     const characterCard =
