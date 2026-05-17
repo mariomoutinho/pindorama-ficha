@@ -33,9 +33,10 @@ packet was received`. Por isso o workflow força FTP simples
 > race condition de `MKD`). O `lftp` serializa criação e upload de
 > forma robusta e é o padrão para esse cenário.
 
-O envio é **incremental e não destrutivo**:
+O envio é **não destrutivo**:
 
-- apenas arquivos novos/alterados são enviados (`--only-newer`);
+- arquivos versionados são reenviados/sobrescritos para evitar que mtimes
+  remotos da Hostinger façam o FTP pular mudanças reais;
 - **sem** `--delete`, `--delete-first` ou `--remove-source-files` →
   arquivos remotos **jamais** são apagados;
 - todos os caminhos sensíveis (uploads, estado de runtime,

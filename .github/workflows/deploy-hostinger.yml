@@ -35,7 +35,9 @@ jobs:
       # FTP adicionais da Hostinger NÃO suportam FTPS/TLS — `set
       # ftp:ssl-allow no` desliga qualquer tentativa de AUTH TLS.
       #
-      # Usamos `mirror --reverse --only-newer` (envio incremental).
+      # Usamos `mirror --reverse` sem `--only-newer` porque a Hostinger
+      # pode manter mtimes remotos mais novos que o checkout do GitHub,
+      # fazendo arquivos alterados serem pulados indevidamente.
       # SEM `--delete`, SEM `--delete-first`, SEM `--remove-source-files`
       # → arquivos remotos jamais são apagados.
       #
@@ -96,12 +98,10 @@ jobs:
             lcd .
 
             # mirror --reverse  = upload (local → remoto)
-            # --only-newer      = só envia se mtime/size diferente
             # --no-symlinks     = ignora symlinks (segurança)
             # --parallel=4      = paralelismo seguro
             # SEM --delete / --delete-first / --remove-source-files
             mirror --reverse \
-                   --only-newer \
                    --no-symlinks \
                    --parallel=4 \
                    --verbose \
@@ -142,6 +142,6 @@ jobs:
             echo ""
             echo "- Branch: \`${GITHUB_REF_NAME}\` · Commit: \`${GITHUB_SHA::7}\`"
             echo "- Protocolo: \`ftp\` (porta vinda de HOSTINGER_FTP_PORT, default 21)"
-            echo "- Ferramenta: \`lftp mirror -R --only-newer\` (incremental, sem --delete)"
+            echo "- Ferramenta: \`lftp mirror -R\` (sobrescreve versionados, sem --delete)"
             echo "- Destino: escopo da conta FTP (\`HOSTINGER_FTP_REMOTE_DIR\` vazio = raiz da conta)"
           } >> "$GITHUB_STEP_SUMMARY"
