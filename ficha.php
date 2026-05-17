@@ -21,7 +21,7 @@ $divindadesFicha = $dadosDivindades['divindades'] ?? [];
     <link rel="stylesheet" href="assets/css/ficha.css?v=20260513d" />
     <link rel="stylesheet" href="assets/css/poderes.css?v=20260507a" />
     <link rel="stylesheet" href="assets/css/ancestralidades.css?v=20260430" />
-    <link rel="stylesheet" href="assets/css/origens.css?v=20260430x" />
+    <link rel="stylesheet" href="assets/css/origens.css?v=20260513b" />
     <link rel="stylesheet" href="assets/css/divindades.css?v=20260430j" />
     <link rel="stylesheet" href="assets/css/ancestralidade-picker.css?v=20260513c" />
     <link rel="stylesheet" href="assets/css/transitions.css?v=20260508u" />

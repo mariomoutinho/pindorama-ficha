@@ -297,13 +297,117 @@
             desmarcarPericiaTreinada(nome);
         } else {
             if (escolhasAtuais.length >= 2) {
-                alert('Você já escolheu 2 benefícios. Remova um primeiro.');
+                mostrarAvisoFlutuante('Você já escolheu 2 benefícios. Remova um primeiro.');
                 return;
             }
             adicionarEscolha({ tipo: 'pericia', nome });
             marcarPericiaTreinada(nome);
         }
         renderizar();
+    }
+
+    /* ----------- Validação genérica de pré-requisitos -----------
+       Consulta os dados atuais da ficha para verificar se o personagem
+       satisfaz cada item de poder.prerequisitos. Suporta os tipos
+       encontrados no dataset (data/poderes-gerais.json):
+         - 'atributo' { atributo, valor }
+         - 'poder'    { id }
+         - 'nivel_classe' { classe, nivel }
+         - 'manual'   { texto }  → não validável; tratamos como aviso. */
+    const ATRIBUTO_FIELD = {
+        for: 'forca', des: 'destreza', con: 'constituicao',
+        int: 'inteligencia', sab: 'sabedoria', car: 'carisma',
+    };
+    function valorAtributoAtual(abrev) {
+        const field = ATRIBUTO_FIELD[String(abrev || '').toLowerCase()];
+        if (!field) return null;
+        const el = document.querySelector(`[name="${field}"]`);
+        if (!el) return null;
+        const n = parseInt(el.value, 10);
+        return Number.isFinite(n) ? n : 0;
+    }
+    function nivelAtual() {
+        const el = document.querySelector('[name="nivel"]');
+        const n = el ? parseInt(el.value, 10) : 1;
+        return Number.isFinite(n) ? n : 1;
+    }
+    function classeAtual() {
+        const sel = document.getElementById('classeSelect');
+        if (!sel) return '';
+        const opt = sel.options ? sel.options[sel.selectedIndex] : null;
+        return (opt && opt.dataset && opt.dataset.classeId)
+            ? String(opt.dataset.classeId).toLowerCase()
+            : String(sel.value || '').toLowerCase();
+    }
+    function temPoderAdquirido(idPoder) {
+        if (escolhasAtuais.some(b => b.tipo === 'poder' && b.id === idPoder)) return true;
+        return !!document.querySelector(`.poderes-tag-adquirido[data-poder-id="${idPoder}"]`);
+    }
+    function validarPrereqsPoder(poder) {
+        const reqs = Array.isArray(poder && poder.prerequisitos) ? poder.prerequisitos : [];
+        const faltando = [];
+        for (const r of reqs) {
+            const t = String(r.tipo || '').toLowerCase();
+            if (t === 'atributo') {
+                const atual = valorAtributoAtual(r.atributo);
+                if (atual === null || atual < (parseInt(r.valor, 10) || 0)) {
+                    faltando.push(r.texto || `${String(r.atributo || '').toUpperCase()} ${r.valor}`);
+                }
+            } else if (t === 'nivel_classe') {
+                if (classeAtual() !== String(r.classe || '').toLowerCase() || nivelAtual() < (parseInt(r.nivel, 10) || 0)) {
+                    faltando.push(r.texto || `${r.classe} nível ${r.nivel}`);
+                }
+            } else if (t === 'poder') {
+                if (!temPoderAdquirido(r.id)) {
+                    faltando.push(r.texto || `Poder: ${r.id}`);
+                }
+            } else if (t === 'manual') {
+                // Não validável automaticamente — o jogador é responsável por confirmar.
+                // Não bloqueia, só mantém o texto à mostra no body do modal.
+            }
+        }
+        return { ok: faltando.length === 0, faltando };
+    }
+
+    /** Exibe um aviso inline DENTRO do próprio modal de detalhes,
+        sempre acima do conteúdo. Substitui alert() e garante que o
+        usuário veja o feedback sem precisar fechar a janela. */
+    function mostrarAvisoModal(mensagem, variante /* 'erro' | 'info' */) {
+        const body = document.getElementById('origemModalBody');
+        if (!body) return;
+        let aviso = body.querySelector('.origem-modal-aviso');
+        if (!aviso) {
+            aviso = document.createElement('div');
+            aviso.className = 'origem-modal-aviso';
+            body.prepend(aviso);
+        }
+        aviso.dataset.variant = variante || 'erro';
+        aviso.textContent = mensagem;
+        aviso.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    function limparAvisoModal() {
+        const aviso = document.querySelector('#origemModalBody .origem-modal-aviso');
+        if (aviso) aviso.remove();
+    }
+
+    /** Toast flutuante para avisos fora do modal de detalhes do poder
+        (ex.: clique direto numa perícia já com 2 benefícios). Aparece
+        acima de tudo (z-index 10001), centralizado, auto-dismiss 3s. */
+    let _avisoToastTimer = null;
+    function mostrarAvisoFlutuante(mensagem) {
+        let host = document.getElementById('origemAvisoToast');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'origemAvisoToast';
+            host.className = 'origem-aviso-toast';
+            host.setAttribute('role', 'status');
+            host.setAttribute('aria-live', 'polite');
+            document.body.appendChild(host);
+        }
+        host.textContent = mensagem;
+        host.classList.add('is-visible');
+        if (_avisoToastTimer) clearTimeout(_avisoToastTimer);
+        _avisoToastTimer = setTimeout(() => host.classList.remove('is-visible'), 3000);
     }
 
     function abrirModalPoder(idPoder) {
@@ -354,10 +458,20 @@
 
     function adquirirPoderEmFoco() {
         if (!poderEmFoco) return;
+        limparAvisoModal();
+
         if (escolhasAtuais.length >= 2) {
-            alert('Você já escolheu 2 benefícios. Remova um primeiro.');
+            mostrarAvisoModal('Você já escolheu 2 benefícios. Remova um primeiro.', 'erro');
             return;
         }
+
+        const check = validarPrereqsPoder(poderEmFoco);
+        if (!check.ok) {
+            const msg = 'Você não pode adquirir este benefício: exige ' + check.faltando.join(' e ') + '.';
+            mostrarAvisoModal(msg, 'erro');
+            return;
+        }
+
         adicionarEscolha({ tipo: 'poder', id: poderEmFoco.id, nome: poderEmFoco.nome });
         fecharModal();
         renderizar();

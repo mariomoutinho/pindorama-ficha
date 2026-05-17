@@ -270,3 +270,56 @@
     color: var(--purple-dark);
     line-height: 1.5;
 }
+
+/* =====================================================
+   Garante que o modal de detalhe do poder (origemModal)
+   apareça ACIMA do modal de Origem do entity-picker
+   (anc-picker-backdrop tem z-index: 9990).
+===================================================== */
+#origemModal.poder-modal-backdrop {
+    z-index: 10000;
+}
+
+/* Aviso inline dentro do modal de detalhes (substitui alert()
+   e fica acima do conteúdo do próprio modal). */
+.origem-modal-aviso {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    background: rgba(155, 37, 77, 0.10);
+    color: #7a153a;
+    border: 1.5px solid rgba(155, 37, 77, 0.4);
+    font-weight: 700;
+}
+.origem-modal-aviso[data-variant="info"] {
+    background: rgba(118, 84, 124, 0.10);
+    color: var(--purple-dark, #2b1232);
+    border-color: rgba(118, 84, 124, 0.36);
+}
+
+/* Toast flutuante (escolha de perícia bloqueada) — fica ACIMA de
+   qualquer modal aberto (z-index > 10000). */
+.origem-aviso-toast {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    z-index: 10001;
+    max-width: min(420px, calc(100vw - 24px));
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #8b1f2e 0%, #b34935 100%);
+    color: #fff7e6;
+    border-radius: 999px;
+    box-shadow: 0 8px 22px rgba(43, 18, 50, 0.40);
+    font-weight: 700;
+    font-size: 0.92rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+.origem-aviso-toast.is-visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
