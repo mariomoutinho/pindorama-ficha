@@ -105,7 +105,7 @@ jobs:
               mkdir -p -f includes
               put includes/auth.php -o includes/auth.php
               put .user.ini -o .user.ini
-EOF
+          EOF
           done
 
           lftp -u "$FTP_USER","$FTP_PASSWORD" -p "$PORT" "ftp://$FTP_HOST" <<EOF
