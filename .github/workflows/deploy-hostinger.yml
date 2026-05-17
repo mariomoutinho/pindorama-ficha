@@ -25,81 +25,114 @@ jobs:
       - name: Checkout do repositório
         uses: actions/checkout@v4
         with:
-          # Não precisamos do histórico completo para fazer upload.
           fetch-depth: 1
 
+      - name: Instalar lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
       # ----------------------------------------------------------------
-      # Conexão FTP simples na porta 21. As contas FTP adicionais da
-      # Hostinger NÃO suportam FTPS/TLS — daí `protocol: ftp` (nada de
-      # `ftps` nem `ftps-legacy`). A conta usada já está escopada à
-      # pasta final do projeto (`public_html/pindorama-rpg/`), então
-      # `server-dir: ./` cai direto no lugar certo.
+      # Publicação via lftp em modo FTP simples (porta 21). As contas
+      # FTP adicionais da Hostinger NÃO suportam FTPS/TLS — `set
+      # ftp:ssl-allow no` desliga qualquer tentativa de AUTH TLS.
       #
-      # O FTP-Deploy-Action faz delta sync incremental: envia apenas o
-      # que mudou. NÃO usa `dangerous-clean-slate` (default `false`),
-      # logo a pasta jamais é zerada de uma vez. Arquivos remotos que
-      # não tenham correspondência local serão alinhados ao
-      # repositório — por isso a lista `exclude` protege as áreas de
-      # uploads de usuário, estado de runtime e config local.
+      # Usamos `mirror --reverse --only-newer` (envio incremental).
+      # SEM `--delete`, SEM `--delete-first`, SEM `--remove-source-files`
+      # → arquivos remotos jamais são apagados.
+      #
+      # Por que lftp e não FTP-Deploy-Action: o action SamKirkland/
+      # FTP-Deploy-Action tem race condition de MKD no FTP plain da
+      # Hostinger, que dispara "550 No such file or directory" ao
+      # criar certas subpastas (ex.: lib/). lftp serializa criação e
+      # upload de forma robusta e não tem esse problema.
       # ----------------------------------------------------------------
-      - name: Publicar via FTP-Deploy-Action (incremental, sem clean-slate)
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
-        with:
-          server:   ${{ secrets.HOSTINGER_FTP_HOST }}
-          username: ${{ secrets.HOSTINGER_FTP_USER }}
-          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
-          port:     ${{ secrets.HOSTINGER_FTP_PORT }}
-          protocol: ftp
-          # Pasta local que será espelhada (raiz do repo).
-          local-dir: ./
-          # A conta FTP já cai dentro de public_html/pindorama-rpg/,
-          # então o destino é a própria raiz remota.
-          server-dir: ./
-          # Sem clean slate. Mantém arquivos que não conhecemos
-          # (uploads dos usuários, estados de runtime) intactos
-          # quando combinado com os excludes abaixo.
-          dangerous-clean-slate: false
-          log-level: standard
-          # Excludes (glob style). Tudo aqui:
-          #  a) NÃO sobe para o servidor;
-          #  b) NÃO é considerado para "alinhamento" — assim as
-          #     pastas/arquivos remotos correspondentes ficam
-          #     preservados em produção.
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/.github/**
-            **/.claude/**
-            **/.codex/**
-            **/.agents/**
-            **/.vscode/**
-            **/node_modules/**
-            **/vendor/**
-            **/tests/**
-            README.md
-            DEPLOY-HOSTINGER.md
-            DEPLOY_HOSTINGER.md
-            PORTE-GODOT.md
-            REGRAS-DE-*.md
-            # Credenciais e config — criada manualmente no servidor.
-            .env
-            .env.*
-            config.php
-            config.local.php
-            secrets.*
-            # Uploads de usuário (capas, tokens, fotos, NPCs, mapas).
-            uploads/**
-            # Estados gerados em runtime.
-            data/campo-batalha-state*.json
-            data/aventuras/*/cenas.json
-            # Dumps de banco e backups locais.
-            database.sql
-            _pindorama_rpg.sql
-            *.sql.bak
-            *.bak
-            *.log
-            .DS_Store
-            Thumbs.db
+      - name: Publicar via lftp (FTP plain, incremental, sem deletar nada)
+        env:
+          FTP_HOST:       ${{ secrets.HOSTINGER_FTP_HOST }}
+          FTP_USER:       ${{ secrets.HOSTINGER_FTP_USER }}
+          FTP_PASSWORD:   ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          FTP_PORT:       ${{ secrets.HOSTINGER_FTP_PORT }}
+          # Opcional. Se a conta FTP já cai dentro de
+          # public_html/pindorama-rpg/ (caso atual), deixe vazio ou ".".
+          # Se a conta cai no home, configure para a subpasta destino.
+          FTP_REMOTE_DIR: ${{ secrets.HOSTINGER_FTP_REMOTE_DIR }}
+        run: |
+          set -euo pipefail
+
+          : "${FTP_HOST:?secret HOSTINGER_FTP_HOST não definido}"
+          : "${FTP_USER:?secret HOSTINGER_FTP_USER não definido}"
+          : "${FTP_PASSWORD:?secret HOSTINGER_FTP_PASSWORD não definido}"
+          PORT="${FTP_PORT:-21}"
+          REMOTE_DIR="${FTP_REMOTE_DIR:-}"
+
+          # Guarda: se o usuário definir manualmente algo perigoso no
+          # secret REMOTE_DIR, recusa rodar.
+          case "$REMOTE_DIR" in
+            "/"|"public_html"|"public_html/")
+              echo "::error::Destino remoto '$REMOTE_DIR' é inseguro. Deixe vazio se a conta FTP já está escopada, ou aponte para uma subpasta."
+              exit 1
+              ;;
+          esac
+
+          if [ -z "$REMOTE_DIR" ] || [ "$REMOTE_DIR" = "." ] || [ "$REMOTE_DIR" = "./" ]; then
+            echo "Destino: ftp://$FTP_HOST:$PORT/ (raiz da conta — escopo atual da conta FTP)"
+            CD_LINE=""   # conta já cai na pasta certa, sem cd
+          else
+            echo "Destino: ftp://$FTP_HOST:$PORT$REMOTE_DIR"
+            CD_LINE="mkdir -p -f \"$REMOTE_DIR\"; cd \"$REMOTE_DIR\";"
+          fi
+
+          # lftp recebe senha via -u; nada cai em logs. `set xfer:log
+          # false` e `set cmdline:save-history off` reforçam isso.
+          lftp -u "$FTP_USER","$FTP_PASSWORD" -p "$PORT" "ftp://$FTP_HOST" <<EOF
+            set ftp:ssl-allow no
+            set ftp:passive-mode true
+            set net:max-retries 3
+            set net:timeout 30
+            set xfer:log false
+            set cmdline:save-history off
+            set cmd:fail-exit yes
+
+            $CD_LINE
+            lcd .
+
+            # mirror --reverse  = upload (local → remoto)
+            # --only-newer      = só envia se mtime/size diferente
+            # --no-symlinks     = ignora symlinks (segurança)
+            # --parallel=4      = paralelismo seguro
+            # SEM --delete / --delete-first / --remove-source-files
+            mirror --reverse \
+                   --only-newer \
+                   --no-symlinks \
+                   --parallel=4 \
+                   --verbose \
+                   --exclude-glob '.git/'             --exclude-glob '.git/**' \
+                   --exclude-glob '.github/'          --exclude-glob '.github/**' \
+                   --exclude-glob '.claude/'          --exclude-glob '.claude/**' \
+                   --exclude-glob '.codex/'           --exclude-glob '.codex/**' \
+                   --exclude-glob '.agents/'          --exclude-glob '.agents/**' \
+                   --exclude-glob '.vscode/'          --exclude-glob '.vscode/**' \
+                   --exclude-glob '.gitignore'        --exclude-glob '.gitattributes' \
+                   --exclude-glob 'README.md' \
+                   --exclude-glob 'DEPLOY-HOSTINGER.md' \
+                   --exclude-glob 'DEPLOY_HOSTINGER.md' \
+                   --exclude-glob 'PORTE-GODOT.md'    --exclude-glob 'REGRAS-DE-*.md' \
+                   --exclude-glob 'tests/'            --exclude-glob 'tests/**' \
+                   --exclude-glob 'node_modules/'     --exclude-glob 'node_modules/**' \
+                   --exclude-glob 'vendor/'           --exclude-glob 'vendor/**' \
+                   --exclude-glob 'uploads/'          --exclude-glob 'uploads/**' \
+                   --exclude-glob 'data/campo-batalha-state*.json' \
+                   --exclude-glob 'data/aventuras/*/cenas.json' \
+                   --exclude-glob '.env'              --exclude-glob '.env.*' \
+                   --exclude-glob 'config.php' \
+                   --exclude-glob 'config.local.php'  --exclude-glob 'secrets.*' \
+                   --exclude-glob 'database.sql'      --exclude-glob '_pindorama_rpg.sql' \
+                   --exclude-glob '*.sql.bak'         --exclude-glob '*.bak' \
+                   --exclude-glob '*.log' \
+                   --exclude-glob '.DS_Store'         --exclude-glob 'Thumbs.db' \
+                   .
+          EOF
+
+          echo "Deploy concluído com sucesso."
 
       - name: Resumo
         if: always()
@@ -108,7 +141,7 @@ jobs:
             echo "## Resumo do deploy"
             echo ""
             echo "- Branch: \`${GITHUB_REF_NAME}\` · Commit: \`${GITHUB_SHA::7}\`"
-            echo "- Protocolo: \`ftp\` (porta vinda do secret HOSTINGER_FTP_PORT)"
-            echo "- Destino: pasta da conta FTP (já apontando para \`public_html/pindorama-rpg/\`)"
-            echo "- Modo: incremental (sem clean-slate). Uploads, estado de runtime e config preservados via excludes."
+            echo "- Protocolo: \`ftp\` (porta vinda de HOSTINGER_FTP_PORT, default 21)"
+            echo "- Ferramenta: \`lftp mirror -R --only-newer\` (incremental, sem --delete)"
+            echo "- Destino: escopo da conta FTP (\`HOSTINGER_FTP_REMOTE_DIR\` vazio = raiz da conta)"
           } >> "$GITHUB_STEP_SUMMARY"

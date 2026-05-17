@@ -20,23 +20,27 @@ que roda:
 - manualmente em **GitHub → Actions → "Deploy Pindorama RPG →
   Hostinger" → Run workflow**.
 
-A publicação usa a ação
-**[SamKirkland/FTP-Deploy-Action@v4.4.0](https://github.com/SamKirkland/FTP-Deploy-Action)**
-com `protocol: ftp` (porta 21). As contas FTP adicionais da Hostinger
+A publicação usa **`lftp`** em modo `mirror --reverse --only-newer`
+sobre FTP simples (porta 21). As contas FTP adicionais da Hostinger
 **não suportam FTPS/TLS** — qualquer tentativa de `ftps://` ou
 negociação AUTH TLS falha em `gnutls_handshake: An unexpected TLS
-packet was received`. Por isso o workflow força FTP simples.
+packet was received`. Por isso o workflow força FTP simples
+(`set ftp:ssl-allow no`).
 
-O envio é **incremental**:
+> **Por que `lftp` em vez de `SamKirkland/FTP-Deploy-Action`?**
+> A primeira tentativa com aquela ação falhou na criação da pasta
+> `lib/` no FTP plain da Hostinger (`550 No such file or directory` —
+> race condition de `MKD`). O `lftp` serializa criação e upload de
+> forma robusta e é o padrão para esse cenário.
 
-- a ação mantém um estado em `.ftp-deploy-sync-state.json` no servidor;
-- apenas arquivos novos/alterados são enviados;
-- `dangerous-clean-slate: false` (default) garante que a pasta **nunca**
-  é zerada;
-- arquivos remotos sem correspondência local seriam normalmente
-  alinhados ao repositório, **mas** todas as áreas sensíveis (uploads,
-  estado de runtime, `config.php`) estão na lista `exclude` — então
-  permanecem intactas em produção.
+O envio é **incremental e não destrutivo**:
+
+- apenas arquivos novos/alterados são enviados (`--only-newer`);
+- **sem** `--delete`, `--delete-first` ou `--remove-source-files` →
+  arquivos remotos **jamais** são apagados;
+- todos os caminhos sensíveis (uploads, estado de runtime,
+  `config.php`) estão na lista `--exclude-glob`, então nem sobem nem
+  interferem com nada que já exista no servidor.
 
 ---
 
@@ -49,9 +53,11 @@ final do projeto**:
 /home/u234997903/domains/coletivopindorama.com.br/public_html/pindorama-rpg
 ```
 
-Por isso o workflow usa `server-dir: ./` — o login já cai dentro da
-pasta certa. Se um dia essa conta for substituída por outra com
-escopo diferente, ajuste `server-dir` no YAML.
+Como a conta já cai dentro da pasta certa, o secret opcional
+`HOSTINGER_FTP_REMOTE_DIR` deve ficar **vazio** (ou `.`). Se um dia a
+conta for substituída por outra que cai no `home`, configure
+`HOSTINGER_FTP_REMOTE_DIR=public_html/pindorama-rpg` e o workflow
+fará `cd` para essa pasta antes de subir.
 
 ---
 
@@ -60,12 +66,13 @@ escopo diferente, ajuste `server-dir` no YAML.
 **GitHub → Settings → Secrets and variables → Actions → New
 repository secret**:
 
-| Secret | Descrição | Exemplo |
-|---|---|---|
-| `HOSTINGER_FTP_HOST` | Host FTP da Hostinger | `ftp.coletivopindorama.com.br` |
-| `HOSTINGER_FTP_USER` | Usuário FTP da conta escopada | `u234997903.pindorama` |
-| `HOSTINGER_FTP_PASSWORD` | Senha do usuário FTP | (senha) |
-| `HOSTINGER_FTP_PORT` | Porta FTP | `21` |
+| Secret | Obrigatório | Descrição | Exemplo |
+|---|---|---|---|
+| `HOSTINGER_FTP_HOST` | ✅ | Host FTP da Hostinger | `ftp.coletivopindorama.com.br` |
+| `HOSTINGER_FTP_USER` | ✅ | Usuário FTP da conta escopada | `u234997903.pindorama` |
+| `HOSTINGER_FTP_PASSWORD` | ✅ | Senha do usuário FTP | (senha) |
+| `HOSTINGER_FTP_PORT` | opcional (default `21`) | Porta FTP | `21` |
+| `HOSTINGER_FTP_REMOTE_DIR` | opcional (vazio = raiz da conta) | Subpasta destino, **se** a conta cair fora dela | `public_html/pindorama-rpg` |
 
 Nada de credenciais no código — o workflow só lê dos secrets.
 
