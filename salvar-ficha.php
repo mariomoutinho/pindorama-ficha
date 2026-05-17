@@ -1,7 +1,7 @@
 <?php
 
 require_once __DIR__ . '/includes/auth.php';
-exigirLogin();
+$usuarioAtual = exigirLogin();
 
 require_once 'config.php';
 require_once __DIR__ . '/includes/permissions.php';
@@ -12,11 +12,33 @@ $id = $_POST['id'] ?? null;
 garantirColunaAjusteImagem($pdo);
 garantirColunasTokenImagem($pdo);
 
-// Autorização: edição só pelo dono ou Facilitador. Criação é livre p/
-// qualquer logado (Participantes criam a própria ficha; Facilitador
-// pode criar para outros e atribuir depois).
+if (!garantirColunaUsuarioFicha($pdo)) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Não foi possível preparar o vínculo da ficha com o usuário logado.'
+    ]);
+    exit;
+}
+
+$usuarioAtualId = (int) $usuarioAtual['id'];
+
+// Autorização: cada usuário só edita fichas da própria conta.
 if ($id !== null && $id !== '') {
-    if (!canEditFicha((int) $id)) {
+    $stmt = $pdo->prepare("SELECT usuario_id FROM fichas WHERE id = :id LIMIT 1");
+    $stmt->execute(['id' => (int) $id]);
+    $fichaDono = $stmt->fetch();
+
+    if (!$fichaDono) {
+        http_response_code(404);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Ficha não encontrada.'
+        ]);
+        exit;
+    }
+
+    if ((int) ($fichaDono['usuario_id'] ?? 0) !== $usuarioAtualId) {
         http_response_code(403);
         echo json_encode([
             'success' => false,
@@ -24,16 +46,6 @@ if ($id !== null && $id !== '') {
         ]);
         exit;
     }
-}
-
-// Detecta se o vínculo `usuario_id` já existe na tabela (migration 007).
-// Mantemos o código tolerante a banco antigo.
-$temColunaUsuarioId = false;
-try {
-    $check = $pdo->query("SHOW COLUMNS FROM fichas LIKE 'usuario_id'");
-    $temColunaUsuarioId = $check && $check->fetch() ? true : false;
-} catch (Throwable $e) {
-    $temColunaUsuarioId = false;
 }
 
 $campos = [
@@ -85,6 +97,12 @@ $campos = [
 $dados = [];
 foreach ($campos as $campo) {
     $dados[$campo] = $_POST[$campo] ?? null;
+}
+
+foreach (['pp_total', 'pp_atuais'] as $campoObrigatorio) {
+    if ($dados[$campoObrigatorio] === null || $dados[$campoObrigatorio] === '') {
+        $dados[$campoObrigatorio] = 0;
+    }
 }
 
 $imagemAtual = $_POST['imagem_atual'] ?? null;
@@ -245,20 +263,18 @@ try {
         foreach ($campos as $campo) {
             $sets[] = "$campo = :$campo";
         }
-        $sql = "UPDATE fichas SET " . implode(", ", $sets) . " WHERE id = :id";
+        $sql = "UPDATE fichas SET " . implode(", ", $sets) . " WHERE id = :id AND usuario_id = :usuario_id_cond";
         $stmt = $pdo->prepare($sql);
-        $dados['id'] = $id;
-        $stmt->execute($dados);
+        $dadosUpdate = $dados;
+        $dadosUpdate['id'] = $id;
+        $dadosUpdate['usuario_id_cond'] = $usuarioAtualId;
+        $stmt->execute($dadosUpdate);
         $fichaId = $id;
     } else {
         $camposInsert = $campos;
         $dadosInsert = $dados;
-        // Vincula a ficha ao usuário atual quando o schema permite.
-        if ($temColunaUsuarioId) {
-            $usuario = usuarioLogado();
-            $camposInsert[] = 'usuario_id';
-            $dadosInsert['usuario_id'] = $usuario ? (int) $usuario['id'] : null;
-        }
+        $camposInsert[] = 'usuario_id';
+        $dadosInsert['usuario_id'] = $usuarioAtualId;
         $colunas = implode(", ", $camposInsert);
         $placeholders = ":" . implode(", :", $camposInsert);
         $sql = "INSERT INTO fichas ($colunas) VALUES ($placeholders)";

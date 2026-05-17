@@ -9,14 +9,34 @@
 -- (UI de "atribuir ficha a participante"), o time pode decidir se torna
 -- NOT NULL via nova migration.
 --
--- IF NOT EXISTS é seguro em MariaDB 10.4+; em MySQL 8 puro use a forma
--- usada nas migrations 001-006.
+-- Usa information_schema para rodar tanto em MariaDB quanto em MySQL.
 
-ALTER TABLE `fichas`
-    ADD COLUMN IF NOT EXISTS `usuario_id` INT(11) NULL AFTER `id`,
-    ADD KEY IF NOT EXISTS `fichas_usuario_id_idx` (`usuario_id`),
-    ADD CONSTRAINT `fichas_usuario_id_fk`
-        FOREIGN KEY IF NOT EXISTS (`usuario_id`)
-        REFERENCES `usuarios` (`id`)
-        ON UPDATE CASCADE
-        ON DELETE SET NULL;
+SET @col_exists := (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'fichas' AND COLUMN_NAME = 'usuario_id'
+);
+SET @stmt := IF(@col_exists = 0,
+    'ALTER TABLE fichas ADD COLUMN usuario_id INT(11) NULL AFTER id',
+    'SELECT 1');
+PREPARE s1 FROM @stmt; EXECUTE s1; DEALLOCATE PREPARE s1;
+
+SET @idx_exists := (
+    SELECT COUNT(*) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'fichas' AND INDEX_NAME = 'fichas_usuario_id_idx'
+);
+SET @stmt := IF(@idx_exists = 0,
+    'ALTER TABLE fichas ADD INDEX fichas_usuario_id_idx (usuario_id)',
+    'SELECT 1');
+PREPARE s2 FROM @stmt; EXECUTE s2; DEALLOCATE PREPARE s2;
+
+SET @fk_exists := (
+    SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'fichas'
+      AND COLUMN_NAME = 'usuario_id'
+      AND REFERENCED_TABLE_NAME = 'usuarios'
+);
+SET @stmt := IF(@fk_exists = 0,
+    'ALTER TABLE fichas ADD CONSTRAINT fichas_usuario_id_fk FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON UPDATE CASCADE ON DELETE SET NULL',
+    'SELECT 1');
+PREPARE s3 FROM @stmt; EXECUTE s3; DEALLOCATE PREPARE s3;

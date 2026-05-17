@@ -1,12 +1,21 @@
 <?php
 
 require_once __DIR__ . '/includes/auth.php';
-exigirLogin();
+$usuarioAtual = exigirLogin();
 
 require_once 'config.php';
 require_once __DIR__ . '/includes/permissions.php';
 
 header('Content-Type: application/json');
+
+if (!garantirColunaUsuarioFicha($pdo)) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Não foi possível preparar o vínculo das fichas com o usuário logado.'
+    ]);
+    exit;
+}
 
 $colunas = "
     id,
@@ -22,14 +31,8 @@ $colunas = "
     updated_at
 ";
 
-if (isFacilitador()) {
-    $stmt = $pdo->query("SELECT $colunas FROM fichas ORDER BY updated_at DESC");
-    echo json_encode($stmt->fetchAll());
-} else {
-    $u = usuarioLogado();
-    $stmt = $pdo->prepare(
-        "SELECT $colunas FROM fichas WHERE usuario_id = :uid ORDER BY updated_at DESC"
-    );
-    $stmt->execute(['uid' => (int) $u['id']]);
-    echo json_encode($stmt->fetchAll());
-}
+$stmt = $pdo->prepare(
+    "SELECT $colunas FROM fichas WHERE usuario_id = :uid ORDER BY updated_at DESC"
+);
+$stmt->execute(['uid' => (int) $usuarioAtual['id']]);
+echo json_encode($stmt->fetchAll());

@@ -151,3 +151,64 @@ function canViewFicha(int $fichaId, ?int $usuarioId = null): bool
 {
     return canEditFicha($fichaId, $usuarioId);
 }
+
+/**
+ * Garante a coluna que vincula fichas aos usuários.
+ *
+ * Algumas instalações antigas podem estar sem a migration 007 aplicada.
+ * O fluxo de salvar/listar/carregar fichas precisa desse vínculo para não
+ * gravar fichas "órfãs" que depois somem da lista do participante.
+ */
+function garantirColunaUsuarioFicha(PDO $pdo): bool
+{
+    static $verificada = null;
+    if ($verificada !== null) return $verificada;
+
+    try {
+        $check = $pdo->query("SHOW COLUMNS FROM fichas LIKE 'usuario_id'");
+        if ($check && $check->fetch()) {
+            $verificada = true;
+            return true;
+        }
+
+        $pdo->exec("ALTER TABLE fichas ADD COLUMN usuario_id INT(11) NULL AFTER id");
+
+        try {
+            $idx = $pdo->query("SHOW INDEX FROM fichas WHERE Key_name = 'fichas_usuario_id_idx'");
+            if (!$idx || !$idx->fetch()) {
+                $pdo->exec("ALTER TABLE fichas ADD INDEX fichas_usuario_id_idx (usuario_id)");
+            }
+        } catch (Throwable $e) {
+            // O índice melhora a consulta, mas a coluna é o requisito funcional.
+        }
+
+        try {
+            $fk = $pdo->query(
+                "SELECT CONSTRAINT_NAME
+                   FROM information_schema.KEY_COLUMN_USAGE
+                  WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'fichas'
+                    AND COLUMN_NAME = 'usuario_id'
+                    AND REFERENCED_TABLE_NAME = 'usuarios'
+                  LIMIT 1"
+            );
+            if (!$fk || !$fk->fetch()) {
+                $pdo->exec(
+                    "ALTER TABLE fichas
+                     ADD CONSTRAINT fichas_usuario_id_fk
+                     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+                     ON UPDATE CASCADE ON DELETE SET NULL"
+                );
+            }
+        } catch (Throwable $e) {
+            // Ambientes legados podem bloquear FK; o isolamento usa usuario_id.
+        }
+
+        $check = $pdo->query("SHOW COLUMNS FROM fichas LIKE 'usuario_id'");
+        $verificada = $check && $check->fetch() ? true : false;
+        return $verificada;
+    } catch (Throwable $e) {
+        $verificada = false;
+        return false;
+    }
+}

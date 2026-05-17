@@ -1,12 +1,21 @@
 <?php
 
 require_once __DIR__ . '/includes/auth.php';
-exigirLogin();
+$usuarioAtual = exigirLogin();
 
 require_once 'config.php';
 require_once __DIR__ . '/includes/permissions.php';
 
 header('Content-Type: application/json');
+
+if (!garantirColunaUsuarioFicha($pdo)) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Não foi possível preparar o vínculo das fichas com o usuário logado.'
+    ]);
+    exit;
+}
 
 $id = $_GET['id'] ?? null;
 
@@ -18,8 +27,11 @@ if (!$id) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT * FROM fichas WHERE id = :id");
-$stmt->execute(['id' => $id]);
+$stmt = $pdo->prepare("SELECT * FROM fichas WHERE id = :id AND usuario_id = :uid");
+$stmt->execute([
+    'id' => $id,
+    'uid' => (int) $usuarioAtual['id'],
+]);
 
 $ficha = $stmt->fetch();
 
@@ -27,16 +39,6 @@ if (!$ficha) {
     echo json_encode([
         'success' => false,
         'message' => 'Ficha não encontrada.'
-    ]);
-    exit;
-}
-
-// Autorização: Facilitador vê todas; Participante só a própria ficha.
-if (!canViewFicha((int) $ficha['id'])) {
-    http_response_code(403);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Você não tem permissão para visualizar esta ficha.'
     ]);
     exit;
 }
