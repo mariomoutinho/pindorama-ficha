@@ -47,18 +47,16 @@ O envio é **não destrutivo**:
 
 ## Conta FTP e destino
 
-A conta FTP adicional criada no hPanel já está **escopada à pasta
-final do projeto**:
+A publicação mira explicitamente a pasta final do projeto:
 
 ```
 /home/u234997903/domains/coletivopindorama.com.br/public_html/pindorama-rpg
 ```
 
-Como a conta já cai dentro da pasta certa, o secret opcional
-`HOSTINGER_FTP_REMOTE_DIR` deve ficar **vazio** (ou `.`). Se um dia a
-conta for substituída por outra que cai no `home`, configure
-`HOSTINGER_FTP_REMOTE_DIR=public_html/pindorama-rpg` e o workflow
-fará `cd` para essa pasta antes de subir.
+Por padrão, se `HOSTINGER_FTP_REMOTE_DIR` ficar vazio, o workflow usa
+`domains/coletivopindorama.com.br/public_html/pindorama-rpg`. Se uma conta FTP adicional for escopada
+diretamente para essa pasta final, configure `HOSTINGER_FTP_REMOTE_DIR=.`
+para publicar na raiz da conta.
 
 ---
 
@@ -73,7 +71,7 @@ repository secret**:
 | `HOSTINGER_FTP_USER` | ✅ | Usuário FTP da conta escopada | `u234997903.pindorama` |
 | `HOSTINGER_FTP_PASSWORD` | ✅ | Senha do usuário FTP | (senha) |
 | `HOSTINGER_FTP_PORT` | opcional (default `21`) | Porta FTP | `21` |
-| `HOSTINGER_FTP_REMOTE_DIR` | opcional (vazio = raiz da conta) | Subpasta destino, **se** a conta cair fora dela | `public_html/pindorama-rpg` |
+| `HOSTINGER_FTP_REMOTE_DIR` | opcional (vazio = caminho público do domínio) | Pasta remota de destino; use `.` se a conta já cair na pasta final | `domains/coletivopindorama.com.br/public_html/pindorama-rpg` |
 
 Nada de credenciais no código — o workflow só lê dos secrets.
 

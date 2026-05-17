@@ -53,9 +53,10 @@ jobs:
           FTP_USER:       ${{ secrets.HOSTINGER_FTP_USER }}
           FTP_PASSWORD:   ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           FTP_PORT:       ${{ secrets.HOSTINGER_FTP_PORT }}
-          # Opcional. Se a conta FTP já cai dentro de
-          # public_html/pindorama-rpg/ (caso atual), deixe vazio ou ".".
-          # Se a conta cai no home, configure para a subpasta destino.
+          # Opcional. Se vazio, publicamos no caminho real do erro PHP:
+          # domains/coletivopindorama.com.br/public_html/pindorama-rpg.
+          # Se a conta FTP já estiver escopada diretamente nessa pasta,
+          # configure "." no secret.
           FTP_REMOTE_DIR: ${{ secrets.HOSTINGER_FTP_REMOTE_DIR }}
         run: |
           set -euo pipefail
@@ -69,13 +70,17 @@ jobs:
           # Guarda: se o usuário definir manualmente algo perigoso no
           # secret REMOTE_DIR, recusa rodar.
           case "$REMOTE_DIR" in
-            "/"|"public_html"|"public_html/")
+            "/")
               echo "::error::Destino remoto '$REMOTE_DIR' é inseguro. Deixe vazio se a conta FTP já está escopada, ou aponte para uma subpasta."
               exit 1
               ;;
           esac
 
-          if [ -z "$REMOTE_DIR" ] || [ "$REMOTE_DIR" = "." ] || [ "$REMOTE_DIR" = "./" ]; then
+          if [ -z "$REMOTE_DIR" ]; then
+            REMOTE_DIR="domains/coletivopindorama.com.br/public_html/pindorama-rpg"
+          fi
+
+          if [ "$REMOTE_DIR" = "." ] || [ "$REMOTE_DIR" = "./" ]; then
             echo "Destino: ftp://$FTP_HOST:$PORT/ (raiz da conta — escopo atual da conta FTP)"
             CD_LINE=""   # conta já cai na pasta certa, sem cd
           else
